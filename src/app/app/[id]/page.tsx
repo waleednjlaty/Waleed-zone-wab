@@ -1,0 +1,217 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import AppGrid from '@/components/AppGrid';
+import CoverImage from '@/components/CoverImage';
+import { getAppById, getRelatedApps } from '@/lib/queries';
+import { SITE_NAME, SITE_URL, telegramDownloadUrl } from '@/lib/site';
+import { formatDate } from '@/lib/utils';
+
+export const dynamic = 'force-dynamic';
+
+interface AppPageProps {
+  params: { id: string };
+}
+
+function parseId(value: string): number | null {
+  if (!/^\d{1,10}$/.test(value)) return null;
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+export async function generateMetadata({ params }: AppPageProps): Promise<Metadata> {
+  const id = parseId(params.id);
+  const app = id ? await getAppById(id) : undefined;
+
+  if (!app) {
+    return { title: 'التطبيق غير موجود' };
+  }
+
+  const name = app.name ?? `تطبيق رقم ${app.id}`;
+  const description = (app.description ?? `تحميل ${name}`).slice(0, 160);
+  const title = `${name}${app.version ? ` ${app.version}` : ''} — تحميل`;
+  const imageUrl = app.imageUrl;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/app/${app.id}` },
+    openGraph: {
+      type: 'website',
+      locale: 'ar_SA',
+      siteName: SITE_NAME,
+      title,
+      description,
+      url: `${SITE_URL}/app/${app.id}`,
+      ...(imageUrl ? { images: [{ url: imageUrl, alt: name }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(imageUrl ? { images: [imageUrl] } : {}),
+    },
+  };
+}
+
+export default async function AppPage({ params }: AppPageProps) {
+  const id = parseId(params.id);
+  if (id === null) notFound();
+
+  const app = await getAppById(id);
+  if (!app) notFound();
+
+  const related = await getRelatedApps(app.id, app.category, 4);
+
+  const appName = app.name ?? `تطبيق رقم ${app.id}`;
+  const isGame =
+    /(^|[\s/-])(game|games|gaming|ألعاب|لعبة)/i.test(app.category ?? '') ||
+    /(game|gaming)/i.test(app.name ?? '');
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': isGame ? 'VideoGame' : 'SoftwareApplication',
+    name: appName,
+    description: app.description,
+    image: app.imageUrl,
+    url: `${SITE_URL}/app/${app.id}`,
+    applicationCategory: app.category,
+    operatingSystem: app.platform,
+    softwareVersion: app.version,
+    datePublished: app.createdAt,
+    publisher: {
+      '@type': 'Organization',
+      name: app.developer || SITE_NAME,
+    },
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+      availability: 'https://schema.org/InStock',
+    },
+    ...(isGame ? { gamePlatform: app.platform ?? 'PC' } : {}),
+  };
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
+      <nav
+        aria-label="مسار التنقل"
+        className="mb-6 flex flex-wrap items-center gap-2 text-sm text-slate-400"
+      >
+        <Link href="/" className="transition hover:text-cyan-300">
+          الرئيسية
+        </Link>
+        <span aria-hidden="true">‹</span>
+        {app.category ? (
+          <>
+            <Link
+              href={`/?category=${encodeURIComponent(app.category)}`}
+              className="transition hover:text-cyan-300"
+            >
+              {app.category}
+            </Link>
+            <span aria-hidden="true">‹</span>
+          </>
+        ) : null}
+        <span className="font-medium text-slate-200">{appName}</span>
+      </nav>
+
+      <article className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50">
+        <div className="grid gap-8 p-6 sm:p-8 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+          <CoverImage
+            src={app.imageUrl}
+            alt={appName}
+            aspectClassName="aspect-[4/3] rounded-2xl border border-slate-800"
+          />
+          <div className="flex flex-col gap-4">
+            <h1 className="text-3xl font-black leading-tight text-white sm:text-4xl">{appName}</h1>
+            <div className="flex flex-wrap gap-2 text-sm font-medium">
+              {app.version ? (
+                <span className="rounded-lg bg-slate-800 px-3 py-1 text-slate-200">
+                  {app.version}
+                </span>
+              ) : null}
+              {app.size ? (
+                <span className="rounded-lg bg-violet-500/10 px-3 py-1 text-violet-300">
+                  {app.size}
+                </span>
+              ) : null}
+              {app.platform ? (
+                <span className="rounded-lg bg-cyan-500/10 px-3 py-1 text-cyan-300">
+                  {app.platform}
+                </span>
+              ) : null}
+              {app.category ? (
+                <span className="rounded-lg bg-emerald-500/10 px-3 py-1 text-emerald-300">
+                  {app.category}
+                </span>
+              ) : null}
+            </div>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-300 sm:text-base">
+              {app.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-800 bg-slate-950/40 p-6 sm:p-8">
+          <h2 className="text-lg font-bold text-white">تحميل {appName}</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <a
+              href={telegramDownloadUrl(app.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-violet-600 px-6 py-4 text-base font-bold text-white shadow-lg shadow-cyan-500/20 transition hover:from-cyan-400 hover:to-violet-500"
+            >
+              تحميل عبر تيليجرام 🚀
+            </a>
+            {app.downloadUrl ? (
+              <a
+                href={app.downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-6 py-4 text-base font-bold text-slate-100 transition hover:border-cyan-500/50 hover:text-white"
+              >
+                رابط تحميل مباشر بديل 🔗
+              </a>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="border-t border-slate-800 p-6 sm:p-8">
+          <h2 className="text-lg font-bold text-white">معلومات التطبيق</h2>
+          <dl className="mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-slate-800 bg-slate-800 sm:grid-cols-2 lg:grid-cols-3">
+            <Spec label="الإصدار" value={app.version} />
+            <Spec label="الحجم" value={app.size} />
+            <Spec label="الفئة" value={app.category} />
+            <Spec label="المنصة" value={app.platform} />
+            <Spec label="المطور" value={app.developer} />
+            <Spec label="تاريخ الإضافة" value={formatDate(app.createdAt)} />
+          </dl>
+        </div>
+      </article>
+
+      {related.length > 0 ? (
+        <section className="mt-12" aria-labelledby="related-heading">
+          <h2 id="related-heading" className="mb-6 text-xl font-bold text-white sm:text-2xl">
+            تطبيقات مشابهة
+          </h2>
+          <AppGrid apps={related} />
+        </section>
+      ) : null}
+    </main>
+  );
+}
+
+function Spec({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="flex flex-col gap-1 bg-slate-900/80 px-5 py-4">
+      <dt className="text-xs font-medium text-slate-500">{label}</dt>
+      <dd className="text-sm font-semibold text-slate-100">{value || '—'}</dd>
+    </div>
+  );
+}
