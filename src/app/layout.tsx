@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   keywords: ['تحميل تطبيقات', 'تحميل ألعاب', 'WALEED ZONE', 'أدوات مجانية', 'أندرويد', 'ويندوز'],
   verification: {
-    google: "WieAa828zHp-9pQGdlDCsAk9hWj1toB3ulo0Rh8v_bs",
+    google: "WieAa828zHp-9pQGdlDCsAk9hWj1toB3ulo0Rh8v_bs",},
   openGraph: {
     type: 'website',
     locale: 'ar_SA',
