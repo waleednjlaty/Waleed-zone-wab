@@ -1,166 +1,186 @@
-# WALEED ZONE — App Catalog
+# Waleed Zone Web
 
-Production-ready, full-stack dynamic web application built with **Next.js 14 (App Router)**,
-**Tailwind CSS**, **TypeScript**, and **PostgreSQL (Neon)** using **Drizzle ORM** +
-**postgres.js**.
+[العربية](README_AR.md)
 
-The site renders a dark, RTL, Arabic-first catalog of applications from the existing
-`applications` table in Neon, with instant search, category filtering, pagination, per-app
-detail pages, Telegram/direct download CTAs, and full SEO (SSR metadata, JSON-LD, sitemap,
-robots).
+An Arabic-first web catalog for discovering and downloading apps and games published by the Waleed Zone platform. It complements the Waleed Zone Telegram bot by reading published content from PostgreSQL and presenting it through a fast, searchable, SEO-friendly website.
 
----
+## Features
 
-## 1. Prerequisites
+- Arabic-first, right-to-left interface
+- Search by application or game name
+- Category filters and paginated results
+- Dedicated detail page for each item
+- Direct-download and Telegram bot actions
+- Responsive dark interface
+- Dynamic metadata, Open Graph tags, JSON-LD, sitemap, and robots.txt
+- Graceful loading, empty, error, and not-found states
+- Read-only database access
+- Security headers and parameterized queries
+- Ready for Vercel and Neon
 
-- **Node.js ≥ 18.17** (Node 20 recommended) and npm
-- A **Neon PostgreSQL** database with an existing `applications` table
+## Tech stack
 
-Existing table structure (already in your DB — the app only reads it):
+- Next.js 14 with App Router
+- React 18
+- TypeScript
+- Tailwind CSS
+- Drizzle ORM
+- PostgreSQL / Neon
+- postgres.js
 
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | serial | Primary Key |
-| `name` | text | App name |
-| `description` | text | Description |
-| `version` | text | e.g. `2.5.1` |
-| `size` | text | e.g. `45 MB` |
-| `category` | text | e.g. `Games`, `Tools`, `Editing` |
-| `platform` | text | e.g. `Windows`, `Android` |
-| `developer` | text | Developer name |
-| `download_url` | text | Original direct/shortened link |
-| `image_url` | text | Cover image link |
-| `created_at` | timestamp | Optional |
+## Requirements
 
----
+- Node.js 18.17 or newer
+- npm
+- A PostgreSQL database containing the `applications` table
 
-## 2. Local setup
+## Quick start
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/waleednjlaty/ChannelSite.git
+cd ChannelSite
+```
+
+### 2. Install dependencies
 
 ```bash
 npm install
 ```
 
-Copy the example environment file and fill in your values:
+### 3. Configure the environment
+
+Linux/macOS:
 
 ```bash
 cp .env.example .env.local
 ```
 
-`.env.local`:
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Set the required values:
 
 ```env
-DATABASE_URL=postgresql://USER:PASSWORD@HOST/dbname?sslmode=require
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-> **Neon note:** on the free tier, use the **pooled connection string** (enable
-> `Connection pooling` in the Neon dashboard) so the URL includes `?pgbouncer=true`.
+Use a read-only PostgreSQL role for the website in production. Never commit `.env.local` or expose the database URL in client-side code.
 
-Then run the dev server:
+### 4. Start development
 
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000
+Open [http://localhost:3000](http://localhost:3000).
 
-Other scripts:
+## Available scripts
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Start the development server |
+| `npm run build` | Create a production build |
+| `npm run start` | Run the production server |
+| `npm run lint` | Run Next.js ESLint checks |
+| `npm run typecheck` | Check TypeScript without emitting files |
+
+Before deploying, run:
 
 ```bash
-npm run build      # production build
-npm run start      # serve the production build
-npm run lint       # ESLint
-npm run typecheck  # TypeScript check
+npm run lint
+npm run typecheck
+npm run build
 ```
 
----
+## Database
 
-## 3. Deploy to Vercel (free)
+The website expects an existing `applications` table maintained by the Waleed Zone bot or another trusted service. The web application performs read-only queries.
 
-1. Push this project to a GitHub/GitLab/Bitbucket repository.
-2. Go to [vercel.com](https://vercel.com) → **Add New Project** → import the repository.
-   Vercel auto-detects Next.js (no framework overrides needed).
-3. In **Project Settings → Environment Variables**, add:
-   - `DATABASE_URL` — your Neon connection string (pooled, with `?sslmode=require`)
-   - `NEXT_PUBLIC_SITE_URL` — your production URL, e.g. `https://waleed-zone.vercel.app`
-4. Click **Deploy**. Done.
+Important fields include:
 
----
+| Field | Purpose |
+|---|---|
+| `id` | Application identifier |
+| `name` | Display name |
+| `description` | Full description |
+| `version` | Current version |
+| `size` | Download size |
+| `category` | Catalog category |
+| `platform` | Supported platform |
+| `developer` | Developer or publisher |
+| `download_url` | Download destination |
+| `image_url` | Cover image |
+| `created_at` | Publication date |
 
-## 4. Project structure
+Keep the schema synchronized with [`src/lib/db/schema.ts`](src/lib/db/schema.ts).
 
+## Project structure
+
+```text
+.
+├── src/
+│   ├── app/
+│   │   ├── app/[id]/       # Dynamic application detail page
+│   │   ├── layout.tsx      # Root RTL layout and global metadata
+│   │   ├── page.tsx        # Searchable catalog home page
+│   │   ├── sitemap.ts      # Dynamic sitemap
+│   │   └── robots.ts       # Crawler rules
+│   ├── components/         # Catalog and navigation UI
+│   └── lib/
+│       ├── db.ts           # PostgreSQL and Drizzle connection
+│       ├── db/schema.ts    # applications table mapping
+│       ├── queries.ts      # Read-only catalog queries
+│       ├── site.ts         # Site and Telegram configuration
+│       └── utils.ts        # Search and pagination helpers
+├── .env.example
+├── next.config.js
+├── package.json
+└── tailwind.config.ts
 ```
-src/
-├── app/
-│   ├── layout.tsx            # Root layout (RTL, dark theme, global metadata)
-│   ├── page.tsx              # Home: hero, instant search, category pills, grid, pagination
-│   ├── app/[id]/page.tsx     # App detail page (metadata + JSON-LD + CTAs + related)
-│   ├── sitemap.ts            # Auto-generated sitemap from the database
-│   ├── robots.ts             # robots.txt
-│   ├── icon.svg              # Favicon
-│   ├── not-found.tsx         # 404 page
-│   ├── loading.tsx           # Loading spinner
-│   └── error.tsx             # Error boundary
-├── components/
-│   ├── SearchBar.tsx         # Debounced live search (client)
-│   ├── CategoryPills.tsx     # Category filter pills
-│   ├── AppCard.tsx / AppGrid.tsx / Pagination.tsx
-│   ├── CoverImage.tsx        # Image with graceful fallback placeholder
-│   ├── Navbar.tsx / Footer.tsx / EmptyState.tsx
-└── lib/
-    ├── db.ts                 # Read-only postgres.js client + Drizzle (global singleton)
-    ├── db/schema.ts          # Drizzle schema mirroring the `applications` table
-    ├── queries.ts            # All parameterized SELECT queries
-    ├── utils.ts              # Input sanitization, LIKE escaping, pagination parsing
-    └── site.ts               # Site/bot URL configuration
+
+## Configuration
+
+Site identity and the Telegram bot URL are defined in [`src/lib/site.ts`](src/lib/site.ts):
+
+```ts
+export const SITE_NAME = 'WALEED ZONE';
+export const TELEGRAM_BOT_URL = 'https://t.me/WALEED_ZONE_BOT';
 ```
 
----
+Set `NEXT_PUBLIC_SITE_URL` to the real production origin so canonical links, Open Graph metadata, robots.txt, and sitemap.xml use the correct domain.
 
-## 5. Security
+## Deploy to Vercel
 
-- **Read-only by default** — the app contains only `SELECT` queries and GET routes; there are no
-  mutating endpoints anywhere in the codebase.
-- **Recommended:** create a dedicated read-only Neon role for the app:
+1. Import the GitHub repository into Vercel.
+2. Keep the detected framework as Next.js.
+3. Add `DATABASE_URL` and `NEXT_PUBLIC_SITE_URL` under Environment Variables.
+4. Deploy.
+5. Verify the home page, one detail page, `/robots.txt`, and `/sitemap.xml`.
 
-  ```sql
-  CREATE ROLE readonly LOGIN PASSWORD 'strong_password';
-  GRANT CONNECT ON DATABASE your_db TO readonly;
-  GRANT USAGE ON SCHEMA public TO readonly;
-  GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly;
-  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonly;
-  ```
+For Neon, use the pooled connection string when deploying to a serverless platform.
 
-  and connect with that role's credentials.
-- **SQL injection** — all queries are parameterized via Drizzle/postgres.js tagged templates
-  (`prepare: false` keeps parameters bound server-side, required for Neon pooled connections).
-- **Input sanitization** — search input is trimmed, control characters stripped, length-capped
-  (100 chars), and `% _ \` are escaped before being used in `ILIKE` patterns.
-- **Security headers** — CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
-  `Referrer-Policy`, `Strict-Transport-Security`, and `Permissions-Policy` are applied globally
-  in `next.config.js`.
+## Security
 
----
+- Create a dedicated database role with `SELECT` permission only.
+- Keep database credentials in server-side environment variables.
+- Rotate credentials immediately if they appear in a commit, log, image, or chat.
+- Review the Content Security Policy before adding external scripts or services.
+- Validate production with `npm run build` before every deployment.
 
-## 6. SEO
+## Related project
 
-- Server-rendered pages with `generateMetadata` on `/app/[id]` fetching real-time title,
-  description, canonical URL, and Open Graph image straight from the database.
-- Schema.org structured data (`SoftwareApplication` or `VideoGame`) injected as JSON-LD on
-  every app page for Google rich snippets.
-- `sitemap.xml` is auto-generated from all app IDs in Neon; `robots.txt` points to it.
-- Semantic markup (`h1`/`h2`, `article`, `nav`, `aria-*`, descriptive `alt` on images).
-- **Missing apps** render the custom 404 UI. Because dynamic SSR streams the page shell first
-  (a documented Next.js App Router behavior), the HTTP status stays `200` while Next.js injects
-  `<meta name="robots" content="noindex">`, so soft-404s never enter Google's index. Only pages
-  linked from the catalog (which always exist) are indexed via `sitemap.xml`.
+- [Waleed Zone Telegram Bot](https://github.com/waleednjlaty/MyTelegramBot)
+
+## Contributing
+
+Issues and pull requests are welcome. For a large change, open an issue first and describe the expected behavior.
 
 ---
 
-## 7. Customization
-
-- Change the site name, description, and Telegram bot URL in `src/lib/site.ts`.
-- The "عرض وتنزيل" card button links to `/app/{id}`; the detail page's primary CTA links to
-  `https://t.me/WALEEDZONE_BOT?start=app_{id}`.
-- To add a `system requirements` field later, add the column to Neon and extend
-  `src/lib/db/schema.ts` + the specs grid in `src/app/app/[id]/page.tsx`.
+Built and maintained by [Waleed Al-Najlat](https://github.com/waleednjlaty).
