@@ -22,6 +22,7 @@ function createClient() {
 
 const globalForDb = globalThis as unknown as {
   waleedDbClient?: ReturnType<typeof createClient>;
+  waleedSqlClient?: ReturnType<typeof postgres>;
 };
 
 export function getDb() {
@@ -30,4 +31,17 @@ export function getDb() {
     globalForDb.waleedDbClient = createClient();
   }
   return globalForDb.waleedDbClient;
+}
+
+export function getSql() {
+  if (!process.env.DATABASE_URL) return null;
+  if (!globalForDb.waleedSqlClient) {
+    globalForDb.waleedSqlClient = postgres(process.env.DATABASE_URL, {
+      prepare: false,
+      max: 1,
+      idle_timeout: 10,
+      connect_timeout: 10,
+    });
+  }
+  return globalForDb.waleedSqlClient;
 }

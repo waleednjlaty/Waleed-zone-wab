@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import VisitorTracker from '@/components/VisitorTracker';
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
 
 export const viewport: Viewport = {
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ar" dir="rtl">
       <body className="flex min-h-screen flex-col">
+        <VisitorTracker />
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />
