@@ -40,7 +40,7 @@ export default function CategoryPills({ categories, active, q }: CategoryPillsPr
             className={
               'whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold transition ' +
               (pill.isActive
-                ? 'border-cyan-300/40 bg-cyan-300/10 text-cyan-100 shadow-[0_8px_24px_-16px_rgba(34,211,238,0.85)]'
+                ? 'border-sky-300/40 bg-sky-300/10 text-sky-100 shadow-[0_8px_24px_-16px_rgba(56,189,248,0.85)]'
                 : 'border-slate-700/70 bg-slate-900/50 text-slate-400 hover:border-slate-500 hover:bg-slate-800/70 hover:text-white')
             }
           >
