@@ -45,7 +45,7 @@ export default function AppCard({ app }: { app: Application }) {
             <h2 className="line-clamp-1 text-base font-black text-white sm:text-[17px]">{appName}</h2>
             <span
               aria-hidden="true"
-              className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900 text-slate-400 transition group-hover:border-cyan-400/30 group-hover:text-cyan-300"
+              className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900 text-slate-400 transition group-hover:border-sky-400/30 group-hover:text-sky-300"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M8 7h9v9" />
@@ -62,15 +62,15 @@ export default function AppCard({ app }: { app: Application }) {
               <Tag className="border-slate-700/70 bg-slate-800/70 text-slate-300">{app.version}</Tag>
             ) : null}
             {app.size ? (
-              <Tag className="border-violet-400/15 bg-violet-500/10 text-violet-300">{app.size}</Tag>
+              <Tag className="border-indigo-400/15 bg-indigo-500/10 text-indigo-300">{app.size}</Tag>
             ) : null}
             {app.platform ? (
-              <Tag className="border-cyan-400/15 bg-cyan-500/10 text-cyan-300">{app.platform}</Tag>
+              <Tag className="border-sky-400/15 bg-sky-500/10 text-sky-300">{app.platform}</Tag>
             ) : null}
           </div>
 
           <div className="mt-auto pt-5">
-            <span className="flex items-center justify-between border-t border-slate-800/80 pt-4 text-sm font-bold text-slate-300 transition group-hover:text-cyan-200">
+            <span className="flex items-center justify-between border-t border-slate-800/80 pt-4 text-sm font-bold text-slate-300 transition group-hover:text-sky-200">
               <span>عرض التفاصيل والتحميل</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="h-4 w-4 rotate-180">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
