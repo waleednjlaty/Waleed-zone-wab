@@ -9,7 +9,7 @@ export default function Navbar() {
         aria-label="التنقل الرئيسي"
       >
         <Link href="/" className="group flex min-w-0 items-center gap-3 rounded-2xl">
-          <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-400 via-cyan-500 to-violet-600 text-lg font-black text-white shadow-lg shadow-cyan-500/15 ring-1 ring-white/10 transition duration-300 group-hover:scale-105">
+          <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-indigo-600 text-lg font-black text-white shadow-lg shadow-sky-500/15 ring-1 ring-white/10 transition duration-300 group-hover:scale-105">
             W
             <span
               aria-hidden="true"
@@ -37,7 +37,7 @@ export default function Navbar() {
             href={TELEGRAM_BOT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-3.5 py-2 text-cyan-100 shadow-sm transition hover:border-cyan-300/45 hover:bg-cyan-400/15"
+            className="inline-flex items-center gap-2 rounded-xl border border-sky-400/25 bg-sky-400/10 px-3.5 py-2 text-sky-100 shadow-sm transition hover:border-sky-300/45 hover:bg-sky-400/15"
           >
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-4 w-4">
               <path d="M21.7 3.3a1.8 1.8 0 00-1.85-.25L3.2 9.45a1.55 1.55 0 00.08 2.92l3.86 1.34 1.48 4.72a1.55 1.55 0 002.68.53l2.2-2.5 4.2 3.1a1.8 1.8 0 002.82-1.08L22.3 4.9a1.8 1.8 0 00-.6-1.6zm-12.02 11l-.54 2.7-.82-2.63 8.67-6.85-7.31 6.78z" />
