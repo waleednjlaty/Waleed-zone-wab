@@ -14,9 +14,9 @@ body {
   @apply bg-slate-950 text-slate-100 antialiased;
   min-height: 100vh;
   background-image:
-    radial-gradient(circle at 85% -10%, rgba(34, 211, 238, 0.13), transparent 30rem),
-    radial-gradient(circle at 10% 18%, rgba(124, 58, 237, 0.1), transparent 28rem),
-    linear-gradient(180deg, #020617 0%, #050816 52%, #020617 100%);
+    radial-gradient(circle at 82% -8%, rgba(56, 189, 248, 0.16), transparent 32rem),
+    radial-gradient(circle at 12% 20%, rgba(99, 102, 241, 0.12), transparent 30rem),
+    linear-gradient(180deg, #030712 0%, #07111f 48%, #02050d 100%);
   background-attachment: fixed;
 }
 
@@ -32,7 +32,7 @@ input {
 }
 
 ::selection {
-  @apply bg-cyan-500/30 text-white;
+  @apply bg-sky-500/30 text-white;
 }
 
 ::-webkit-scrollbar {
@@ -41,7 +41,7 @@ input {
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: #030712;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -62,10 +62,10 @@ input {
 }
 
 .surface {
-  border: 1px solid rgb(51 65 85 / 0.62);
-  background: linear-gradient(180deg, rgb(15 23 42 / 0.76), rgb(2 6 23 / 0.66));
+  border: 1px solid rgb(51 65 85 / 0.52);
+  background: linear-gradient(180deg, rgb(15 23 42 / 0.72), rgb(3 7 18 / 0.64));
   box-shadow:
-    0 24px 80px -42px rgb(8 145 178 / 0.45),
+    0 24px 80px -42px rgb(14 165 233 / 0.38),
     inset 0 1px 0 rgb(255 255 255 / 0.035);
   backdrop-filter: blur(18px);
 }
@@ -108,5 +108,22 @@ input {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+
+.loading-line {
+  animation: loading-line 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-line {
+  0% {
+    transform: translateX(220%);
+  }
+  50% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-220%);
   }
 }
