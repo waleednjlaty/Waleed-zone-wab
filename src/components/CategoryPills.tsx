@@ -11,7 +11,7 @@ function buildHref(category: string | undefined, q?: string): string {
   if (q?.trim()) params.set('q', q.trim());
   if (category) params.set('category', category);
   const query = params.toString();
-  return query ? \`/?\${query}\` : '/';
+  return query ? '/?' + query : '/';
 }
 
 export default function CategoryPills({ categories, active, q }: CategoryPillsProps) {
