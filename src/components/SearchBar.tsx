@@ -46,7 +46,7 @@ export default function SearchBar() {
         stroke="currentColor"
         strokeWidth="2"
         aria-hidden="true"
-        className="pointer-events-none absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-cyan-300/80"
+        className="pointer-events-none absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-sky-300/80"
       >
         <path
           strokeLinecap="round"
@@ -63,7 +63,7 @@ export default function SearchBar() {
         aria-label="البحث في التطبيقات"
         autoComplete="off"
         spellCheck={false}
-        className="h-12 w-full rounded-xl border border-transparent bg-slate-950/55 py-3 pl-12 pr-12 text-[15px] font-medium text-white placeholder-slate-500 outline-none transition focus:border-cyan-400/35 focus:bg-slate-950/80 focus:ring-2 focus:ring-cyan-400/10 sm:h-14 sm:text-base"
+        className="h-12 w-full rounded-xl border border-transparent bg-slate-950/55 py-3 pl-12 pr-12 text-[15px] font-medium text-white placeholder-slate-500 outline-none transition focus:border-sky-400/35 focus:bg-slate-950/80 focus:ring-2 focus:ring-sky-400/10 sm:h-14 sm:text-base"
       />
 
       {value ? (
