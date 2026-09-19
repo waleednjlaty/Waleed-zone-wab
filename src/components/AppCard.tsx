@@ -12,12 +12,12 @@ function Tag({ children, className = '' }: { children: ReactNode; className?: st
 }
 
 export default function AppCard({ app }: { app: Application }) {
-  const appName = app.name ?? \`تطبيق \${app.id}\`;
+  const appName = app.name ?? 'تطبيق ' + app.id;
 
   return (
     <article className="card-glow group overflow-hidden rounded-[1.35rem] bg-slate-900/70 transition duration-300 hover:-translate-y-1.5">
       <Link
-        href={\`/app/\${app.id}\`}
+        href={'/app/' + app.id}
         className="flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-slate-800/80 bg-gradient-to-b from-slate-900/80 to-slate-950/90"
       >
         <div className="relative overflow-hidden">
