@@ -12,6 +12,23 @@ html {
 
 body {
   @apply bg-slate-950 text-slate-100 antialiased;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 85% -10%, rgba(34, 211, 238, 0.13), transparent 30rem),
+    radial-gradient(circle at 10% 18%, rgba(124, 58, 237, 0.1), transparent 28rem),
+    linear-gradient(180deg, #020617 0%, #050816 52%, #020617 100%);
+  background-attachment: fixed;
+}
+
+a,
+button,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid rgb(34 211 238 / 0.8);
+  outline-offset: 3px;
 }
 
 ::selection {
@@ -37,9 +54,59 @@ body {
 
 .bg-grid {
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
-  background-size: 40px 40px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 70%);
+    linear-gradient(rgba(148, 163, 184, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.055) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(ellipse 82% 66% at 50% 10%, black 30%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse 82% 66% at 50% 10%, black 30%, transparent 72%);
+}
+
+.surface {
+  border: 1px solid rgb(51 65 85 / 0.62);
+  background: linear-gradient(180deg, rgb(15 23 42 / 0.76), rgb(2 6 23 / 0.66));
+  box-shadow:
+    0 24px 80px -42px rgb(8 145 178 / 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.035);
+  backdrop-filter: blur(18px);
+}
+
+.soft-ring {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.025),
+    0 16px 50px -34px rgb(34 211 238 / 0.35);
+}
+
+.card-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  opacity: 0;
+  background: linear-gradient(135deg, rgb(34 211 238 / 0.3), transparent 45%, rgb(139 92 246 / 0.25));
+  transition: opacity 250ms ease;
+}
+
+.card-glow:hover::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
