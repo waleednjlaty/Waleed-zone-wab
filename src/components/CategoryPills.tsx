@@ -11,7 +11,7 @@ function buildHref(category: string | undefined, q?: string): string {
   if (q?.trim()) params.set('q', q.trim());
   if (category) params.set('category', category);
   const query = params.toString();
-  return query ? `/?${query}` : '/';
+  return query ? \`/?\${query}\` : '/';
 }
 
 export default function CategoryPills({ categories, active, q }: CategoryPillsProps) {
@@ -27,21 +27,27 @@ export default function CategoryPills({ categories, active, q }: CategoryPillsPr
   if (pills.length <= 1) return null;
 
   return (
-    <nav aria-label="تصفية حسب الفئة" className="flex flex-wrap items-center justify-center gap-2">
-      {pills.map((pill) => (
-        <Link
-          key={pill.label}
-          href={pill.href}
-          aria-current={pill.isActive ? 'page' : undefined}
-          className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
-            pill.isActive
-              ? 'border-cyan-400/60 bg-cyan-400/10 text-cyan-300'
-              : 'border-slate-700/80 bg-slate-900/40 text-slate-300 hover:border-slate-500 hover:text-white'
-          }`}
-        >
-          {pill.label}
-        </Link>
-      ))}
+    <nav
+      aria-label="تصفية حسب الفئة"
+      className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      <div className="flex min-w-max items-center justify-start gap-2 px-0.5 sm:justify-center">
+        {pills.map((pill) => (
+          <Link
+            key={pill.label}
+            href={pill.href}
+            aria-current={pill.isActive ? 'page' : undefined}
+            className={
+              'whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold transition ' +
+              (pill.isActive
+                ? 'border-cyan-300/40 bg-cyan-300/10 text-cyan-100 shadow-[0_8px_24px_-16px_rgba(34,211,238,0.85)]'
+                : 'border-slate-700/70 bg-slate-900/50 text-slate-400 hover:border-slate-500 hover:bg-slate-800/70 hover:text-white')
+            }
+          >
+            {pill.label}
+          </Link>
+        ))}
+      </div>
     </nav>
   );
 }
