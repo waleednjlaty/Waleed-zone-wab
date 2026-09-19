@@ -29,7 +29,7 @@ export default function SearchBar() {
     params.delete('page');
 
     const query = params.toString();
-    router.replace(query ? \`\${pathname}?\${query}\` : pathname);
+    router.replace(query ? pathname + '?' + query : pathname);
   }
 
   function handleChange(nextValue: string) {
