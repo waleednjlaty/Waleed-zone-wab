@@ -103,7 +103,7 @@ export default async function AppPage({ params }: AppPageProps) {
         aria-label="مسار التنقل"
         className="mb-6 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-500"
       >
-        <Link href="/" className="transition hover:text-cyan-300">
+        <Link href="/" className="transition hover:text-sky-300">
           الرئيسية
         </Link>
         <span aria-hidden="true">‹</span>
@@ -111,7 +111,7 @@ export default async function AppPage({ params }: AppPageProps) {
           <>
             <Link
               href={`/?category=${encodeURIComponent(app.category)}`}
-              className="transition hover:text-cyan-300"
+              className="transition hover:text-sky-300"
             >
               {app.category}
             </Link>
@@ -137,12 +137,12 @@ export default async function AppPage({ params }: AppPageProps) {
                 </span>
               ) : null}
               {app.size ? (
-                <span className="rounded-lg border border-violet-400/15 bg-violet-500/10 px-3 py-1 text-violet-300">
+                <span className="rounded-lg border border-indigo-400/15 bg-indigo-500/10 px-3 py-1 text-indigo-300">
                   {app.size}
                 </span>
               ) : null}
               {app.platform ? (
-                <span className="rounded-lg border border-cyan-400/15 bg-cyan-500/10 px-3 py-1 text-cyan-300">
+                <span className="rounded-lg border border-sky-400/15 bg-sky-500/10 px-3 py-1 text-sky-300">
                   {app.platform}
                 </span>
               ) : null}
@@ -159,13 +159,13 @@ export default async function AppPage({ params }: AppPageProps) {
         </div>
 
         <div className="border-t border-slate-800/80 bg-slate-950/45 p-5 sm:p-8">
-          <div className="flex items-center justify-between gap-4"><h2 className="text-lg font-black text-white">تحميل {appName}</h2><span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[11px] font-bold text-cyan-200">مجاني</span></div>
+          <div className="flex items-center justify-between gap-4"><h2 className="text-lg font-black text-white">تحميل {appName}</h2><span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-2.5 py-1 text-[11px] font-bold text-sky-200">مجاني</span></div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <a
               href={telegramDownloadUrl(app.id)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-violet-600 px-6 py-4 text-base font-black text-white shadow-lg shadow-cyan-500/20 transition hover:-translate-y-0.5 hover:from-cyan-400 hover:to-violet-500"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 px-6 py-4 text-base font-black text-white shadow-lg shadow-sky-500/20 transition hover:-translate-y-0.5 hover:from-sky-400 hover:to-indigo-500"
             >
               تحميل عبر تيليجرام 🚀
             </a>
@@ -174,7 +174,7 @@ export default async function AppPage({ params }: AppPageProps) {
                 href={app.downloadUrl}
                 target="_blank"
                 rel="noopener noreferrer nofollow"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700/80 bg-slate-900/80 px-6 py-4 text-base font-black text-slate-100 transition hover:-translate-y-0.5 hover:border-cyan-500/50 hover:bg-slate-800 hover:text-white"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700/80 bg-slate-900/80 px-6 py-4 text-base font-black text-slate-100 transition hover:-translate-y-0.5 hover:border-sky-500/50 hover:bg-slate-800 hover:text-white"
               >
                 رابط تحميل مباشر بديل 🔗
               </a>
