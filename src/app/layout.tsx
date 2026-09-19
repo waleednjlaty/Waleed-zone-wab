@@ -7,7 +7,7 @@ import VisitorTracker from '@/components/VisitorTracker';
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
 
 export const viewport: Viewport = {
-  themeColor: '#020617',
+  themeColor: '#030712',
 };
 
 export const metadata: Metadata = {
