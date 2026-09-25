@@ -52,6 +52,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
   const page = parsePage(rawPage);
   const { items, total, totalPages, currentPage } = await getApps({ category: canonicalCategory, page, limit: 12 });
+  if (total > 0 && page !== currentPage) notFound();
 
   const basePath = '/category/' + encodeURIComponent(canonicalCategory);
   const currentUrl = SITE_URL + (currentPage > 1 ? basePath + '?page=' + currentPage : basePath);
