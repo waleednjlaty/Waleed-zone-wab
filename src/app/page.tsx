@@ -31,71 +31,75 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <>
-      <section className="relative isolate overflow-hidden">
-        <div className="bg-grid absolute inset-0 -z-20" aria-hidden="true" />
-        <div
-          className="pointer-events-none absolute -right-24 top-10 -z-10 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute -left-24 top-28 -z-10 h-72 w-72 rounded-full bg-indigo-600/10 blur-3xl"
-          aria-hidden="true"
-        />
+      <section className="relative overflow-hidden border-b border-white/[0.05]">
+        <div className="app-shell pointer-events-none absolute inset-0" aria-hidden="true" />
 
-        <div className="mx-auto max-w-7xl px-4 pb-14 pt-14 sm:px-6 sm:pb-20 sm:pt-20 md:pb-20 md:pt-24">
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-300/[0.07] px-3.5 py-1.5 text-xs font-bold text-sky-200 shadow-[0_10px_30px_-20px_rgba(56,189,248,0.8)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.9)]" />
-              {total > 0 ? total + ' تطبيق ولعبة متاحة' : 'تحديثات مستمرة'}
-            </div>
-
-            <h1 className="mt-6 text-4xl font-black leading-[1.15] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
-              كل اللي تحتاجه،
-              <span className="block bg-gradient-to-l from-sky-300 via-sky-400 to-indigo-400 bg-clip-text text-transparent">
-                بمكان واحد.
-              </span>
+        <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,.75fr)] lg:items-end lg:gap-16 lg:py-20">
+          <div>
+            <p className="kicker text-[11px] font-black uppercase">WALEED ZONE LIBRARY</p>
+            <h1 className="mt-4 max-w-3xl text-4xl font-black leading-[1.12] tracking-tight text-white sm:text-5xl lg:text-6xl">
+              نزّل اللي بدك ياه،
+              <span className="block text-cyan-300">بدون لف ودوران.</span>
             </h1>
-
-            <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base md:text-lg">
-              تطبيقات، ألعاب وأدوات مختارة ومحدثة باستمرار. ابحث بسرعة، شوف التفاصيل، وحمّل بالطريقة الأنسب إلك.
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">
+              مكتبة عربية للتطبيقات والألعاب والأدوات. بحث سريع، معلومات واضحة، وروابط تحميل مباشرة أو عبر تيليجرام.
             </p>
 
-            <div className="mx-auto mt-8 max-w-2xl sm:mt-10">
+            <div className="mt-7 max-w-2xl">
               <Suspense fallback={null}>
                 <SearchBar />
               </Suspense>
             </div>
+          </div>
 
-            <div className="mx-auto mt-5 max-w-3xl">
-              <CategoryPills categories={categories} active={category || undefined} q={q || undefined} />
+          <div className="panel-strong rounded-2xl p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold text-slate-500">المكتبة الآن</p>
+                <p className="mt-1 text-3xl font-black tabular-nums text-white">{total}</p>
+              </div>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/10 text-cyan-300">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v11a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 17.5v-11z" />
+                  <path strokeLinecap="round" d="M8 8h8M8 12h8M8 16h5" />
+                </svg>
+              </span>
             </div>
 
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-slate-500 sm:text-sm">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="text-sky-300">✓</span> واجهة سريعة ومتجاوبة
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="text-sky-300">✓</span> بحث وفلترة فورية
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="text-sky-300">✓</span> تحميل مباشر أو عبر تيليجرام
-              </span>
+            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/[0.06] pt-5">
+              <div>
+                <p className="text-xl font-black text-white">{categories.length}</p>
+                <p className="mt-1 text-xs font-medium text-slate-500">فئات متاحة</p>
+              </div>
+              <div>
+                <p className="text-xl font-black text-white">RTL</p>
+                <p className="mt-1 text-xs font-medium text-slate-500">مصمم للعربي</p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center gap-2 rounded-xl border border-white/[0.05] bg-black/20 px-3 py-3 text-xs font-medium text-slate-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              المحتوى يتحدث باستمرار من Waleed Zone
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 sm:pb-24">
-        <div className="mb-7 flex items-end justify-between gap-4 border-b border-slate-800/70 pb-5">
+      <section className="mx-auto max-w-7xl px-4 pb-20 pt-7 sm:px-6 sm:pb-24 sm:pt-9">
+        <div className="mb-8">
+          <CategoryPills categories={categories} active={category || undefined} q={q || undefined} />
+        </div>
+
+        <div className="mb-6 flex flex-col gap-3 border-b border-white/[0.06] pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="mb-1.5 text-xs font-bold uppercase tracking-[0.18em] text-sky-300/75">
-              Waleed Zone Library
+            <p className="text-xs font-bold text-slate-500">
+              {q || category ? 'نتائج مفلترة' : 'آخر ما نزل'}
             </p>
-            <h2 className="text-xl font-black text-white sm:text-2xl">
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
               {q ? 'نتائج البحث عن «' + q + '»' : category ? category : 'أحدث الإضافات'}
             </h2>
           </div>
-          <span className="shrink-0 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs font-semibold text-slate-400 sm:text-sm">
+          <span className="w-fit rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-1.5 text-xs font-bold text-slate-400">
             {total} نتيجة
           </span>
         </div>
