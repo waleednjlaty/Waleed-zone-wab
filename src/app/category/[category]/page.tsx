@@ -6,7 +6,7 @@ import CategoryPills from '@/components/CategoryPills';
 import Pagination from '@/components/Pagination';
 import { getApps, getCategories } from '@/lib/queries';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
-import { categoryPath, decodePathSegment, parsePage } from '@/lib/utils';
+import { categoryPath, decodePathSegment, parsePage, serializeJsonLd } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,7 +99,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-20 pt-7 sm:px-6 sm:pb-24 sm:pt-10">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
       <nav aria-label="مسار التنقل" className="mb-6 flex items-center gap-2 text-xs font-bold text-slate-600 sm:text-sm">
         <Link href="/" className="transition hover:text-cyan-300">المكتبة</Link>
