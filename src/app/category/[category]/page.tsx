@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound, permanentRedirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import AppGrid from '@/components/AppGrid';
 import CategoryPills from '@/components/CategoryPills';
 import Pagination from '@/components/Pagination';
@@ -49,17 +49,22 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const [category, resolvedSearchParams] = await Promise.all([getCategory(params), searchParams]);
   const page = parsePage(resolvedSearchParams.page);
 
-  const [{ items, total, totalPages, currentPage }, categories] = await Promise.all([
-    getApps({ category, page, limit: 12 }),
-    getCategories(),
-  ]);
+  if (!category) notFound();
 
-  if (!category || total === 0) notFound();
+  const categories = await getCategories();
+  const canonicalCategory = categories.find(
+    (item) => item.toLocaleLowerCase() === category.toLocaleLowerCase(),
+  );
+  if (!canonicalCategory) notFound();
 
-  const basePath = categoryPath(category);
-  if (page > totalPages) {
-    permanentRedirect(basePath + (totalPages > 1 ? '?page=' + totalPages : ''));
-  }
+  const { items, total, totalPages, currentPage } = await getApps({
+    category: canonicalCategory,
+    page,
+    limit: 12,
+  });
+  if (total === 0 || (total > 0 && page !== currentPage)) notFound();
+
+  const basePath = categoryPath(canonicalCategory);
   const pageUrl = SITE_URL + basePath + (currentPage > 1 ? '?page=' + currentPage : '');
 
   const jsonLd = {
@@ -77,14 +82,14 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
           {
             '@type': 'ListItem',
             position: 2,
-            name: category,
+            name: canonicalCategory,
             item: SITE_URL + basePath,
           },
         ],
       },
       {
         '@type': 'ItemList',
-        name: category,
+        name: canonicalCategory,
         url: pageUrl,
         numberOfItems: items.length,
         itemListElement: items.map((app, index) => ({
@@ -104,7 +109,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
       <nav aria-label="مسار التنقل" className="mb-6 flex items-center gap-2 text-xs font-bold text-slate-600 sm:text-sm">
         <Link href="/" className="transition hover:text-cyan-300">المكتبة</Link>
         <span aria-hidden="true">/</span>
-        <span className="text-slate-300">{category}</span>
+        <span className="text-slate-300">{canonicalCategory}</span>
       </nav>
 
       <header className="mb-8 border-b border-white/[0.06] pb-7">
@@ -112,10 +117,10 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-              {category}
+              {canonicalCategory}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500">
-              أحدث تطبيقات وألعاب {category} المنشورة على WALEED ZONE، مع معلومات الإصدار والحجم والمنصة قبل التحميل.
+              أحدث تطبيقات وألعاب {canonicalCategory} المنشورة على WALEED ZONE، مع معلومات الإصدار والحجم والمنصة قبل التحميل.
             </p>
           </div>
           <span className="w-fit rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-1.5 text-xs font-bold text-slate-400">
@@ -125,7 +130,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
       </header>
 
       <div className="mb-8">
-        <CategoryPills categories={categories} active={category} />
+        <CategoryPills categories={categories} active={canonicalCategory} />
       </div>
 
       <AppGrid apps={items} />
