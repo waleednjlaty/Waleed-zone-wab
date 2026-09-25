@@ -11,7 +11,7 @@ import { categoryPath, formatDate, safeHttpUrl } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 interface AppPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 function parseId(value: string): number | null {
@@ -36,7 +36,8 @@ function getSchemaCategory(category?: string | null, name?: string | null): stri
 }
 
 export async function generateMetadata({ params }: AppPageProps): Promise<Metadata> {
-  const id = parseId(params.id);
+  const resolvedParams = await params;
+  const id = parseId(resolvedParams.id);
   const app = id ? await getAppById(id) : undefined;
 
   if (!app) return { title: 'التطبيق غير موجود', robots: { index: false, follow: false } };
@@ -69,7 +70,8 @@ export async function generateMetadata({ params }: AppPageProps): Promise<Metada
 }
 
 export default async function AppPage({ params }: AppPageProps) {
-  const id = parseId(params.id);
+  const resolvedParams = await params;
+  const id = parseId(resolvedParams.id);
   if (id === null) notFound();
 
   const app = await getAppById(id);
