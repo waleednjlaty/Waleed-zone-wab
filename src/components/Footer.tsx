@@ -15,6 +15,8 @@ export default function Footer() {
 
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-slate-500">
           <Link href="/" className="transition hover:text-white">المكتبة</Link>
+          <Link href="/about" className="transition hover:text-white">عن الموقع</Link>
+          <Link href="/privacy" className="transition hover:text-white">الخصوصية</Link>
           <a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-cyan-300">
             تيليجرام
           </a>
