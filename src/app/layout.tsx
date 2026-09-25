@@ -7,30 +7,31 @@ import VisitorTracker from '@/components/VisitorTracker';
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
 
 export const viewport: Viewport = {
-  themeColor: '#030712',
+  themeColor: '#070a0e',
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — تحميل التطبيقات والألعاب`,
-    template: `%s | ${SITE_NAME}`,
+    default: SITE_NAME + ' — تحميل التطبيقات والألعاب',
+    template: '%s | ' + SITE_NAME,
   },
   description: SITE_DESCRIPTION,
   keywords: ['تحميل تطبيقات', 'تحميل ألعاب', 'WALEED ZONE', 'أدوات مجانية', 'أندرويد', 'ويندوز'],
   verification: {
-    google: "WieAa828zHp-9pQGdlDCsAk9hWj1toB3ulo0Rh8v_bs",},
+    google: 'WieAa828zHp-9pQGdlDCsAk9hWj1toB3ulo0Rh8v_bs',
+  },
   openGraph: {
     type: 'website',
     locale: 'ar_SA',
     siteName: SITE_NAME,
-    title: `${SITE_NAME} — تحميل التطبيقات والألعاب`,
+    title: SITE_NAME + ' — تحميل التطبيقات والألعاب',
     description: SITE_DESCRIPTION,
     url: SITE_URL,
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${SITE_NAME} — تحميل التطبيقات والألعاب`,
+    title: SITE_NAME + ' — تحميل التطبيقات والألعاب',
     description: SITE_DESCRIPTION,
   },
   robots: {
