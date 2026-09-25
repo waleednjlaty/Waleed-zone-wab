@@ -12,7 +12,7 @@ import { categoryPath, parsePage, sanitizeSearch } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 interface HomeProps {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 function firstValue(value: string | string[] | undefined): string | undefined {
@@ -20,8 +20,8 @@ function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function readParams(searchParams: HomeProps['searchParams']) {
-  const safeParams = searchParams ?? {};
+async function readParams(searchParams: HomeProps['searchParams']) {
+  const safeParams = (await searchParams) ?? {};
   return {
     q: sanitizeSearch(firstValue(safeParams.q) ?? ''),
     category: sanitizeSearch(firstValue(safeParams.category) ?? ''),
@@ -29,8 +29,8 @@ function readParams(searchParams: HomeProps['searchParams']) {
   };
 }
 
-export function generateMetadata({ searchParams }: HomeProps): Metadata {
-  const { q, page } = readParams(searchParams);
+export async function generateMetadata({ searchParams }: HomeProps): Promise<Metadata> {
+  const { q, page } = await readParams(searchParams);
 
   if (q) {
     return {
@@ -50,7 +50,7 @@ export function generateMetadata({ searchParams }: HomeProps): Metadata {
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  const { q, category, page } = readParams(searchParams);
+  const { q, category, page } = await readParams(searchParams);
 
   if (category && !q) {
     const target = categoryPath(category) + (page > 1 ? '?page=' + page : '');
