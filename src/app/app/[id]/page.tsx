@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import AppGrid from '@/components/AppGrid';
@@ -208,7 +209,7 @@ export default async function AppPage({ params }: AppPageProps) {
   );
 }
 
-function MetaChip({ children }: { children: React.ReactNode }) {
+function MetaChip({ children }: { children: ReactNode }) {
   return (
     <span className="rounded-lg border border-white/[0.06] bg-white/[0.025] px-2.5 py-1.5 text-xs font-bold text-slate-400">
       {children}
@@ -218,7 +219,7 @@ function MetaChip({ children }: { children: React.ReactNode }) {
 
 function Spec({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="rounded-xl border border-white/[0.05] bg-black/15 px-4 py-3">
+    <div className="rounded-xl border border-white/[0.05] bg-black/[0.15] px-4 py-3">
       <dt className="text-[10px] font-bold text-slate-600">{label}</dt>
       <dd className="mt-1 text-sm font-bold text-slate-200">{value || '—'}</dd>
     </div>
