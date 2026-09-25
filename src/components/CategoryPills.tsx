@@ -19,7 +19,7 @@ export default function CategoryPills({ categories, active, q }: CategoryPillsPr
     { label: 'الكل', href: buildHref(undefined, q), isActive: !active },
     ...categories.map((category) => ({
       label: category,
-      href: buildHref(category, q),
+      href: q?.trim() ? buildHref(category, q) : '/category/' + encodeURIComponent(category),
       isActive: active === category,
     })),
   ];
