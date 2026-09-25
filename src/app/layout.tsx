@@ -41,12 +41,27 @@ export const metadata: Metadata = {
   icons: {
     icon: '/icon.svg',
   },
+  category: 'technology',
+  applicationName: SITE_NAME,
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ar" dir="rtl">
       <body className="flex min-h-screen flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: SITE_NAME,
+              url: SITE_URL,
+              inLanguage: 'ar',
+              description: SITE_DESCRIPTION,
+            }),
+          }}
+        />
         <VisitorTracker />
         <Navbar />
         <main className="flex-1">{children}</main>

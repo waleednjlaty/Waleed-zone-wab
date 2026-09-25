@@ -96,7 +96,7 @@ export default async function AppPage({ params }: AppPageProps) {
         <span aria-hidden="true">/</span>
         {app.category ? (
           <>
-            <Link href={'/?category=' + encodeURIComponent(app.category)} className="transition hover:text-cyan-300">
+            <Link href={'/category/' + encodeURIComponent(app.category)} className="transition hover:text-cyan-300">
               {app.category}
             </Link>
             <span aria-hidden="true">/</span>
