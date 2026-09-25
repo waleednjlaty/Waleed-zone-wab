@@ -16,6 +16,7 @@ export interface GetAppsParams {
   category?: string;
   page?: number;
   limit?: number;
+  sort?: 'latest' | 'popular';
 }
 
 export interface GetAppsResult {
@@ -31,7 +32,7 @@ const publicAppConditions = [
 ];
 
 export const getApps = cache(
-  async ({ q, category, page = 1, limit = 12 }: GetAppsParams): Promise<GetAppsResult> => {
+  async ({ q, category, page = 1, limit = 12, sort = 'latest' }: GetAppsParams): Promise<GetAppsResult> => {
     const db = getDb();
     if (!db) {
       return { items: [], total: 0, totalPages: 0, currentPage: 1 };
@@ -74,7 +75,11 @@ export const getApps = cache(
             .select()
             .from(applications)
             .where(where)
-            .orderBy(desc(applications.id))
+            .orderBy(
+              ...(sort === 'popular'
+                ? [desc(applications.downloads), desc(applications.id)]
+                : [desc(applications.id)]),
+            )
             .limit(safeLimit)
             .offset((currentPage - 1) * safeLimit)
         : [];
