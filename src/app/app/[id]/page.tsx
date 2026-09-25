@@ -21,7 +21,7 @@ function parseId(value: string): number | null {
 }
 
 function getSchemaCategory(category?: string | null, name?: string | null): string {
-  const value = (category + ' ' + name).toLowerCase();
+  const value = ((category ?? '') + ' ' + (name ?? '')).toLowerCase();
 
   if (/game|gaming|ألعاب|لعبة/.test(value)) return 'GameApplication';
   if (/social|chat|messag|تواصل|مراسلة/.test(value)) return 'SocialNetworkingApplication';
