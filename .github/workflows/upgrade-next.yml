@@ -29,8 +29,8 @@ jobs:
 
       - name: Upgrade framework dependencies
         run: |
-          npm install --save-exact next@15.5.26 react@19.3.0 react-dom@19.3.0
-          npm install --save-dev --save-exact eslint-config-next@15.5.26 @types/react@latest @types/react-dom@latest
+          npm install --save-exact next@16.3.6 react@19.3.0 react-dom@19.3.0
+          npm install --save-dev --save-exact eslint@9.39.1 eslint-config-next@16.3.6 @types/react@latest @types/react-dom@latest
 
       - name: Typecheck
         run: npm run typecheck
@@ -52,6 +52,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
-          git commit -m "Upgrade Next.js security baseline to 15.5.26"
+          git commit -m "Upgrade Next.js security baseline to 16.3.6"
           git pull --rebase origin seo-security-indexing
           git push origin HEAD:seo-security-indexing
