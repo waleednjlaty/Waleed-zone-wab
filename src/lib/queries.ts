@@ -11,6 +11,11 @@ export interface SitemapApp {
   createdAt: Date | null;
 }
 
+export interface CategorySummary {
+  category: string;
+  count: number;
+}
+
 export interface GetAppsParams {
   q?: string;
   category?: string;
@@ -160,4 +165,27 @@ export const getAllAppsSitemap = cache(async (): Promise<SitemapApp[]> => {
     .from(applications)
     .where(and(eq(applications.active, true), eq(applications.published, true)))
     .orderBy(desc(applications.id));
+});
+
+
+export const getCategorySummaries = cache(async (): Promise<CategorySummary[]> => {
+  const db = getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({ category: applications.category, count: count() })
+    .from(applications)
+    .where(
+      and(
+        eq(applications.active, true),
+        eq(applications.published, true),
+        sql`btrim(${applications.category}) <> ''`,
+      ),
+    )
+    .groupBy(applications.category)
+    .orderBy(applications.category);
+
+  return rows
+    .filter((row): row is typeof row & { category: string } => typeof row.category === 'string')
+    .map((row) => ({ category: row.category, count: Number(row.count) || 0 }));
 });
