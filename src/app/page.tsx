@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import AppGrid from '@/components/AppGrid';
 import CategoryPills from '@/components/CategoryPills';
@@ -8,6 +9,27 @@ import { getApps, getCategories } from '@/lib/queries';
 import { parsePage, sanitizeSearch } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({ searchParams }: HomeProps): Promise<Metadata> {
+  const safeParams = searchParams ?? {};
+  const q = sanitizeSearch(firstValue(safeParams.q) ?? '');
+  const category = sanitizeSearch(firstValue(safeParams.category) ?? '');
+  const page = parsePage(firstValue(safeParams.page));
+  const isFiltered = Boolean(q || category || page > 1);
+
+  if (isFiltered) {
+    return {
+      title: q ? 'نتائج البحث عن ' + q : category ? category : 'صفحة ' + page,
+      robots: { index: false, follow: true },
+      alternates: { canonical: '/' },
+    };
+  }
+
+  return {
+    title: 'تحميل التطبيقات والألعاب والأدوات',
+    alternates: { canonical: '/' },
+  };
+}
 
 interface HomeProps {
   searchParams: { [key: string]: string | string[] | undefined };
