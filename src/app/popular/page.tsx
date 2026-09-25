@@ -10,11 +10,12 @@ import { parsePage } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 interface PopularPageProps {
-  searchParams: { page?: string | string[] };
+  searchParams: Promise<{ page?: string | string[] }>;
 }
 
-export function generateMetadata({ searchParams }: PopularPageProps): Metadata {
-  const page = parsePage(searchParams.page);
+export async function generateMetadata({ searchParams }: PopularPageProps): Promise<Metadata> {
+  const resolvedSearchParams = await searchParams;
+  const page = parsePage(resolvedSearchParams.page);
   const canonical = page > 1 ? '/popular?page=' + page : '/popular';
 
   return {
@@ -34,7 +35,8 @@ export function generateMetadata({ searchParams }: PopularPageProps): Metadata {
 }
 
 export default async function PopularPage({ searchParams }: PopularPageProps) {
-  const page = parsePage(searchParams.page);
+  const resolvedSearchParams = await searchParams;
+  const page = parsePage(resolvedSearchParams.page);
   const [{ items, total, totalPages, currentPage }, categories] = await Promise.all([
     getApps({ page, limit: 12, sort: 'popular' }),
     getCategories(),
