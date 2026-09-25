@@ -3,33 +3,22 @@ import { SITE_NAME, TELEGRAM_BOT_URL } from '@/lib/site';
 
 export default function Footer() {
   return (
-    <footer className="border-t border-slate-800/60 bg-slate-950/55">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <div className="surface flex flex-col gap-5 rounded-2xl px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-indigo-600 text-sm font-black text-white">
-              W
-            </span>
-            <div>
-              <p className="font-bold text-white">{SITE_NAME}</p>
-              <p className="mt-0.5 text-xs text-slate-500">مكتبتك السريعة للتطبيقات والألعاب</p>
-            </div>
+    <footer className="mt-auto border-t border-white/[0.05]">
+      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-300 text-sm font-black text-slate-950">W</span>
+          <div>
+            <p className="text-sm font-black tracking-wide text-white">{SITE_NAME}</p>
+            <p className="mt-1 text-xs text-slate-600">تطبيقات، ألعاب وأدوات بمكان واحد.</p>
           </div>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-slate-400">
-            <Link href="/" className="transition hover:text-sky-300">
-              الرئيسية
-            </Link>
-            <a
-              href={TELEGRAM_BOT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="transition hover:text-sky-300"
-            >
-              تيليجرام
-            </a>
-            <span className="text-slate-600">© {new Date().getFullYear()}</span>
-          </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-slate-500">
+          <Link href="/" className="transition hover:text-white">المكتبة</Link>
+          <a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-cyan-300">
+            تيليجرام
+          </a>
+          <span className="text-slate-700">© {new Date().getFullYear()} WALEED ZONE</span>
         </div>
       </div>
     </footer>
