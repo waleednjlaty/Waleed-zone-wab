@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { categoryPath } from '@/lib/utils';
 
 interface CategoryPillsProps {
   categories: string[];
@@ -7,11 +8,14 @@ interface CategoryPillsProps {
 }
 
 function buildHref(category: string | undefined, q?: string): string {
+  if (!q?.trim()) {
+    return category ? categoryPath(category) : '/';
+  }
+
   const params = new URLSearchParams();
-  if (q?.trim()) params.set('q', q.trim());
+  params.set('q', q.trim());
   if (category) params.set('category', category);
-  const query = params.toString();
-  return query ? '/?' + query : '/';
+  return '/?' + params.toString();
 }
 
 export default function CategoryPills({ categories, active, q }: CategoryPillsProps) {
@@ -19,7 +23,7 @@ export default function CategoryPills({ categories, active, q }: CategoryPillsPr
     { label: 'الكل', href: buildHref(undefined, q), isActive: !active },
     ...categories.map((category) => ({
       label: category,
-      href: q?.trim() ? buildHref(category, q) : '/category/' + encodeURIComponent(category),
+      href: buildHref(category, q),
       isActive: active === category,
     })),
   ];

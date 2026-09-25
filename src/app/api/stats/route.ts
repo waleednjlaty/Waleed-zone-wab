@@ -1,14 +1,41 @@
+import { timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 
-export async function GET(request: Request) {
+export const dynamic = 'force-dynamic';
+
+function hasValidToken(request: Request): boolean {
   const token = process.env.WEBSITE_STATS_TOKEN;
-  if (!token || request.headers.get('authorization') !== `Bearer ${token}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authorization = request.headers.get('authorization');
+
+  if (!token || !authorization?.startsWith('Bearer ')) return false;
+
+  const provided = authorization.slice(7);
+  const expectedBuffer = Buffer.from(token);
+  const providedBuffer = Buffer.from(provided);
+
+  return (
+    expectedBuffer.length === providedBuffer.length &&
+    timingSafeEqual(expectedBuffer, providedBuffer)
+  );
+}
+
+export async function GET(request: Request) {
+  if (!hasValidToken(request)) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: { 'Cache-Control': 'no-store, max-age=0' } },
+    );
   }
 
   const sql = getSql();
-  if (!sql) return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
+  if (!sql) {
+    return NextResponse.json(
+      { error: 'Database unavailable' },
+      { status: 503, headers: { 'Cache-Control': 'no-store, max-age=0' } },
+    );
+  }
+
   await sql`CREATE TABLE IF NOT EXISTS site_visits (
     id SERIAL PRIMARY KEY,
     visitor_key TEXT NOT NULL,
@@ -16,16 +43,20 @@ export async function GET(request: Request) {
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(visitor_key, visit_day)
   )`;
+
   const [visitors] = await sql`SELECT COUNT(*)::int AS count FROM site_visits`;
   const [apps] = await sql`SELECT COUNT(*)::int AS count FROM applications WHERE active = true`;
   const [published] = await sql`SELECT COUNT(*)::int AS count FROM applications WHERE published = true`;
   const [totals] = await sql`SELECT COALESCE(SUM(downloads), 0)::int AS downloads, COALESCE(SUM(views), 0)::int AS views FROM applications`;
 
-  return NextResponse.json({
-    visitors: visitors?.count ?? 0,
-    applications: apps?.count ?? 0,
-    published: published?.count ?? 0,
-    downloads: totals?.downloads ?? 0,
-    views: totals?.views ?? 0,
-  });
+  return NextResponse.json(
+    {
+      visitors: visitors?.count ?? 0,
+      applications: apps?.count ?? 0,
+      published: published?.count ?? 0,
+      downloads: totals?.downloads ?? 0,
+      views: totals?.views ?? 0,
+    },
+    { headers: { 'Cache-Control': 'no-store, max-age=0' } },
+  );
 }
