@@ -2,7 +2,7 @@
   "name": "waleed-zone",
   "version": "1.0.0",
   "private": true,
-  "description": "Production-ready app catalog built with Next.js 14, Tailwind CSS, TypeScript, and PostgreSQL (Neon).",
+  "description": "Production-ready Arabic app catalog built with Next.js 16, Tailwind CSS, TypeScript, and PostgreSQL.",
   "engines": {
     "node": ">=20.19.0 <21"
   },
@@ -10,7 +10,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
