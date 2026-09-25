@@ -29,7 +29,7 @@ jobs:
 
       - name: Upgrade framework dependencies
         run: |
-          npm install --save-exact next@16.3.6 react@19.3.0 react-dom@19.3.0
+          npm install --save-exact next@16.3.6 react@19.3.0 react-dom@19.3.0 drizzle-orm@0.45.3
           npm install --save-dev --save-exact eslint@9.39.1 eslint-config-next@16.3.6 @types/react@latest @types/react-dom@latest
 
       - name: Typecheck
