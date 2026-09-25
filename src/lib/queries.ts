@@ -25,6 +25,11 @@ export interface GetAppsResult {
   currentPage: number;
 }
 
+const publicAppConditions = [
+  eq(applications.active, true),
+  eq(applications.published, true),
+];
+
 export const getApps = cache(
   async ({ q, category, page = 1, limit = 12 }: GetAppsParams): Promise<GetAppsResult> => {
     const db = getDb();
@@ -34,8 +39,7 @@ export const getApps = cache(
 
     const safeLimit = Math.min(48, Math.max(1, Math.floor(Number(limit) || 12)));
     const rawPage = Math.max(1, Math.floor(Number(page) || 1));
-
-    const conditions = [];
+    const conditions = [...publicAppConditions];
 
     const search = q?.trim();
     if (search) {
@@ -45,7 +49,7 @@ export const getApps = cache(
           ilike(applications.name, pattern),
           ilike(applications.category, pattern),
           ilike(applications.platform, pattern),
-        ),
+        )!,
       );
     }
 
@@ -53,7 +57,7 @@ export const getApps = cache(
       conditions.push(eq(applications.category, category.trim()));
     }
 
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = and(...conditions);
 
     const [{ value: total }] = await db
       .select({ value: count() })
@@ -87,7 +91,13 @@ export const getAppById = cache(
     const rows = await db
       .select()
       .from(applications)
-      .where(eq(applications.id, id))
+      .where(
+        and(
+          eq(applications.id, id),
+          eq(applications.active, true),
+          eq(applications.published, true),
+        ),
+      )
       .limit(1);
 
     return rows[0];
@@ -99,14 +109,19 @@ export const getRelatedApps = cache(
     const db = getDb();
     if (!db || !category) return [];
 
-    const rows = await db
+    return db
       .select()
       .from(applications)
-      .where(and(eq(applications.category, category), sql`${applications.id} <> ${appId}`))
+      .where(
+        and(
+          eq(applications.active, true),
+          eq(applications.published, true),
+          eq(applications.category, category),
+          sql`${applications.id} <> ${appId}`,
+        ),
+      )
       .orderBy(desc(applications.id))
       .limit(Math.min(8, Math.max(1, limit)));
-
-    return rows;
   },
 );
 
@@ -117,7 +132,13 @@ export const getCategories = cache(async (): Promise<string[]> => {
   const rows = await db
     .selectDistinct({ category: applications.category })
     .from(applications)
-    .where(sql`btrim(${applications.category}) <> ''`)
+    .where(
+      and(
+        eq(applications.active, true),
+        eq(applications.published, true),
+        sql`btrim(${applications.category}) <> ''`,
+      ),
+    )
     .orderBy(applications.category);
 
   return rows
@@ -132,5 +153,6 @@ export const getAllAppsSitemap = cache(async (): Promise<SitemapApp[]> => {
   return db
     .select({ id: applications.id, createdAt: applications.createdAt })
     .from(applications)
+    .where(and(eq(applications.active, true), eq(applications.published, true)))
     .orderBy(desc(applications.id));
 });
