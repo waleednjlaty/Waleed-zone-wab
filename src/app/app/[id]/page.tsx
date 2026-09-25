@@ -66,25 +66,47 @@ export default async function AppPage({ params }: AppPageProps) {
     /(^|[\s/-])(game|games|gaming|ألعاب|لعبة)/i.test(app.category ?? '') ||
     /(game|gaming)/i.test(app.name ?? '');
 
+  const appUrl = SITE_URL + '/app/' + app.id;
+  const categoryUrl = app.category ? SITE_URL + '/category/' + encodeURIComponent(app.category) : undefined;
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': isGame ? 'VideoGame' : 'SoftwareApplication',
-    name: appName,
-    description: app.description,
-    image: app.imageUrl,
-    url: SITE_URL + '/app/' + app.id,
-    applicationCategory: app.category,
-    operatingSystem: app.platform,
-    softwareVersion: app.version,
-    datePublished: app.createdAt,
-    publisher: { '@type': 'Organization', name: app.developer || SITE_NAME },
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-      availability: 'https://schema.org/InStock',
-    },
-    ...(isGame ? { gamePlatform: app.platform ?? 'PC' } : {}),
+    '@graph': [
+      {
+        '@type': isGame ? 'VideoGame' : 'SoftwareApplication',
+        name: appName,
+        description: app.description,
+        image: app.imageUrl,
+        url: appUrl,
+        mainEntityOfPage: appUrl,
+        applicationCategory: app.category,
+        operatingSystem: app.platform,
+        softwareVersion: app.version,
+        datePublished: app.createdAt,
+        publisher: { '@type': 'Organization', name: app.developer || SITE_NAME },
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'USD',
+          availability: 'https://schema.org/InStock',
+        },
+        ...(isGame ? { gamePlatform: app.platform ?? 'PC' } : {}),
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'المكتبة', item: SITE_URL },
+          ...(app.category && categoryUrl
+            ? [{ '@type': 'ListItem', position: 2, name: app.category, item: categoryUrl }]
+            : []),
+          {
+            '@type': 'ListItem',
+            position: app.category ? 3 : 2,
+            name: appName,
+            item: appUrl,
+          },
+        ],
+      },
+    ],
   };
 
   return (

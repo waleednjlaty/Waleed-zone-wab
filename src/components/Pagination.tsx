@@ -5,15 +5,16 @@ interface PaginationProps {
   totalPages: number;
   q?: string;
   category?: string;
+  basePath?: string;
 }
 
-function buildHref(page: number, q?: string, category?: string): string {
+function buildHref(page: number, q?: string, category?: string, basePath = '/'): string {
   const params = new URLSearchParams();
   if (q?.trim()) params.set('q', q.trim());
-  if (category) params.set('category', category);
+  if (category && basePath === '/') params.set('category', category);
   if (page > 1) params.set('page', String(page));
   const query = params.toString();
-  return query ? '/?' + query : '/';
+  return query ? basePath + '?' + query : basePath;
 }
 
 function getPages(current: number, total: number): (number | 'ellipsis')[] {
@@ -30,7 +31,7 @@ function getPages(current: number, total: number): (number | 'ellipsis')[] {
   return pages;
 }
 
-export default function Pagination({ currentPage, totalPages, q, category }: PaginationProps) {
+export default function Pagination({ currentPage, totalPages, q, category, basePath = '/' }: PaginationProps) {
   if (totalPages <= 1) return null;
   const pages = getPages(currentPage, totalPages);
   const buttonClass = 'subtle-button inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold';
@@ -39,7 +40,7 @@ export default function Pagination({ currentPage, totalPages, q, category }: Pag
   return (
     <nav aria-label="التنقل بين الصفحات" className="flex flex-wrap items-center justify-center gap-2">
       {currentPage > 1 ? (
-        <Link href={buildHref(currentPage - 1, q, category)} className={buttonClass}>السابق</Link>
+        <Link href={buildHref(currentPage - 1, q, category, basePath)} className={buttonClass}>السابق</Link>
       ) : (
         <span className={buttonClass + ' cursor-not-allowed opacity-35'}>السابق</span>
       )}
@@ -50,7 +51,7 @@ export default function Pagination({ currentPage, totalPages, q, category }: Pag
         ) : (
           <Link
             key={page}
-            href={buildHref(page, q, category)}
+            href={buildHref(page, q, category, basePath)}
             aria-current={page === currentPage ? 'page' : undefined}
             className={pageClass + ' ' + (page === currentPage
               ? 'border-cyan-300 bg-cyan-300 text-slate-950'
@@ -62,7 +63,7 @@ export default function Pagination({ currentPage, totalPages, q, category }: Pag
       )}
 
       {currentPage < totalPages ? (
-        <Link href={buildHref(currentPage + 1, q, category)} className={buttonClass}>التالي</Link>
+        <Link href={buildHref(currentPage + 1, q, category, basePath)} className={buttonClass}>التالي</Link>
       ) : (
         <span className={buttonClass + ' cursor-not-allowed opacity-35'}>التالي</span>
       )}

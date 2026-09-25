@@ -22,18 +22,22 @@ function decodeCategory(value: string): string {
   }
 }
 
-export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: CategoryPageProps): Promise<Metadata> {
   const category = decodeCategory(params.category);
   if (!category) return { title: 'الفئة غير موجودة', robots: { index: false, follow: true } };
 
-  const title = category + ' — تحميل أحدث التطبيقات والألعاب';
+  const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
+  const page = parsePage(rawPage);
+  const basePath = '/category/' + encodeURIComponent(category);
+  const canonical = page > 1 ? basePath + '?page=' + page : basePath;
+  const title = category + ' — تحميل أحدث التطبيقات والألعاب' + (page > 1 ? ' — صفحة ' + page : '');
   const description = 'تصفح وتحميل أحدث محتوى ' + category + ' من ' + SITE_NAME + ' مع معلومات الإصدار والحجم والمنصة وروابط التحميل.';
 
   return {
     title,
     description,
-    alternates: { canonical: '/category/' + encodeURIComponent(category) },
-    openGraph: { title, description, url: SITE_URL + '/category/' + encodeURIComponent(category), type: 'website' },
+    alternates: { canonical },
+    openGraph: { title, description, url: SITE_URL + canonical, type: 'website' },
   };
 }
 
@@ -48,22 +52,36 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const rawPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
   const page = parsePage(rawPage);
   const { items, total, totalPages, currentPage } = await getApps({ category: canonicalCategory, page, limit: 12 });
+  if (total > 0 && page !== currentPage) notFound();
 
+  const basePath = '/category/' + encodeURIComponent(canonicalCategory);
+  const currentUrl = SITE_URL + (currentPage > 1 ? basePath + '?page=' + currentPage : basePath);
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'CollectionPage',
-    name: canonicalCategory + ' | ' + SITE_NAME,
-    url: SITE_URL + '/category/' + encodeURIComponent(canonicalCategory),
-    mainEntity: {
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        name: canonicalCategory + ' | ' + SITE_NAME,
+        url: currentUrl,
+        mainEntity: {
       '@type': 'ItemList',
       numberOfItems: total,
-      itemListElement: items.map((app, index) => ({
-        '@type': 'ListItem',
-        position: (currentPage - 1) * 12 + index + 1,
-        url: SITE_URL + '/app/' + app.id,
-        name: app.name ?? 'تطبيق ' + app.id,
-      })),
-    },
+          itemListElement: items.map((app, index) => ({
+            '@type': 'ListItem',
+            position: (currentPage - 1) * 12 + index + 1,
+            url: SITE_URL + '/app/' + app.id,
+            name: app.name ?? 'تطبيق ' + app.id,
+          })),
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'المكتبة', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: canonicalCategory, item: SITE_URL + basePath },
+        ],
+      },
+    ],
   };
 
   return (
@@ -90,7 +108,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
       {items.length > 0 ? <AppGrid apps={items} /> : <p className="text-sm text-slate-500">لا يوجد محتوى منشور في هذه الفئة حاليًا.</p>}
 
       <div className="mt-12">
-        <Pagination currentPage={currentPage} totalPages={totalPages} category={canonicalCategory} />
+        <Pagination currentPage={currentPage} totalPages={totalPages} basePath={basePath} />
       </div>
     </div>
   );
