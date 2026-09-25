@@ -89,7 +89,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
             <div className="mt-7 max-w-2xl">
               <Suspense fallback={null}>
-                <SearchBar />
+                <SearchBar key={q} initialValue={q} />
               </Suspense>
             </div>
           </div>
