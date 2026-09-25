@@ -1,11 +1,13 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { permanentRedirect } from 'next/navigation';
 import AppGrid from '@/components/AppGrid';
 import CategoryPills from '@/components/CategoryPills';
 import EmptyState from '@/components/EmptyState';
 import Pagination from '@/components/Pagination';
 import SearchBar from '@/components/SearchBar';
 import { getApps, getCategories } from '@/lib/queries';
-import { parsePage, sanitizeSearch } from '@/lib/utils';
+import { categoryPath, parsePage, sanitizeSearch } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,11 +20,42 @@ function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function Home({ searchParams }: HomeProps) {
+function readParams(searchParams: HomeProps['searchParams']) {
   const safeParams = searchParams ?? {};
-  const q = sanitizeSearch(firstValue(safeParams.q) ?? '');
-  const category = sanitizeSearch(firstValue(safeParams.category) ?? '');
-  const page = parsePage(firstValue(safeParams.page));
+  return {
+    q: sanitizeSearch(firstValue(safeParams.q) ?? ''),
+    category: sanitizeSearch(firstValue(safeParams.category) ?? ''),
+    page: parsePage(firstValue(safeParams.page)),
+  };
+}
+
+export function generateMetadata({ searchParams }: HomeProps): Metadata {
+  const { q, page } = readParams(searchParams);
+
+  if (q) {
+    return {
+      title: 'نتائج البحث عن «' + q + '»',
+      description: 'نتائج البحث عن ' + q + ' في مكتبة WALEED ZONE للتطبيقات والألعاب والأدوات.',
+      robots: { index: false, follow: true },
+    };
+  }
+
+  const title = page > 1 ? 'أحدث التطبيقات والألعاب — الصفحة ' + page : undefined;
+  const canonical = page > 1 ? '/?page=' + page : '/';
+
+  return {
+    ...(title ? { title } : {}),
+    alternates: { canonical },
+  };
+}
+
+export default async function Home({ searchParams }: HomeProps) {
+  const { q, category, page } = readParams(searchParams);
+
+  if (category && !q) {
+    const target = categoryPath(category) + (page > 1 ? '?page=' + page : '');
+    permanentRedirect(target);
+  }
 
   const [{ items, total, totalPages, currentPage }, categories] = await Promise.all([
     getApps({ q, category, page, limit: 12 }),
@@ -92,11 +125,9 @@ export default async function Home({ searchParams }: HomeProps) {
 
         <div className="mb-6 flex flex-col gap-3 border-b border-white/[0.06] pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-500">
-              {q || category ? 'نتائج مفلترة' : 'آخر ما نزل'}
-            </p>
+            <p className="text-xs font-bold text-slate-500">{q ? 'نتائج البحث' : 'آخر ما نزل'}</p>
             <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
-              {q ? 'نتائج البحث عن «' + q + '»' : category ? category : 'أحدث الإضافات'}
+              {q ? 'نتائج البحث عن «' + q + '»' : 'أحدث الإضافات'}
             </h2>
           </div>
           <span className="w-fit rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-1.5 text-xs font-bold text-slate-400">
