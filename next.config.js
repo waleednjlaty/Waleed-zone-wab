@@ -12,11 +12,14 @@ const csp = [
   `connect-src 'self' https:${isDev ? ' ws: wss:' : ''}`,
   "form-action 'self'",
   "worker-src 'self' blob:",
+  "upgrade-insecure-requests",
 ].join('; ');
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-XSS-Protection', value: '0' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
