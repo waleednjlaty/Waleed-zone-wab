@@ -26,3 +26,27 @@ export function formatDate(input?: Date | string | null): string | null {
     day: 'numeric',
   }).format(date);
 }
+
+export function safeHttpUrl(input?: string | null): string | undefined {
+  if (!input) return undefined;
+
+  try {
+    const url = new URL(input.trim());
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+export function categoryPath(category: string): string {
+  return `/category/${encodeURIComponent(category.trim())}`;
+}
+
+export function decodePathSegment(input: string): string {
+  try {
+    return decodeURIComponent(input).trim();
+  } catch {
+    return input.trim();
+  }
+}
