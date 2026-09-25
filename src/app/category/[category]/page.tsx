@@ -11,17 +11,18 @@ import { categoryPath, decodePathSegment, parsePage } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 interface CategoryPageProps {
-  params: { category: string };
-  searchParams: { page?: string | string[] };
+  params: Promise<{ category: string }>;
+  searchParams: Promise<{ page?: string | string[] }>;
 }
 
-function getCategory(params: CategoryPageProps['params']): string {
-  return decodePathSegment(params.category).slice(0, 100);
+async function getCategory(params: CategoryPageProps['params']): Promise<string> {
+  const resolved = await params;
+  return decodePathSegment(resolved.category).slice(0, 100);
 }
 
-export function generateMetadata({ params, searchParams }: CategoryPageProps): Metadata {
-  const category = getCategory(params);
-  const page = parsePage(searchParams.page);
+export async function generateMetadata({ params, searchParams }: CategoryPageProps): Promise<Metadata> {
+  const [category, resolvedSearchParams] = await Promise.all([getCategory(params), searchParams]);
+  const page = parsePage(resolvedSearchParams.page);
   const basePath = categoryPath(category);
   const canonical = page > 1 ? basePath + '?page=' + page : basePath;
   const title =
@@ -45,8 +46,8 @@ export function generateMetadata({ params, searchParams }: CategoryPageProps): M
 }
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
-  const category = getCategory(params);
-  const page = parsePage(searchParams.page);
+  const [category, resolvedSearchParams] = await Promise.all([getCategory(params), searchParams]);
+  const page = parsePage(resolvedSearchParams.page);
 
   const [{ items, total, totalPages, currentPage }, categories] = await Promise.all([
     getApps({ category, page, limit: 12 }),
