@@ -5,7 +5,7 @@ import CategoryPills from '@/components/CategoryPills';
 import Pagination from '@/components/Pagination';
 import { getApps, getCategories } from '@/lib/queries';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
-import { parsePage } from '@/lib/utils';
+import { parsePage, serializeJsonLd } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +63,7 @@ export default async function PopularPage({ searchParams }: PopularPageProps) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-20 pt-8 sm:px-6 sm:pb-24 sm:pt-12">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
       <header className="mb-8 border-b border-white/[0.06] pb-7">
         <p className="kicker text-[10px] font-black uppercase">TOP DOWNLOADS</p>
