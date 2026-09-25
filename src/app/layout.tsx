@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import VisitorTracker from '@/components/VisitorTracker';
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
+import { serializeJsonLd } from '@/lib/utils';
 
 export const viewport: Viewport = {
   themeColor: '#070a0e',
@@ -84,7 +85,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="flex min-h-screen flex-col">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteJsonLd) }}
         />
         <VisitorTracker />
         <Navbar />
