@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import AppGrid from '@/components/AppGrid';
 import CategoryPills from '@/components/CategoryPills';
 import Pagination from '@/components/Pagination';
@@ -57,6 +57,9 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   if (!category || total === 0) notFound();
 
   const basePath = categoryPath(category);
+  if (page > totalPages) {
+    permanentRedirect(basePath + (totalPages > 1 ? '?page=' + totalPages : ''));
+  }
   const pageUrl = SITE_URL + basePath + (currentPage > 1 ? '?page=' + currentPage : '');
 
   const jsonLd = {
