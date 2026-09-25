@@ -123,6 +123,7 @@ export default async function AppPage({ params }: AppPageProps) {
         description: app.description,
         ...(imageUrl ? { image: imageUrl } : {}),
         url: SITE_URL + '/app/' + app.id,
+        mainEntityOfPage: SITE_URL + '/app/' + app.id,
         applicationCategory: getSchemaCategory(app.category, app.name),
         operatingSystem: app.platform,
         softwareVersion: app.version,
