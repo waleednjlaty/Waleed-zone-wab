@@ -27,21 +27,18 @@ export default function CategoryPills({ categories, active, q }: CategoryPillsPr
   if (pills.length <= 1) return null;
 
   return (
-    <nav
-      aria-label="تصفية حسب الفئة"
-      className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      <div className="flex min-w-max items-center justify-start gap-2 px-0.5 sm:justify-center">
+    <nav aria-label="تصفية حسب الفئة" className="w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-max items-center gap-2 pb-1">
         {pills.map((pill) => (
           <Link
             key={pill.label}
             href={pill.href}
             aria-current={pill.isActive ? 'page' : undefined}
             className={
-              'whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold transition ' +
+              'rounded-xl border px-4 py-2.5 text-sm font-bold transition ' +
               (pill.isActive
-                ? 'border-sky-300/40 bg-sky-300/10 text-sky-100 shadow-[0_8px_24px_-16px_rgba(56,189,248,0.85)]'
-                : 'border-slate-700/70 bg-slate-900/50 text-slate-400 hover:border-slate-500 hover:bg-slate-800/70 hover:text-white')
+                ? 'border-cyan-300/25 bg-cyan-300 text-slate-950'
+                : 'border-white/[0.06] bg-white/[0.025] text-slate-400 hover:border-white/[0.12] hover:bg-white/[0.05] hover:text-white')
             }
           >
             {pill.label}
