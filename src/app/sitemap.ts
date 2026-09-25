@@ -3,6 +3,8 @@ import { getAllAppsSitemap, getCategories } from '@/lib/queries';
 import { SITE_URL } from '@/lib/site';
 import { categoryPath } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let apps: Awaited<ReturnType<typeof getAllAppsSitemap>> = [];
   let categories: string[] = [];
