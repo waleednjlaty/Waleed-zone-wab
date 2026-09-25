@@ -4,6 +4,8 @@ import { getSql } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+const VISIT_KEY_SALT = process.env.VISIT_KEY_SALT || 'waleed-zone-analytics-v1';
+
 function sameOriginRequest(request: Request): boolean {
   const fetchSite = request.headers.get('sec-fetch-site');
   if (fetchSite && fetchSite !== 'same-origin' && fetchSite !== 'none') return false;
@@ -31,9 +33,7 @@ export async function POST(request: Request) {
   const ip = forwarded || request.headers.get('x-real-ip') || 'unknown';
   const agent = (request.headers.get('user-agent') || 'unknown').slice(0, 300);
   const visitorKey = createHash('sha256')
-    .update(ip)
-    .update('\0')
-    .update(agent)
+    .update(VISIT_KEY_SALT + ':' + day + ':' + ip + ':' + agent)
     .digest('hex');
   const day = new Date().toISOString().slice(0, 10);
 
