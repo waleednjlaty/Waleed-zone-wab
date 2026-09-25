@@ -3,9 +3,9 @@ import type { ReactNode } from 'react';
 import CoverImage from '@/components/CoverImage';
 import type { Application } from '@/lib/queries';
 
-function Tag({ children, className = '' }: { children: ReactNode; className?: string }) {
+function Tag({ children }: { children: ReactNode }) {
   return (
-    <span className={'rounded-lg border px-2.5 py-1 text-[11px] font-semibold ' + className}>
+    <span className="rounded-md border border-white/[0.06] bg-white/[0.025] px-2 py-1 text-[10px] font-bold text-slate-500">
       {children}
     </span>
   );
@@ -15,67 +15,47 @@ export default function AppCard({ app }: { app: Application }) {
   const appName = app.name ?? 'تطبيق ' + app.id;
 
   return (
-    <article className="card-glow group overflow-hidden rounded-[1.35rem] bg-slate-900/70 transition duration-300 hover:-translate-y-1.5">
-      <Link
-        href={'/app/' + app.id}
-        className="flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-slate-800/80 bg-gradient-to-b from-slate-900/80 to-slate-950/90"
-      >
-        <div className="relative overflow-hidden">
+    <article className="card-hover group overflow-hidden rounded-2xl border border-white/[0.065] bg-[#0d1218]">
+      <Link href={'/app/' + app.id} className="flex h-full flex-col">
+        <div className="relative overflow-hidden border-b border-white/[0.05] bg-[#0a0e13]">
           <CoverImage
             src={app.imageUrl}
             alt={appName}
             aspectClassName="aspect-[16/10]"
-            imgClassName="transition duration-500 ease-out group-hover:scale-[1.045]"
+            imgClassName="transition duration-500 ease-out group-hover:scale-[1.035]"
           />
-
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950 to-transparent"
-          />
-
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#0d1218] to-transparent" aria-hidden="true" />
           {app.category ? (
-            <span className="absolute right-3 top-3 rounded-full border border-white/10 bg-slate-950/75 px-2.5 py-1 text-[11px] font-bold text-slate-200 backdrop-blur-md">
+            <span className="absolute right-3 top-3 rounded-lg border border-black/30 bg-black/70 px-2.5 py-1 text-[10px] font-black text-slate-200 backdrop-blur">
               {app.category}
             </span>
           ) : null}
         </div>
 
-        <div className="flex flex-1 flex-col p-4 sm:p-5">
+        <div className="flex flex-1 flex-col p-4">
           <div className="flex items-start justify-between gap-3">
-            <h2 className="line-clamp-1 text-base font-black text-white sm:text-[17px]">{appName}</h2>
-            <span
-              aria-hidden="true"
-              className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900 text-slate-400 transition group-hover:border-sky-400/30 group-hover:text-sky-300"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+            <div className="min-w-0">
+              <h2 className="truncate text-[16px] font-black text-white">{appName}</h2>
+              <p className="mt-1 line-clamp-2 min-h-[2.6rem] text-[13px] leading-5 text-slate-500">
+                {app.description || 'تفاصيل وتحميل التطبيق من Waleed Zone.'}
+              </p>
+            </div>
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.025] text-slate-500 transition group-hover:border-cyan-300/20 group-hover:text-cyan-300">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M8 7h9v9" />
               </svg>
             </span>
           </div>
 
-          <p className="mt-2 line-clamp-2 min-h-[2.7rem] text-sm leading-relaxed text-slate-400">
-            {app.description || 'تفاصيل وتحميل التطبيق من Waleed Zone.'}
-          </p>
-
-          <div className="mt-4 flex flex-wrap items-center gap-1.5">
-            {app.version ? (
-              <Tag className="border-slate-700/70 bg-slate-800/70 text-slate-300">{app.version}</Tag>
-            ) : null}
-            {app.size ? (
-              <Tag className="border-indigo-400/15 bg-indigo-500/10 text-indigo-300">{app.size}</Tag>
-            ) : null}
-            {app.platform ? (
-              <Tag className="border-sky-400/15 bg-sky-500/10 text-sky-300">{app.platform}</Tag>
-            ) : null}
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {app.version ? <Tag>{app.version}</Tag> : null}
+            {app.size ? <Tag>{app.size}</Tag> : null}
+            {app.platform ? <Tag>{app.platform}</Tag> : null}
           </div>
 
-          <div className="mt-auto pt-5">
-            <span className="flex items-center justify-between border-t border-slate-800/80 pt-4 text-sm font-bold text-slate-300 transition group-hover:text-sky-200">
-              <span>عرض التفاصيل والتحميل</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="h-4 w-4 rotate-180">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
-              </svg>
-            </span>
+          <div className="mt-auto flex items-center justify-between border-t border-white/[0.05] pt-4 text-xs font-bold">
+            <span className="text-slate-500">عرض التفاصيل</span>
+            <span className="text-cyan-300 transition group-hover:-translate-x-1">←</span>
           </div>
         </div>
       </Link>

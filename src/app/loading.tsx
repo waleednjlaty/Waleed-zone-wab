@@ -1,34 +1,23 @@
 function SkeletonBlock({ className = '' }: { className?: string }) {
-  return <div className={'animate-pulse rounded-xl bg-slate-800/70 ' + className} />;
+  return <div className={'animate-pulse rounded-lg bg-white/[0.055] ' + className} />;
 }
 
-function AppCardSkeleton() {
+function CardSkeleton() {
   return (
-    <article
-      className="overflow-hidden rounded-[1.35rem] border border-slate-800/80 bg-gradient-to-b from-slate-900/80 to-slate-950/90"
-      aria-hidden="true"
-    >
-      <SkeletonBlock className="aspect-[16/10] w-full rounded-none bg-slate-800/80" />
-
-      <div className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <SkeletonBlock className="h-5 w-2/3" />
-          <SkeletonBlock className="h-7 w-7 shrink-0 rounded-full" />
-        </div>
-
+    <article className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0d1218]" aria-hidden="true">
+      <SkeletonBlock className="aspect-[16/10] w-full rounded-none" />
+      <div className="p-4">
+        <SkeletonBlock className="h-5 w-2/3" />
         <div className="mt-3 space-y-2">
-          <SkeletonBlock className="h-3.5 w-full" />
-          <SkeletonBlock className="h-3.5 w-4/5" />
+          <SkeletonBlock className="h-3 w-full" />
+          <SkeletonBlock className="h-3 w-4/5" />
         </div>
-
         <div className="mt-4 flex gap-2">
-          <SkeletonBlock className="h-7 w-16 rounded-lg" />
-          <SkeletonBlock className="h-7 w-14 rounded-lg" />
-          <SkeletonBlock className="h-7 w-20 rounded-lg" />
+          <SkeletonBlock className="h-6 w-14" />
+          <SkeletonBlock className="h-6 w-16" />
         </div>
-
-        <div className="mt-5 border-t border-slate-800/80 pt-4">
-          <SkeletonBlock className="h-4 w-36" />
+        <div className="mt-4 border-t border-white/[0.05] pt-4">
+          <SkeletonBlock className="h-3 w-24" />
         </div>
       </div>
     </article>
@@ -40,58 +29,42 @@ export default function Loading() {
     <div aria-busy="true" aria-live="polite">
       <span className="sr-only">جارٍ تحميل المحتوى...</span>
 
-      <section className="relative isolate overflow-hidden" aria-hidden="true">
-        <div className="bg-grid absolute inset-0 -z-20" />
-        <div className="pointer-events-none absolute -right-24 top-10 -z-10 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-24 top-28 -z-10 h-72 w-72 rounded-full bg-indigo-600/10 blur-3xl" />
-
-        <div className="mx-auto max-w-7xl px-4 pb-14 pt-14 sm:px-6 sm:pb-20 sm:pt-20 md:pb-20 md:pt-24">
-          <div className="mx-auto max-w-4xl text-center">
-            <SkeletonBlock className="mx-auto h-8 w-40 rounded-full bg-sky-400/10" />
-
-            <div className="mx-auto mt-6 space-y-3">
-              <SkeletonBlock className="mx-auto h-11 w-[78%] max-w-2xl sm:h-14" />
-              <SkeletonBlock className="mx-auto h-11 w-[58%] max-w-xl sm:h-14" />
+      <section className="border-b border-white/[0.05]" aria-hidden="true">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,.75fr)] lg:items-end lg:gap-16 lg:py-20">
+          <div>
+            <SkeletonBlock className="h-3 w-36" />
+            <SkeletonBlock className="mt-5 h-11 w-[82%] max-w-2xl sm:h-14" />
+            <SkeletonBlock className="mt-3 h-11 w-[62%] max-w-xl sm:h-14" />
+            <SkeletonBlock className="mt-6 h-4 w-full max-w-xl" />
+            <SkeletonBlock className="mt-2 h-4 w-4/5 max-w-lg" />
+            <SkeletonBlock className="mt-7 h-14 w-full max-w-2xl rounded-2xl" />
+          </div>
+          <div className="panel rounded-2xl p-5 sm:p-6">
+            <SkeletonBlock className="h-4 w-20" />
+            <SkeletonBlock className="mt-3 h-9 w-16" />
+            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/[0.05] pt-5">
+              <SkeletonBlock className="h-12 w-full" />
+              <SkeletonBlock className="h-12 w-full" />
             </div>
-
-            <div className="mx-auto mt-6 max-w-2xl space-y-2">
-              <SkeletonBlock className="mx-auto h-4 w-full max-w-xl" />
-              <SkeletonBlock className="mx-auto h-4 w-4/5 max-w-lg" />
-            </div>
-
-            <SkeletonBlock className="mx-auto mt-8 h-14 max-w-2xl rounded-2xl sm:mt-10" />
-
-            <div className="mx-auto mt-5 flex max-w-3xl flex-wrap justify-center gap-2">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <SkeletonBlock
-                  key={index}
-                  className={'h-9 rounded-full ' + (index % 3 === 0 ? 'w-24' : index % 3 === 1 ? 'w-20' : 'w-28')}
-                />
-              ))}
-            </div>
-
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
-              <SkeletonBlock className="h-4 w-36" />
-              <SkeletonBlock className="h-4 w-32" />
-              <SkeletonBlock className="h-4 w-44" />
-            </div>
+            <SkeletonBlock className="mt-5 h-11 w-full" />
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 sm:pb-24" aria-hidden="true">
-        <div className="mb-7 flex items-end justify-between gap-4 border-b border-slate-800/70 pb-5">
-          <div className="space-y-2">
-            <SkeletonBlock className="h-3 w-36" />
-            <SkeletonBlock className="h-7 w-40" />
-          </div>
-          <SkeletonBlock className="h-8 w-20 rounded-full" />
+      <section className="mx-auto max-w-7xl px-4 pb-20 pt-7 sm:px-6 sm:pb-24 sm:pt-9" aria-hidden="true">
+        <div className="mb-8 flex gap-2 overflow-hidden">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <SkeletonBlock key={index} className="h-10 w-24 shrink-0 rounded-xl" />
+          ))}
+        </div>
+
+        <div className="mb-6 border-b border-white/[0.06] pb-5">
+          <SkeletonBlock className="h-3 w-24" />
+          <SkeletonBlock className="mt-2 h-7 w-40" />
         </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <AppCardSkeleton key={index} />
-          ))}
+          {Array.from({ length: 8 }).map((_, index) => <CardSkeleton key={index} />)}
         </div>
       </section>
     </div>
