@@ -14,6 +14,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   applicationName: SITE_NAME,
+  category: 'technology',
   title: {
     default: SITE_NAME + ' — تحميل التطبيقات والألعاب',
     template: '%s | ' + SITE_NAME,
@@ -22,6 +23,11 @@ export const metadata: Metadata = {
   keywords: ['تحميل تطبيقات', 'تحميل ألعاب', 'WALEED ZONE', 'أدوات مجانية', 'أندرويد', 'ويندوز'],
   verification: {
     google: 'WieAa828zHp-9pQGdlDCsAk9hWj1toB3ulo0Rh8v_bs',
+    other: {
+      ...(process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+        ? { 'msvalidate.01': process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION }
+        : {}),
+    },
   },
   openGraph: {
     type: 'website',
