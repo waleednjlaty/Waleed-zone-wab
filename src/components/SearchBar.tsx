@@ -14,12 +14,9 @@ export default function SearchBar() {
     setValue(searchParams.get('q') ?? '');
   }, [searchParams]);
 
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
 
   function updateSearch(nextValue: string) {
     const trimmed = nextValue.trim();
@@ -27,7 +24,6 @@ export default function SearchBar() {
     if (trimmed) params.set('q', trimmed);
     else params.delete('q');
     params.delete('page');
-
     const query = params.toString();
     router.replace(query ? pathname + '?' + query : pathname);
   }
@@ -54,7 +50,7 @@ export default function SearchBar() {
         aria-label="البحث في التطبيقات"
         autoComplete="off"
         spellCheck={false}
-        className="h-13 w-full rounded-xl border border-transparent bg-black/20 py-3.5 pl-12 pr-14 text-[15px] font-semibold text-white outline-none transition placeholder:font-medium placeholder:text-slate-600 focus:border-cyan-300/20 focus:bg-black/30 sm:h-14 sm:text-base"
+        className="h-[3.25rem] w-full rounded-xl border border-transparent bg-black/20 py-3.5 pl-12 pr-14 text-[15px] font-semibold text-white outline-none transition placeholder:font-medium placeholder:text-slate-600 focus:border-cyan-300/20 focus:bg-black/30 sm:h-14 sm:text-base"
       />
 
       {value ? (
