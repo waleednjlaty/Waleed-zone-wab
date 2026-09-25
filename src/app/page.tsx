@@ -62,6 +62,15 @@ export default async function Home({ searchParams }: HomeProps) {
     getCategories(),
   ]);
 
+  if (total > 0 && page > totalPages) {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (category) params.set('category', category);
+    if (totalPages > 1) params.set('page', String(totalPages));
+    const query = params.toString();
+    permanentRedirect(query ? '/?' + query : '/');
+  }
+
   return (
     <>
       <section className="relative overflow-hidden border-b border-white/[0.05]">
