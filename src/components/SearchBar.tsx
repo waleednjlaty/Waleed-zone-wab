@@ -3,16 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-export default function SearchBar() {
+export default function SearchBar({ initialValue = '' }: { initialValue?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [value, setValue] = useState(searchParams.get('q') ?? '');
+  const [value, setValue] = useState(initialValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    setValue(searchParams.get('q') ?? '');
-  }, [searchParams]);
 
   useEffect(() => () => {
     if (timerRef.current) clearTimeout(timerRef.current);

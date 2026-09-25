@@ -29,6 +29,12 @@ export default function Navbar() {
           >
             المكتبة
           </Link>
+          <Link
+            href="/popular"
+            className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-slate-400 transition hover:bg-white/[0.04] hover:text-white md:inline-flex"
+          >
+            الأكثر تحميلًا
+          </Link>
           <a
             href={TELEGRAM_BOT_URL}
             target="_blank"

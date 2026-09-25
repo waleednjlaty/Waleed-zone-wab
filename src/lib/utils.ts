@@ -26,3 +26,36 @@ export function formatDate(input?: Date | string | null): string | null {
     day: 'numeric',
   }).format(date);
 }
+
+export function safeHttpUrl(input?: string | null): string | undefined {
+  if (!input) return undefined;
+
+  try {
+    const url = new URL(input.trim());
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+export function categoryPath(category: string): string {
+  return `/category/${encodeURIComponent(category.trim())}`;
+}
+
+export function decodePathSegment(input: string): string {
+  try {
+    return decodeURIComponent(input).trim();
+  } catch {
+    return input.trim();
+  }
+}
+
+export function serializeJsonLd(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}

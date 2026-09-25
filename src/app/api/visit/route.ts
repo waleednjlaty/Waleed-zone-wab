@@ -2,21 +2,40 @@ import { createHash } from 'crypto';
 import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 const VISIT_KEY_SALT = process.env.VISIT_KEY_SALT || 'waleed-zone-analytics-v1';
 
+function sameOriginRequest(request: Request): boolean {
+  const fetchSite = request.headers.get('sec-fetch-site');
+  if (fetchSite && fetchSite !== 'same-origin' && fetchSite !== 'none') return false;
+
+  const origin = request.headers.get('origin');
+  const host = request.headers.get('host');
+  if (!origin || !host) return true;
+
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
+  if (!sameOriginRequest(request)) {
+    return NextResponse.json({ ok: false }, { status: 403 });
+  }
+
   const sql = getSql();
   if (!sql) return NextResponse.json({ ok: false }, { status: 503 });
 
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '';
   const ip = forwarded || request.headers.get('x-real-ip') || 'unknown';
   const agent = (request.headers.get('user-agent') || 'unknown').slice(0, 300);
-  const day = new Date().toISOString().slice(0, 10);
-
-  // Store a one-way daily identifier instead of raw IP/user-agent data.
   const visitorKey = createHash('sha256')
     .update(VISIT_KEY_SALT + ':' + day + ':' + ip + ':' + agent)
     .digest('hex');
+  const day = new Date().toISOString().slice(0, 10);
 
   await sql`CREATE TABLE IF NOT EXISTS site_visits (
     id SERIAL PRIMARY KEY,
@@ -32,11 +51,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json(
     { ok: true },
-    {
-      headers: {
-        'Cache-Control': 'no-store',
-        'X-Robots-Tag': 'noindex, nofollow',
-      },
-    },
+    { headers: { 'Cache-Control': 'no-store, max-age=0' } },
   );
 }

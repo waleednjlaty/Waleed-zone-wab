@@ -8,10 +8,15 @@ interface PaginationProps {
   basePath?: string;
 }
 
-function buildHref(page: number, q?: string, category?: string, basePath = '/'): string {
+function buildHref(
+  page: number,
+  q?: string,
+  category?: string,
+  basePath = '/',
+): string {
   const params = new URLSearchParams();
   if (q?.trim()) params.set('q', q.trim());
-  if (category && basePath === '/') params.set('category', category);
+  if (category) params.set('category', category);
   if (page > 1) params.set('page', String(page));
   const query = params.toString();
   return query ? basePath + '?' + query : basePath;
@@ -31,8 +36,15 @@ function getPages(current: number, total: number): (number | 'ellipsis')[] {
   return pages;
 }
 
-export default function Pagination({ currentPage, totalPages, q, category, basePath = '/' }: PaginationProps) {
+export default function Pagination({
+  currentPage,
+  totalPages,
+  q,
+  category,
+  basePath = '/',
+}: PaginationProps) {
   if (totalPages <= 1) return null;
+
   const pages = getPages(currentPage, totalPages);
   const buttonClass = 'subtle-button inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold';
   const pageClass = 'inline-flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-bold transition';

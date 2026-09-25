@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import VisitorTracker from '@/components/VisitorTracker';
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
+import { serializeJsonLd } from '@/lib/utils';
 
 export const viewport: Viewport = {
   themeColor: '#070a0e',
@@ -12,6 +13,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  applicationName: SITE_NAME,
+  category: 'technology',
   title: {
     default: SITE_NAME + ' — تحميل التطبيقات والألعاب',
     template: '%s | ' + SITE_NAME,
@@ -42,12 +45,44 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
   },
   icons: {
     icon: '/icon.svg',
   },
-  category: 'technology',
-  applicationName: SITE_NAME,
+  formatDetection: {
+    telephone: false,
+    address: false,
+    email: false,
+  },
+};
+
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': SITE_URL + '/#website',
+      url: SITE_URL,
+      name: SITE_NAME,
+      alternateName: ['Waleed Zone', 'وليد زون'],
+      description: SITE_DESCRIPTION,
+      inLanguage: 'ar',
+    },
+    {
+      '@type': 'Organization',
+      '@id': SITE_URL + '/#organization',
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: SITE_URL + '/icon.svg',
+    },
+  ],
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -56,16 +91,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="flex min-h-screen flex-col">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'WebSite',
-              name: SITE_NAME,
-              url: SITE_URL,
-              inLanguage: 'ar',
-              description: SITE_DESCRIPTION,
-            }),
-          }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteJsonLd) }}
         />
         <VisitorTracker />
         <Navbar />

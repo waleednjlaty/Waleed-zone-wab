@@ -6,12 +6,12 @@ import AppGrid from '@/components/AppGrid';
 import CoverImage from '@/components/CoverImage';
 import { getAppById, getRelatedApps } from '@/lib/queries';
 import { SITE_NAME, SITE_URL, telegramDownloadUrl } from '@/lib/site';
-import { formatDate } from '@/lib/utils';
+import { categoryPath, formatDate, safeHttpUrl, serializeJsonLd } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
 interface AppPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 function parseId(value: string): number | null {
@@ -20,16 +20,32 @@ function parseId(value: string): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+function getSchemaCategory(category?: string | null, name?: string | null): string {
+  const value = ((category ?? '') + ' ' + (name ?? '')).toLowerCase();
+
+  if (/game|gaming|ألعاب|لعبة/.test(value)) return 'GameApplication';
+  if (/social|chat|messag|تواصل|مراسلة/.test(value)) return 'SocialNetworkingApplication';
+  if (/photo|video|music|media|صور|فيديو|موسيقى|وسائط/.test(value)) return 'MultimediaApplication';
+  if (/security|vpn|حماية|أمان/.test(value)) return 'SecurityApplication';
+  if (/browser|متصفح/.test(value)) return 'BrowserApplication';
+  if (/education|learn|تعليم|دراسة/.test(value)) return 'EducationalApplication';
+  if (/finance|bank|مال|بنك/.test(value)) return 'FinanceApplication';
+  if (/tool|util|أداة|أدوات/.test(value)) return 'UtilitiesApplication';
+
+  return 'UtilitiesApplication';
+}
+
 export async function generateMetadata({ params }: AppPageProps): Promise<Metadata> {
-  const id = parseId(params.id);
+  const resolvedParams = await params;
+  const id = parseId(resolvedParams.id);
   const app = id ? await getAppById(id) : undefined;
 
-  if (!app) return { title: 'التطبيق غير موجود' };
+  if (!app) return { title: 'التطبيق غير موجود', robots: { index: false, follow: false } };
 
   const name = app.name ?? 'تطبيق رقم ' + app.id;
-  const description = (app.description ?? 'تحميل ' + name).slice(0, 160);
+  const description = (app.description ?? 'تحميل ' + name + ' من WALEED ZONE.').slice(0, 160);
   const title = name + (app.version ? ' ' + app.version : '') + ' — تحميل';
-  const imageUrl = app.imageUrl;
+  const imageUrl = safeHttpUrl(app.imageUrl);
 
   return {
     title,
@@ -54,7 +70,8 @@ export async function generateMetadata({ params }: AppPageProps): Promise<Metada
 }
 
 export default async function AppPage({ params }: AppPageProps) {
-  const id = parseId(params.id);
+  const resolvedParams = await params;
+  const id = parseId(resolvedParams.id);
   if (id === null) notFound();
 
   const app = await getAppById(id);
@@ -62,27 +79,59 @@ export default async function AppPage({ params }: AppPageProps) {
 
   const related = await getRelatedApps(app.id, app.category, 4);
   const appName = app.name ?? 'تطبيق رقم ' + app.id;
+  const imageUrl = safeHttpUrl(app.imageUrl);
+  const directDownloadUrl = safeHttpUrl(app.downloadUrl);
   const isGame =
     /(^|[\s/-])(game|games|gaming|ألعاب|لعبة)/i.test(app.category ?? '') ||
     /(game|gaming)/i.test(app.name ?? '');
+  const isMobile = /(android|ios|iphone|mobile|أندرويد|ايفون)/i.test(app.platform ?? '');
+  const schemaType = isGame
+    ? ['VideoGame', isMobile ? 'MobileApplication' : 'SoftwareApplication']
+    : isMobile
+      ? 'MobileApplication'
+      : 'SoftwareApplication';
 
-  const appUrl = SITE_URL + '/app/' + app.id;
-  const categoryUrl = app.category ? SITE_URL + '/category/' + encodeURIComponent(app.category) : undefined;
+  const breadcrumbItems = [
+    {
+      '@type': 'ListItem',
+      position: 1,
+      name: SITE_NAME,
+      item: SITE_URL,
+    },
+    ...(app.category
+      ? [{
+          '@type': 'ListItem',
+          position: 2,
+          name: app.category,
+          item: SITE_URL + categoryPath(app.category),
+        }]
+      : []),
+    {
+      '@type': 'ListItem',
+      position: app.category ? 3 : 2,
+      name: appName,
+      item: SITE_URL + '/app/' + app.id,
+    },
+  ];
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
       {
-        '@type': isGame ? 'VideoGame' : 'SoftwareApplication',
+        '@type': schemaType,
         name: appName,
         description: app.description,
-        image: app.imageUrl,
-        url: appUrl,
-        mainEntityOfPage: appUrl,
-        applicationCategory: app.category,
+        ...(imageUrl ? { image: imageUrl } : {}),
+        url: SITE_URL + '/app/' + app.id,
+        mainEntityOfPage: SITE_URL + '/app/' + app.id,
+        applicationCategory: getSchemaCategory(app.category, app.name),
         operatingSystem: app.platform,
         softwareVersion: app.version,
         datePublished: app.createdAt,
-        publisher: { '@type': 'Organization', name: app.developer || SITE_NAME },
+        publisher: {
+          '@type': 'Organization',
+          name: app.developer || SITE_NAME,
+        },
         offers: {
           '@type': 'Offer',
           price: '0',
@@ -93,32 +142,21 @@ export default async function AppPage({ params }: AppPageProps) {
       },
       {
         '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'المكتبة', item: SITE_URL },
-          ...(app.category && categoryUrl
-            ? [{ '@type': 'ListItem', position: 2, name: app.category, item: categoryUrl }]
-            : []),
-          {
-            '@type': 'ListItem',
-            position: app.category ? 3 : 2,
-            name: appName,
-            item: appUrl,
-          },
-        ],
+        itemListElement: breadcrumbItems,
       },
     ],
   };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
       <nav aria-label="مسار التنقل" className="mb-6 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-600 sm:text-sm">
         <Link href="/" className="transition hover:text-cyan-300">المكتبة</Link>
         <span aria-hidden="true">/</span>
         {app.category ? (
           <>
-            <Link href={'/category/' + encodeURIComponent(app.category)} className="transition hover:text-cyan-300">
+            <Link href={categoryPath(app.category)} className="transition hover:text-cyan-300">
               {app.category}
             </Link>
             <span aria-hidden="true">/</span>
@@ -131,7 +169,7 @@ export default async function AppPage({ params }: AppPageProps) {
         <article className="overflow-hidden rounded-2xl border border-white/[0.065] bg-[#0d1218]">
           <div className="relative border-b border-white/[0.05] bg-[#090d12] p-3 sm:p-5">
             <CoverImage
-              src={app.imageUrl}
+              src={imageUrl}
               alt={appName}
               aspectClassName="aspect-[16/10] rounded-xl"
               imgClassName="rounded-xl"
@@ -200,9 +238,9 @@ export default async function AppPage({ params }: AppPageProps) {
               تحميل عبر تيليجرام
             </a>
 
-            {app.downloadUrl ? (
+            {directDownloadUrl ? (
               <a
-                href={app.downloadUrl}
+                href={directDownloadUrl}
                 target="_blank"
                 rel="noopener noreferrer nofollow"
                 className="subtle-button inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-sm font-black"
