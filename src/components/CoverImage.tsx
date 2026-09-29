@@ -21,7 +21,7 @@ export default function CoverImage({
   const showImage = Boolean(safeSrc) && !failed;
 
   return (
-    <div className={`relative w-full overflow-hidden bg-slate-900 ${aspectClassName}`}>
+    <div className={`relative w-full overflow-hidden bg-[#24343c] ${aspectClassName}`}>
       {showImage ? (
         <img
           src={safeSrc as string}
@@ -33,14 +33,14 @@ export default function CoverImage({
           className={`h-full w-full object-cover ${imgClassName}`}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950">
+        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#31454c] via-[#20313a] to-[#142029]">
           <svg
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.5"
             aria-hidden="true"
-            className="h-12 w-12 text-slate-600"
+            className="h-12 w-12 text-[#788f96]"
           >
             <path
               strokeLinecap="round"

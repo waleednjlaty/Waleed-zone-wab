@@ -47,15 +47,15 @@ export default function Pagination({ currentPage, totalPages, q, category, baseP
 
       {pages.map((page, index) =>
         page === 'ellipsis' ? (
-          <span key={'ellipsis-' + index} aria-hidden="true" className="px-1 text-slate-600">…</span>
+          <span key={'ellipsis-' + index} aria-hidden="true" className="px-1 text-[#a6b5b8]">…</span>
         ) : (
           <Link
             key={page}
             href={buildHref(page, q, category, basePath)}
             aria-current={page === currentPage ? 'page' : undefined}
             className={pageClass + ' ' + (page === currentPage
-              ? 'border-[#173b3b] bg-[#173b3b] text-white'
-              : 'border-[#dce3df] bg-white text-[#526461] hover:border-[#e36b42]')}
+              ? 'border-[#d9f578] bg-[#d9f578] text-[#142029]'
+              : 'border-[#30404a] bg-[#142029] text-[#a6b5b8] hover:border-[#d9f578]')}
           >
             {page}
           </Link>

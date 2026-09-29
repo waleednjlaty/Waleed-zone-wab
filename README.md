@@ -1,195 +1,42 @@
-# Waleed Zone Web
+# WALEED ZONE Web
 
-[العربية](README_AR.md)
+Arabic, right-to-left catalog for Waleed Zone's apps and games, connected to its Telegram bot. Built with Next.js 14, TypeScript, Tailwind, and PostgreSQL. The [visual identity](BRAND.md) includes the new mark, colors, typography, and components.
 
-An Arabic-first web catalog for discovering and downloading apps and games published by the Waleed Zone platform. It complements the Waleed Zone Telegram bot by reading published content from PostgreSQL and presenting it through a fast, searchable, SEO-friendly website.
-
-## Features
-
-- Arabic-first, right-to-left interface
-- Search by application or game name
-- Category filters and paginated results
-- Dedicated detail page for each item
-- Direct-download and Telegram bot actions
-- Responsive dark interface
-- Dynamic metadata, Open Graph tags, JSON-LD, sitemap, and robots.txt
-- Graceful loading, empty, error, and not-found states
-- Read-only database access
-- Security headers and parameterized queries
-- Ready for Vercel and Neon
-
-## Tech stack
-
-- Next.js 14 with App Router
-- React 18
-- TypeScript
-- Tailwind CSS
-- Drizzle ORM
-- PostgreSQL / Neon
-- postgres.js
-
-## Requirements
-
-- Node.js 18.17 or newer
-- npm
-- A PostgreSQL database containing the `applications` table
-
-## Quick start
-
-### 1. Clone the repository
+## Run locally
 
 ```bash
-git clone https://github.com/waleednjlaty/ChannelSite.git
-cd ChannelSite
-```
-
-### 2. Install dependencies
-
-```bash
-npm install
-```
-
-### 3. Configure the environment
-
-Linux/macOS:
-
-```bash
+npm ci
 cp .env.example .env.local
-```
-
-Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env.local
-```
-
-Set the required values:
-
-```env
-DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
-
-Use a read-only PostgreSQL role for the website in production. Never commit `.env.local` or expose the database URL in client-side code.
-
-### 4. Start development
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Set `DATABASE_URL` to a PostgreSQL database with the bot's `applications` table. Set `NEXT_PUBLIC_SITE_URL` to the public HTTPS origin in production, and configure independent random `VISIT_KEY_SALT` and `WEBSITE_STATS_TOKEN` secrets. Do not commit `.env.local`.
 
-## Available scripts
+## Features
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Start the development server |
-| `npm run build` | Create a production build |
-| `npm run start` | Run the production server |
-| `npm run lint` | Run Next.js ESLint checks |
-| `npm run typecheck` | Check TypeScript without emitting files |
+- Searchable and paginated catalog with category and detail pages.
+- Dedicated titles, descriptions, canonical URLs, Open Graph metadata, sitemap, and JSON-LD.
+- Visitor registration, login, seven-day sessions, and saved favorites.
+- Responsive dark identity with locally hosted Arabic and English fonts.
+- Conditional AdSense integration, off by default. See [security and advertising setup](SECURITY.md).
 
-Before deploying, run:
+The site creates four `site_*` account tables on the first account request. Production credentials need schema creation and table read/write privileges. The application listing schema is owned by the Telegram bot. Keep its publishing credentials separate if possible. There is currently no email verification or password recovery; add a verified mail provider before depending on these features for high-value accounts.
+
+## Checks
 
 ```bash
-npm run lint
 npm run typecheck
+npm run lint
 npm run build
+npm audit --omit=dev
 ```
 
-## Database
+For production, set the Railway service to build from this repository, configure its PostgreSQL connection, check signup/login/logout and a favorite on the real database, and monitor application logs. [Security and DDoS procedures](SECURITY.md) explain the limits of application-side rate limiting and the Railway WAF settings needed during an attack.
 
-The website expects an existing `applications` table maintained by the Waleed Zone bot or another trusted service. The web application performs read-only queries.
+## Advertising
 
-Important fields include:
-
-| Field | Purpose |
-|---|---|
-| `id` | Application identifier |
-| `name` | Display name |
-| `description` | Full description |
-| `version` | Current version |
-| `size` | Download size |
-| `category` | Catalog category |
-| `platform` | Supported platform |
-| `developer` | Developer or publisher |
-| `download_url` | Download destination |
-| `image_url` | Cover image |
-| `created_at` | Publication date |
-
-Keep the schema synchronized with [`src/lib/db/schema.ts`](src/lib/db/schema.ts).
-
-## Project structure
-
-```text
-.
-├── src/
-│   ├── app/
-│   │   ├── app/[id]/       # Dynamic application detail page
-│   │   ├── layout.tsx      # Root RTL layout and global metadata
-│   │   ├── page.tsx        # Searchable catalog home page
-│   │   ├── sitemap.ts      # Dynamic sitemap
-│   │   └── robots.ts       # Crawler rules
-│   ├── components/         # Catalog and navigation UI
-│   └── lib/
-│       ├── db.ts           # PostgreSQL and Drizzle connection
-│       ├── db/schema.ts    # applications table mapping
-│       ├── queries.ts      # Read-only catalog queries
-│       ├── site.ts         # Site and Telegram configuration
-│       └── utils.ts        # Search and pagination helpers
-├── .env.example
-├── next.config.js
-├── package.json
-└── tailwind.config.ts
-```
-
-## Configuration
-
-Site identity and the Telegram bot URL are defined in [`src/lib/site.ts`](src/lib/site.ts):
-
-```ts
-export const SITE_NAME = 'WALEED ZONE';
-export const TELEGRAM_BOT_URL = 'https://t.me/WALEED_ZONE_BOT';
-```
-
-Set `NEXT_PUBLIC_SITE_URL` to the real production origin so canonical links, Open Graph metadata, robots.txt, and sitemap.xml use the correct domain.
-
-## Deploy to Vercel
-
-1. Import the GitHub repository into Vercel.
-2. Keep the detected framework as Next.js.
-3. Add `DATABASE_URL` and `NEXT_PUBLIC_SITE_URL` under Environment Variables.
-4. Deploy.
-5. Verify the home page, one detail page, `/robots.txt`, and `/sitemap.xml`.
-
-For Neon, use the pooled connection string when deploying to a serverless platform.
-
-## Security
-
-- Create a dedicated database role with `SELECT` permission only.
-- Keep database credentials in server-side environment variables.
-- Rotate credentials immediately if they appear in a commit, log, image, or chat.
-- Review the Content Security Policy before adding external scripts or services.
-- Validate production with `npm run build` before every deployment.
+AdSense is disabled until you have a publisher ID, have reviewed every catalog item and destination against Google policies, and the site has been approved. Then set `ADSENSE_PUBLISHER_ID`, `ADSENSE_CONTENT_REVIEWED=true`, and `ADSENSE_ENABLED=true`, test the script/CSP and privacy notice, and verify `/ads.txt`. Current catalog content may be ineligible; **do not flip these flags solely to display ads**.
 
 ## Related project
 
-- [Waleed Zone Telegram Bot](https://github.com/waleednjlaty/MyTelegramBot)
-
-## Contributing
-
-Issues and pull requests are welcome. For a large change, open an issue first and describe the expected behavior.
-
----
-
-Built and maintained by [Waleed Al-Najlat](https://github.com/waleednjlaty).
-
-## Deployment notes
-
-- The catalog reads active, published content from PostgreSQL. Set `DATABASE_URL` in Railway; the existing bot deep links keep using `?start=app_ID`.
-- Set `NEXT_PUBLIC_SITE_URL` to the final HTTPS origin for canonical URLs, sharing metadata, sitemap, and robots.
-- Set a random `VISIT_KEY_SALT` for daily pseudonymous visitor counting. Existing deployments can fall back to a configured private stats token or database credential; an independent salt is preferred. Set a separate `WEBSITE_STATS_TOKEN` to access `/api/stats`.
-- `public/waleed-zone-brand.jpg` is a frame from Waleed Zone's existing intro supplied in the earlier project. Replace it with the channel's original square avatar when accessible; Telegram did not provide the public avatar to this workspace.
-- External images and download links must use HTTPS. The scheme check does not verify the safety or ownership of a hosted file; review each destination before publishing.
-- Run `npm run build`, `npm run lint`, and `npm audit --omit=dev`. A deployed smoke test with the real database remains necessary.
+[Waleed Zone Telegram Bot](https://github.com/waleednjlaty/MyTelegramBot)
