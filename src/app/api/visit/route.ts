@@ -2,10 +2,15 @@ import { createHmac } from 'crypto';
 import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 import { ensureVisitsTable } from '@/lib/visit-store';
+import { SITE_URL } from '@/lib/site';
 
 export async function POST(request: Request) {
   const origin=request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) return NextResponse.json({error:'Forbidden'},{status:403});
+  // Railway may expose an internal request URL behind its public HTTPS proxy.
+  const allowedOrigin = process.env.NODE_ENV === 'development'
+    ? new URL(request.url).origin
+    : new URL(SITE_URL).origin;
+  if (origin && origin !== allowedOrigin) return NextResponse.json({error:'Forbidden'},{status:403});
   const fetchSite=request.headers.get('sec-fetch-site');
   if (fetchSite && !['same-origin','none'].includes(fetchSite)) return NextResponse.json({error:'Forbidden'},{status:403});
   // The existing private database credential is a stable fallback on deployments
