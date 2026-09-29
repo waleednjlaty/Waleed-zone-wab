@@ -1,14 +1,16 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import Script from 'next/script';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import VisitorTracker from '@/components/VisitorTracker';
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
 import { safeJsonLd } from '@/lib/utils';
+import { ADSENSE_PUBLISHER_ID, ADSENSE_READY } from '@/lib/ads';
 
 export const viewport: Viewport = {
-  themeColor: '#173b3b',
+  themeColor: '#0b1218',
 };
 
 export const metadata: Metadata = {
@@ -41,10 +43,12 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
   },
   icons: {
-    icon: '/waleed-zone-brand.jpg',
+    icon: '/wz-mark.svg',
+    apple: '/wz-mark.svg',
   },
   category: 'technology',
   applicationName: SITE_NAME,
+  ...(ADSENSE_READY ? { other: { 'google-adsense-account': ADSENSE_PUBLISHER_ID! } } : {}),
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -65,6 +69,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }}
         />
         <VisitorTracker />
+        {ADSENSE_READY && <Script async strategy="afterInteractive" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`} crossOrigin="anonymous" />}
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />

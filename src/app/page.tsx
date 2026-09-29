@@ -1,41 +1,23 @@
-import type { Metadata } from 'next';
+import type {Metadata} from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
-import { Suspense } from 'react';
+import {Suspense} from 'react';
 import AppGrid from '@/components/AppGrid';
 import CategoryPills from '@/components/CategoryPills';
 import EmptyState from '@/components/EmptyState';
 import Pagination from '@/components/Pagination';
 import SearchBar from '@/components/SearchBar';
-import { getApps, getCategories } from '@/lib/queries';
-import { TELEGRAM_BOT_URL, TELEGRAM_CHANNEL_URL } from '@/lib/site';
-import { parsePage, sanitizeSearch } from '@/lib/utils';
-export const dynamic = 'force-dynamic';
-interface Props { searchParams: Promise<Record<string,string|string[]|undefined>>; }
-const first = (v:string|string[]|undefined) => Array.isArray(v) ? v[0] : v;
-export async function generateMetadata({searchParams}:Props):Promise<Metadata> {
-  const params = await searchParams;
-  const q = sanitizeSearch(first(params?.q) || ''), category = sanitizeSearch(first(params?.category) || ''), page = parsePage(first(params?.page));
-  if (q || category || page > 1) return {title:q ? `بحث: ${q}` : category ? `فئة ${category}` : `صفحة ${page}`, description:`نتائج ${q || category || `الصفحة ${page}`} في مكتبة وليد زون للتطبيقات والألعاب.`, robots:{index:false,follow:true}, alternates:{canonical:'/'} };
-  return { title:'تطبيقات وألعاب للتحميل', description:'اكتشف التطبيقات وألعاب الكمبيوتر والموبايل في وليد زون. تصفح الفئات، اقرأ تفاصيل الإصدار، وحمّل عبر الرابط أو بوت تيليجرام.', alternates:{canonical:'/'} };
-}
-export default async function Home({searchParams}:Props) {
-  const params = await searchParams;
-  const q=sanitizeSearch(first(params?.q)||''), category=sanitizeSearch(first(params?.category)||''), page=parsePage(first(params?.page));
-  const [result,categories]=await Promise.all([getApps({q,category,page,limit:12}),getCategories()]);
-  return <>
-    <section className="hero-grid relative overflow-hidden bg-[#173b3b] text-white"><div className="shell grid gap-10 py-14 md:grid-cols-[1.3fr_.7fr] md:items-center md:py-24">
-      <div><p className="mb-5 inline-flex rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-[#d7e8e2]">مكتبتك الرقمية بالعربي · WALEED ZONE</p>
-        <h1 className="max-w-2xl text-4xl font-black leading-[1.25] sm:text-5xl lg:text-6xl">كل لعبة وتطبيق <span className="text-[#f3aa83]">بمكان واحد.</span></h1>
-        <p className="mt-5 max-w-xl text-base leading-8 text-[#c2d7d0]">اكتشف الإضافات الجديدة، تعرّف على الإصدار والمنصة والحجم، ووصل لرابط التحميل أو اطلب اللي ناقصك من البوت.</p>
-        <div className="mt-8 max-w-xl"><Suspense fallback={null}><SearchBar /></Suspense></div>
-        <div className="mt-5 flex flex-wrap gap-4 text-sm font-bold"><a href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="text-[#f3aa83] hover:underline">تابع جديد القناة ↗</a><a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="hover:underline">اطلب تطبيقًا من البوت ↗</a></div>
-      </div>
-      <div className="relative hidden rounded-[28px] border border-white/15 bg-white/10 p-5 shadow-2xl backdrop-blur-sm md:block" aria-hidden="true"><div className="rounded-2xl bg-[#f6f5f0] p-5 text-[#142426]"><div className="mb-7 flex items-center justify-between"><span className="text-xs font-black tracking-widest">EXPLORE / 01</span><span className="h-3 w-3 rounded-full bg-[#e36b42]" /></div><div className="mb-4 grid grid-cols-3 gap-2"><div className="h-24 rounded-xl bg-[#deede7]"/><div className="h-24 rounded-xl bg-[#f3d9c8]"/><div className="h-24 rounded-xl bg-[#cedad6]"/></div><div className="h-3 w-3/4 rounded-full bg-[#cedad6]"/><div className="mt-3 h-3 w-1/2 rounded-full bg-[#e3e9e5]"/></div><div className="mt-4 flex items-center justify-between text-sm font-bold"><span>{result.total} إضافة منشورة</span><span>{categories.length} فئات</span></div></div>
-    </div></section>
-    <section id="explore" className="shell py-12 sm:py-16"><div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="eyebrow">EXPLORE THE LIBRARY</p><h2 className="mt-2 text-3xl font-black sm:text-4xl">استكشف حسب اهتمامك</h2></div><p className="text-sm text-[#667577]">{categories.length} فئات متاحة</p></div><CategoryPills categories={categories} active={category||undefined} q={q||undefined}/>
-      <div className="mb-6 mt-12 flex items-end justify-between gap-3 border-b border-[#dce3df] pb-5"><div><p className="eyebrow">FRESH PICKS</p><h2 className="mt-2 text-2xl font-black sm:text-3xl">{q ? `نتائج «${q}»` : category || 'أحدث الإضافات'}</h2></div><span className="rounded-full bg-[#e7ece8] px-3 py-1.5 text-xs font-bold">{result.total} نتيجة</span></div>
-      {result.items.length ? <><AppGrid apps={result.items}/><div className="mt-10"><Pagination currentPage={result.currentPage} totalPages={result.totalPages} q={q||undefined} category={category||undefined}/></div></> : <EmptyState hasQuery={Boolean(q||category)}/>}
-    </section>
-    <section className="bg-[#e8eee9]"><div className="shell flex flex-col gap-5 py-12 sm:flex-row sm:items-center sm:justify-between"><div><p className="eyebrow">محتوى جديد باستمرار</p><h2 className="mt-2 text-2xl font-black">ما لقيت اللي بدك ياه؟</h2><p className="mt-2 text-sm text-[#667577]">أرسل طلبك للبوت وتابع القناة لمعرفة الجديد.</p></div><a className="primary-action w-fit" href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer">افتح بوت وليد زون ↗</a></div></section>
-  </>;
+import {getApps,getCategories} from '@/lib/queries';
+import {TELEGRAM_BOT_URL,TELEGRAM_CHANNEL_URL} from '@/lib/site';
+import {parsePage,sanitizeSearch} from '@/lib/utils';
+export const dynamic='force-dynamic';
+interface Props {searchParams:Promise<Record<string,string|string[]|undefined>>;}
+const first=(v:string|string[]|undefined)=>Array.isArray(v)?v[0]:v;
+export async function generateMetadata({searchParams}:Props):Promise<Metadata>{const p=await searchParams,q=sanitizeSearch(first(p?.q)||''),category=sanitizeSearch(first(p?.category)||''),page=parsePage(first(p?.page));if(q||category||page>1)return{title:q?`بحث: ${q}`:category?`فئة ${category}`:`صفحة ${page}`,description:`نتائج ${q||category||`الصفحة ${page}`} في وليد زون.`,robots:{index:false,follow:true},alternates:{canonical:'/'}};return{title:'اكتشف التطبيقات والألعاب',description:'مساحة عربية لاستكشاف التطبيقات والألعاب والأدوات، مع معلومات واضحة وروابط تحميل ومكتبة مفضلة خاصة بك.',alternates:{canonical:'/'}};}
+export default async function Home({searchParams}:Props){const p=await searchParams,q=sanitizeSearch(first(p?.q)||''),category=sanitizeSearch(first(p?.category)||''),page=parsePage(first(p?.page));const [result,categories]=await Promise.all([getApps({q,category,page,limit:12}),getCategories()]);
+ return <><section className="hero-pattern overflow-hidden border-b border-white/10"><div className="shell grid gap-10 py-14 lg:grid-cols-[1.15fr_.85fr] lg:items-center lg:py-20"><div><p className="eyebrow">WALEED ZONE / DISCOVER MORE</p><h1 className="mt-5 max-w-2xl text-5xl font-black leading-[1.16] sm:text-6xl">جديد الألعاب والتطبيقات، <span className="text-[#d9f578]">قدّامك.</span></h1><p className="mt-6 max-w-xl text-lg leading-8 text-[#b5c4c5]">اعرف شو الجديد، ابحث بسرعة، واحفظ الأشياء اللي تعجبك بمكتبتك الخاصة. كل شيء مرتب وواضح.</p><div className="mt-8 max-w-xl"><Suspense fallback={null}><SearchBar/></Suspense></div><div className="mt-6 flex flex-wrap gap-3"><Link href="/#library" className="primary-action">استكشف المكتبة ←</Link><a href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="secondary-action">قناتنا على تيليجرام ↗</a></div></div>
+  <div className="relative hidden min-h-[430px] lg:block" aria-hidden="true"><div className="absolute inset-8 rotate-6 rounded-[42px] border border-[#d9f578]/35 bg-[#d9f578]/5"/><div className="absolute inset-0 -rotate-3 rounded-[42px] border border-white/10 bg-[#17252d] p-8 shadow-2xl"><div className="flex items-center justify-between"><span className="brand-type text-sm text-[#d9f578]">DISCOVER / 01</span><span className="h-2.5 w-2.5 rounded-full bg-[#d9f578]"/></div><div className="mt-14 flex items-center gap-5"><Image src="/wz-mark.svg" width={98} height={98} alt="" className="rounded-3xl shadow-xl"/><div><p className="text-xl font-black">عالمك، اختيارك.</p><p className="mt-2 text-sm text-[#a6b5b8]">Games · Apps · Tools</p></div></div><div className="mt-12 grid grid-cols-3 gap-3"><div className="h-28 rounded-2xl bg-[#d9f578]"/><div className="h-28 rounded-2xl bg-[#9cb7c3]"/><div className="h-28 rounded-2xl bg-[#efb696]"/></div><div className="mt-9 flex justify-between border-t border-white/10 pt-5 text-sm font-bold"><span>{result.total} إضافة</span><span>{categories.length} فئات</span></div></div></div>
+ </div></section><section className="shell py-12 sm:py-16"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="eyebrow">BROWSE THE ZONE</p><h2 className="mt-2 text-3xl font-black">اختار اللي يعجبك</h2></div><span className="text-sm text-[#a6b5b8]">{categories.length} فئات</span></div><CategoryPills categories={categories} active={category||undefined} q={q||undefined}/></section>
+ <section id="library" className="shell pb-16"><div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-5"><div><p className="eyebrow">LATEST DROPS</p><h2 className="mt-2 text-3xl font-black">{q?`نتائج «${q}»`:category||'آخر الإضافات'}</h2></div><span className="rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-[#a6b5b8]">{result.total} نتيجة</span></div>{result.items.length?<><AppGrid apps={result.items}/><div className="mt-10"><Pagination currentPage={result.currentPage} totalPages={result.totalPages} q={q||undefined} category={category||undefined}/></div></>:<EmptyState hasQuery={Boolean(q||category)}/>}</section>
+ <section className="border-t border-white/10 bg-[#15222a]"><div className="shell flex flex-col gap-6 py-12 sm:flex-row sm:items-center sm:justify-between"><div><p className="eyebrow">STILL LOOKING?</p><h2 className="mt-2 text-2xl font-black">ما لقيت اللي عم تدوّر عليه؟</h2><p className="mt-2 text-sm text-[#a6b5b8]">اطلبه عبر البوت، وخلّيك قريب من جديد القناة.</p></div><a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="primary-action w-fit">افتح البوت ↗</a></div></section></>;
 }
