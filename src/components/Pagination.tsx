@@ -34,7 +34,7 @@ function getPages(current: number, total: number): (number | 'ellipsis')[] {
 export default function Pagination({ currentPage, totalPages, q, category, basePath = '/' }: PaginationProps) {
   if (totalPages <= 1) return null;
   const pages = getPages(currentPage, totalPages);
-  const buttonClass = 'subtle-button inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold';
+  const buttonClass = 'secondary-action';
   const pageClass = 'inline-flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-bold transition';
 
   return (
@@ -54,8 +54,8 @@ export default function Pagination({ currentPage, totalPages, q, category, baseP
             href={buildHref(page, q, category, basePath)}
             aria-current={page === currentPage ? 'page' : undefined}
             className={pageClass + ' ' + (page === currentPage
-              ? 'border-cyan-300 bg-cyan-300 text-slate-950'
-              : 'border-white/[0.06] bg-white/[0.025] text-slate-400 hover:border-white/[0.12] hover:text-white')}
+              ? 'border-[#173b3b] bg-[#173b3b] text-white'
+              : 'border-[#dce3df] bg-white text-[#526461] hover:border-[#e36b42]')}
           >
             {page}
           </Link>

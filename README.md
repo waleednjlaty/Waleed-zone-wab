@@ -184,3 +184,12 @@ Issues and pull requests are welcome. For a large change, open an issue first an
 ---
 
 Built and maintained by [Waleed Al-Najlat](https://github.com/waleednjlaty).
+
+## Deployment notes
+
+- The catalog reads active, published content from PostgreSQL. Set `DATABASE_URL` in Railway; the existing bot deep links keep using `?start=app_ID`.
+- Set `NEXT_PUBLIC_SITE_URL` to the final HTTPS origin for canonical URLs, sharing metadata, sitemap, and robots.
+- Set a random `VISIT_KEY_SALT` for daily pseudonymous visitor counting. Existing deployments can fall back to a configured private stats token or database credential; an independent salt is preferred. Set a separate `WEBSITE_STATS_TOKEN` to access `/api/stats`.
+- `public/waleed-zone-brand.jpg` is a frame from Waleed Zone's existing intro supplied in the earlier project. Replace it with the channel's original square avatar when accessible; Telegram did not provide the public avatar to this workspace.
+- External images and download links must use HTTPS. The scheme check does not verify the safety or ownership of a hosted file; review each destination before publishing.
+- Run `npm run build`, `npm run lint`, and `npm audit --omit=dev`. A deployed smoke test with the real database remains necessary.

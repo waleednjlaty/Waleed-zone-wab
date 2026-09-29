@@ -38,20 +38,19 @@ export const getApps = cache(
     }
 
     const safeLimit = Math.min(48, Math.max(1, Math.floor(Number(limit) || 12)));
-    const rawPage = Math.max(1, Math.floor(Number(page) || 1));
+    const rawPage = Math.min(10000, Math.max(1, Math.floor(Number(page) || 1)));
 
     const conditions = [eq(applications.active, true), eq(applications.published, true)];
 
     const search = q?.trim();
     if (search) {
       const pattern = `%${escapeLike(search)}%`;
-      conditions.push(
-        or(
+      const searchCondition = or(
           ilike(applications.name, pattern),
           ilike(applications.category, pattern),
           ilike(applications.platform, pattern),
-        ),
-      );
+        );
+      if (searchCondition) conditions.push(searchCondition);
     }
 
     if (category?.trim()) {

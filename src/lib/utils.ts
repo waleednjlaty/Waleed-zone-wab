@@ -12,8 +12,20 @@ export function escapeLike(input: string): string {
 export function parsePage(input?: string | string[] | number): number {
   const value = Array.isArray(input) ? input[0] : input;
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1) return 1;
+  if (!Number.isSafeInteger(parsed) || parsed < 1) return 1;
   return parsed;
+}
+
+export function safeExternalUrl(value?: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch { return null; }
+}
+
+export function safeJsonLd(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
 export function formatDate(input?: Date | string | null): string | null {
