@@ -1,26 +1,11 @@
 import Link from 'next/link';
-import { SITE_NAME, TELEGRAM_BOT_URL } from '@/lib/site';
+import { TELEGRAM_BOT_URL, TELEGRAM_CHANNEL_URL } from '@/lib/site';
 
 export default function Footer() {
-  return (
-    <footer className="mt-auto border-t border-white/[0.05]">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-300 text-sm font-black text-slate-950">W</span>
-          <div>
-            <p className="text-sm font-black tracking-wide text-white">{SITE_NAME}</p>
-            <p className="mt-1 text-xs text-slate-600">تطبيقات، ألعاب وأدوات بمكان واحد.</p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-slate-500">
-          <Link href="/" className="transition hover:text-white">المكتبة</Link>
-          <a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="transition hover:text-cyan-300">
-            تيليجرام
-          </a>
-          <span className="text-slate-700">© {new Date().getFullYear()} WALEED ZONE</span>
-        </div>
-      </div>
-    </footer>
-  );
+  return <footer className="mt-auto bg-[#17302f] text-[#d1dfda]">
+    <div className="shell grid gap-8 py-12 sm:grid-cols-2 sm:items-end">
+      <div><p className="text-2xl font-black text-white">WALEED ZONE<span className="text-[#e36b42]">.</span></p><p className="mt-3 max-w-md text-sm leading-7">مكان مرتب لاكتشاف التطبيقات والألعاب. اقرأ التفاصيل، ثم اختر طريقة التحميل المناسبة.</p></div>
+      <div className="flex flex-wrap gap-5 text-sm sm:justify-end"><Link href="/">الرئيسية</Link><a href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noopener noreferrer">قناة تيليجرام</a><a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer">بوت الطلبات</a></div>
+    </div><div className="border-t border-white/10 py-4 text-center text-xs text-[#9db1ab]">© {new Date().getFullYear()} WALEED ZONE</div>
+  </footer>;
 }

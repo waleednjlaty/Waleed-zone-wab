@@ -5,9 +5,10 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import VisitorTracker from '@/components/VisitorTracker';
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
+import { safeJsonLd } from '@/lib/utils';
 
 export const viewport: Viewport = {
-  themeColor: '#070a0e',
+  themeColor: '#173b3b',
 };
 
 export const metadata: Metadata = {
@@ -39,12 +40,8 @@ export const metadata: Metadata = {
     title: SITE_NAME + ' — تحميل التطبيقات والألعاب',
     description: SITE_DESCRIPTION,
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
   icons: {
-    icon: '/icon.svg',
+    icon: '/waleed-zone-brand.jpg',
   },
   category: 'technology',
   applicationName: SITE_NAME,
@@ -57,7 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: safeJsonLd({
               '@context': 'https://schema.org',
               '@type': 'WebSite',
               name: SITE_NAME,

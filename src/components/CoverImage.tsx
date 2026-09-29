@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { safeExternalUrl } from '@/lib/utils';
 
 interface CoverImageProps {
   src?: string | null;
@@ -16,13 +17,14 @@ export default function CoverImage({
   imgClassName = '',
 }: CoverImageProps) {
   const [failed, setFailed] = useState(false);
-  const showImage = Boolean(src) && !failed;
+  const safeSrc = safeExternalUrl(src);
+  const showImage = Boolean(safeSrc) && !failed;
 
   return (
     <div className={`relative w-full overflow-hidden bg-slate-900 ${aspectClassName}`}>
       {showImage ? (
         <img
-          src={src as string}
+          src={safeSrc as string}
           alt={alt}
           loading="lazy"
           decoding="async"

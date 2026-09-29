@@ -36,11 +36,14 @@ export function getDb() {
 export function getSql() {
   if (!process.env.DATABASE_URL) return null;
   if (!globalForDb.waleedSqlClient) {
-    globalForDb.waleedSqlClient = postgres(process.env.DATABASE_URL, {
+    const connectionString = process.env.DATABASE_URL;
+    const forceSsl = connectionString.includes('neon.tech') || connectionString.includes('sslmode') || connectionString.includes('ssl=true');
+    globalForDb.waleedSqlClient = postgres(connectionString, {
       prepare: false,
       max: 1,
       idle_timeout: 10,
       connect_timeout: 10,
+      ...(forceSsl ? { ssl: 'require' as const } : {}),
     });
   }
   return globalForDb.waleedSqlClient;

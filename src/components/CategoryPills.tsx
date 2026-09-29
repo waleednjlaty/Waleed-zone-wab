@@ -1,50 +1,9 @@
 import Link from 'next/link';
-
-interface CategoryPillsProps {
-  categories: string[];
-  active?: string;
-  q?: string;
-}
-
-function buildHref(category: string | undefined, q?: string): string {
-  const params = new URLSearchParams();
-  if (q?.trim()) params.set('q', q.trim());
-  if (category) params.set('category', category);
-  const query = params.toString();
-  return query ? '/?' + query : '/';
-}
-
-export default function CategoryPills({ categories, active, q }: CategoryPillsProps) {
-  const pills = [
-    { label: 'الكل', href: buildHref(undefined, q), isActive: !active },
-    ...categories.map((category) => ({
-      label: category,
-      href: q?.trim() ? buildHref(category, q) : '/category/' + encodeURIComponent(category),
-      isActive: active === category,
-    })),
-  ];
-
-  if (pills.length <= 1) return null;
-
-  return (
-    <nav aria-label="تصفية حسب الفئة" className="w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="flex min-w-max items-center gap-2 pb-1">
-        {pills.map((pill) => (
-          <Link
-            key={pill.label}
-            href={pill.href}
-            aria-current={pill.isActive ? 'page' : undefined}
-            className={
-              'rounded-xl border px-4 py-2.5 text-sm font-bold transition ' +
-              (pill.isActive
-                ? 'border-cyan-300/25 bg-cyan-300 text-slate-950'
-                : 'border-white/[0.06] bg-white/[0.025] text-slate-400 hover:border-white/[0.12] hover:bg-white/[0.05] hover:text-white')
-            }
-          >
-            {pill.label}
-          </Link>
-        ))}
-      </div>
-    </nav>
-  );
+interface Props { categories: string[]; active?: string; q?: string; }
+export default function CategoryPills({ categories, active, q }: Props) {
+  if (!categories.length) return null;
+  return <nav aria-label="تصفح الفئات" className="overflow-x-auto pb-2"><div className="flex min-w-max gap-2">
+    <Link href={q ? `/?q=${encodeURIComponent(q)}` : '/'} className={`rounded-full px-5 py-2.5 text-sm font-bold ${!active ? 'bg-[#173b3b] text-white' : 'border border-[#dce3df] bg-white'}`}>الكل</Link>
+    {categories.map(category => <Link key={category} href={q ? `/?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}` : `/category/${encodeURIComponent(category)}`} className={`rounded-full px-5 py-2.5 text-sm font-bold ${active === category ? 'bg-[#173b3b] text-white' : 'border border-[#dce3df] bg-white hover:border-[#e36b42]'}`}>{category}</Link>)}
+  </div></nav>;
 }
