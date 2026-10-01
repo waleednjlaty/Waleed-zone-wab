@@ -1,16 +1,18 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { Suspense } from 'react';
 import Script from 'next/script';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { NavigationSkeleton } from '@/components/CatalogSkeleton';
 import VisitorTracker from '@/components/VisitorTracker';
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
 import { safeJsonLd } from '@/lib/utils';
 import { ADSENSE_PUBLISHER_ID, ADSENSE_READY } from '@/lib/ads';
 
 export const viewport: Viewport = {
-  themeColor: '#0b1218',
+  themeColor: '#0B0D10',
 };
 
 export const metadata: Metadata = {
@@ -55,6 +57,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ar" dir="rtl">
       <body className="flex min-h-screen flex-col">
+        <a href="#main-content" className="skip-link">انتقل إلى المحتوى</a>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -70,8 +73,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
         <VisitorTracker />
         {ADSENSE_READY && <Script async strategy="afterInteractive" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`} crossOrigin="anonymous" />}
-        <Navbar />
-        <main className="flex-1">{children}</main>
+        <Suspense fallback={<NavigationSkeleton />}><Navbar /></Suspense>
+        <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
         <Footer />
       </body>
     </html>

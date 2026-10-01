@@ -1,23 +1,100 @@
-import type {Metadata} from 'next';
-import Image from 'next/image';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import {Suspense} from 'react';
+import { Suspense } from 'react';
+import AppCard from '@/components/AppCard';
 import AppGrid from '@/components/AppGrid';
 import CategoryPills from '@/components/CategoryPills';
 import EmptyState from '@/components/EmptyState';
+import Icon from '@/components/Icon';
 import Pagination from '@/components/Pagination';
 import SearchBar from '@/components/SearchBar';
-import {getApps,getCategories} from '@/lib/queries';
-import {TELEGRAM_BOT_URL,TELEGRAM_CHANNEL_URL} from '@/lib/site';
-import {parsePage,sanitizeSearch} from '@/lib/utils';
-export const dynamic='force-dynamic';
-interface Props {searchParams:Promise<Record<string,string|string[]|undefined>>;}
-const first=(v:string|string[]|undefined)=>Array.isArray(v)?v[0]:v;
-export async function generateMetadata({searchParams}:Props):Promise<Metadata>{const p=await searchParams,q=sanitizeSearch(first(p?.q)||''),category=sanitizeSearch(first(p?.category)||''),page=parsePage(first(p?.page));if(q||category||page>1)return{title:q?`بحث: ${q}`:category?`فئة ${category}`:`صفحة ${page}`,description:`نتائج ${q||category||`الصفحة ${page}`} في وليد زون.`,robots:{index:false,follow:true},alternates:{canonical:'/'}};return{title:'اكتشف التطبيقات والألعاب',description:'مساحة عربية لاستكشاف التطبيقات والألعاب والأدوات، مع معلومات واضحة وروابط تحميل ومكتبة مفضلة خاصة بك.',alternates:{canonical:'/'}};}
-export default async function Home({searchParams}:Props){const p=await searchParams,q=sanitizeSearch(first(p?.q)||''),category=sanitizeSearch(first(p?.category)||''),page=parsePage(first(p?.page));const [result,categories]=await Promise.all([getApps({q,category,page,limit:12}),getCategories()]);
- return <><section className="hero-pattern overflow-hidden border-b border-white/10"><div className="shell grid gap-10 py-14 lg:grid-cols-[1.15fr_.85fr] lg:items-center lg:py-20"><div><p className="eyebrow">WALEED ZONE / DISCOVER MORE</p><h1 className="mt-5 max-w-2xl text-5xl font-black leading-[1.16] sm:text-6xl">جديد الألعاب والتطبيقات، <span className="text-[#d9f578]">قدّامك.</span></h1><p className="mt-6 max-w-xl text-lg leading-8 text-[#b5c4c5]">اعرف شو الجديد، ابحث بسرعة، واحفظ الأشياء اللي تعجبك بمكتبتك الخاصة. كل شيء مرتب وواضح.</p><div className="mt-8 max-w-xl"><Suspense fallback={null}><SearchBar/></Suspense></div><div className="mt-6 flex flex-wrap gap-3"><Link href="/#library" className="primary-action">استكشف المكتبة ←</Link><a href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="secondary-action">قناتنا على تيليجرام ↗</a></div></div>
-  <div className="relative hidden min-h-[430px] lg:block" aria-hidden="true"><div className="absolute inset-8 rotate-6 rounded-[42px] border border-[#d9f578]/35 bg-[#d9f578]/5"/><div className="absolute inset-0 -rotate-3 rounded-[42px] border border-white/10 bg-[#17252d] p-8 shadow-2xl"><div className="flex items-center justify-between"><span className="brand-type text-sm text-[#d9f578]">DISCOVER / 01</span><span className="h-2.5 w-2.5 rounded-full bg-[#d9f578]"/></div><div className="mt-14 flex items-center gap-5"><Image src="/wz-mark.svg" width={98} height={98} alt="" className="rounded-3xl shadow-xl"/><div><p className="text-xl font-black">عالمك، اختيارك.</p><p className="mt-2 text-sm text-[#a6b5b8]">Games · Apps · Tools</p></div></div><div className="mt-12 grid grid-cols-3 gap-3"><div className="h-28 rounded-2xl bg-[#d9f578]"/><div className="h-28 rounded-2xl bg-[#9cb7c3]"/><div className="h-28 rounded-2xl bg-[#efb696]"/></div><div className="mt-9 flex justify-between border-t border-white/10 pt-5 text-sm font-bold"><span>{result.total} إضافة</span><span>{categories.length} فئات</span></div></div></div>
- </div></section><section className="shell py-12 sm:py-16"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="eyebrow">BROWSE THE ZONE</p><h2 className="mt-2 text-3xl font-black">اختار اللي يعجبك</h2></div><span className="text-sm text-[#a6b5b8]">{categories.length} فئات</span></div><CategoryPills categories={categories} active={category||undefined} q={q||undefined}/></section>
- <section id="library" className="shell pb-16"><div className="mb-7 flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-5"><div><p className="eyebrow">LATEST DROPS</p><h2 className="mt-2 text-3xl font-black">{q?`نتائج «${q}»`:category||'آخر الإضافات'}</h2></div><span className="rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-[#a6b5b8]">{result.total} نتيجة</span></div>{result.items.length?<><AppGrid apps={result.items}/><div className="mt-10"><Pagination currentPage={result.currentPage} totalPages={result.totalPages} q={q||undefined} category={category||undefined}/></div></>:<EmptyState hasQuery={Boolean(q||category)}/>}</section>
- <section className="border-t border-white/10 bg-[#15222a]"><div className="shell flex flex-col gap-6 py-12 sm:flex-row sm:items-center sm:justify-between"><div><p className="eyebrow">STILL LOOKING?</p><h2 className="mt-2 text-2xl font-black">ما لقيت اللي عم تدوّر عليه؟</h2><p className="mt-2 text-sm text-[#a6b5b8]">اطلبه عبر البوت، وخلّيك قريب من جديد القناة.</p></div><a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer" className="primary-action w-fit">افتح البوت ↗</a></div></section></>;
+import SectionHeading from '@/components/SectionHeading';
+import { SearchSkeleton } from '@/components/CatalogSkeleton';
+import { homeCollections } from '@/components/catalog/presentation';
+import { getApps, getCategories } from '@/lib/queries';
+import { parsePage, sanitizeSearch } from '@/lib/utils';
+
+export const dynamic = 'force-dynamic';
+interface Props { searchParams: Promise<Record<string, string | string[] | undefined>>; }
+const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const q = sanitizeSearch(first(params?.q) || '');
+  const category = sanitizeSearch(first(params?.category) || '');
+  const page = parsePage(first(params?.page));
+  const browse = first(params?.browse) === 'all';
+  if (q || category || page > 1 || browse) return {
+    title: q ? `بحث: ${q}` : category ? `فئة ${category}` : browse && page === 1 ? 'المكتبة' : `صفحة ${page}`,
+    description: `نتائج ${q || category || `الصفحة ${page}`} في وليد زون.`,
+    robots: { index: false, follow: true },
+    alternates: { canonical: '/' },
+  };
+  return {
+    title: 'اكتشف التطبيقات والألعاب',
+    description: 'مساحة عربية لاستكشاف التطبيقات والألعاب والأدوات، مع معلومات واضحة وروابط تحميل ومكتبة مفضلة خاصة بك.',
+    alternates: { canonical: '/' },
+  };
+}
+
+export default async function Home({ searchParams }: Props) {
+  const params = await searchParams;
+  const q = sanitizeSearch(first(params?.q) || '');
+  const category = sanitizeSearch(first(params?.category) || '');
+  const page = parsePage(first(params?.page));
+  const browse = first(params?.browse) === 'all';
+  const filtered = Boolean(q || category || page > 1 || browse);
+  // Reuse existing read-only queries. The paginated library keeps its original page size.
+  const [result, categories, discovery] = await Promise.all([
+    getApps({ q, category, page, limit: 12 }),
+    getCategories(),
+    filtered ? Promise.resolve(null) : getApps({ limit: 48 }),
+  ]);
+  const collections = homeCollections(discovery?.items || []);
+  const suggestions = (discovery?.items || result.items).map(({ id, name, category, imageUrl }) => ({ id, name, category, imageUrl }));
+
+  return <div className="shell homepage">
+    <section className="catalog-intro" aria-labelledby="discover-title">
+      <div className="intro-copy"><p className="eyebrow">تطبيقات. ألعاب. آخر الإصدارات.</p><h1 id="discover-title">اكتشف أحدث التطبيقات والألعاب<span className="intro-dot">.</span></h1><p className="intro-description">ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.</p></div>
+      <div className="intro-search"><Suspense fallback={<SearchSkeleton />}><SearchBar suggestions={suggestions} /></Suspense><p className="search-help">بالاسم أو التصنيف، ستجد ما تبحث عنه.</p></div>
+    </section>
+
+    {filtered ? <div className="filtered-catalog">
+      <CategoryPills categories={categories} active={category || undefined} q={q || undefined} />
+      <section id="library" className="catalog-section" aria-labelledby="results-title">
+        <div className="section-heading"><div><h2 id="results-title">{q ? `نتائج «${q}»` : category || 'المكتبة'}</h2><p role="status">{result.total} نتيجة{page > 1 ? ` · صفحة ${result.currentPage}` : ''}</p></div><Link href="/" className="view-all">العودة للاكتشاف</Link></div>
+        {result.items.length ? <><AppGrid apps={result.items} /><div className="catalog-pagination"><Pagination currentPage={result.currentPage} totalPages={result.totalPages} q={q || undefined} category={category || undefined} browse={browse} /></div></> : <EmptyState hasQuery={Boolean(q || category)} />}
+      </section>
+    </div> : result.total === 0 ? <section id="library"><EmptyState hasQuery={false} /></section> : <>
+      <section id="trending" className="catalog-section" aria-labelledby="trending-title">
+        <SectionHeading id="trending-title" title="شائع الآن" subtitle={collections.trendingLabel} href="/?browse=all#library" icon="trend" />
+        <div className="horizontal-cards">{collections.trending.map((app, index) => <AppCard key={app.id} app={app} rank={index + 1} />)}</div>
+      </section>
+
+      <section id="updates" className="catalog-section updates-section" aria-labelledby="updates-title">
+        <SectionHeading id="updates-title" title="آخر التحديثات" subtitle="أحدث الإصدارات المضافة إلى المكتبة" href="/?browse=all#library" icon="refresh" />
+        {collections.latest.length ? <div className="list-grid">{collections.latest.map(app => <AppCard key={app.id} app={app} variant="row" />)}</div> : <p className="section-empty">ستظهر الإصدارات هنا عندما تتوفر معلوماتها.</p>}
+      </section>
+
+      <section id="games" className="catalog-section" aria-labelledby="games-title">
+        <SectionHeading id="games-title" title="ألعاب مختارة" subtitle="اختيارات من أحدث ألعاب المكتبة" href="#categories" linkLabel="تصفح التصنيفات" icon="game" />
+        {collections.games.length ? <div className="featured-grid">{collections.games.map(app => <AppCard key={app.id} app={app} variant="featured" />)}</div> : <p className="section-empty">لم تُضف ألعاب إلى المكتبة بعد. استكشف التصنيفات المتاحة.</p>}
+      </section>
+
+      <section id="apps" className="catalog-section" aria-labelledby="apps-title">
+        <SectionHeading id="apps-title" title="تطبيقات مختارة" subtitle="أدوات وتطبيقات تستحق الاستكشاف" href="#categories" linkLabel="تصفح التصنيفات" icon="apps" />
+        {collections.apps.length ? <div className="list-grid">{collections.apps.map(app => <AppCard key={app.id} app={app} variant="row" />)}</div> : <p className="section-empty">ستظهر التطبيقات هنا عند إضافتها إلى المكتبة.</p>}
+      </section>
+
+      <section id="categories" className="catalog-section" aria-labelledby="categories-title">
+        <SectionHeading id="categories-title" title="تصفح حسب التصنيف" subtitle="اذهب مباشرة إلى ما يهمك" icon="grid" />
+        {categories.length ? <nav className="category-directory" aria-label="كل التصنيفات">{categories.map(item => <Link key={item} href={`/category/${encodeURIComponent(item)}`}><Icon name="grid" width={18} height={18} /><span>{item}</span><Icon name="chevron" width={15} height={15} /></Link>)}</nav> : <p className="section-empty">لا توجد تصنيفات متاحة حاليًا.</p>}
+      </section>
+
+      <section id="library" className="catalog-section recent-section" aria-labelledby="recent-title">
+        <SectionHeading id="recent-title" title="أضيف حديثًا" subtitle="آخر ما وصل إلى Waleed Zone" href="/?browse=all#library" icon="spark" />
+        <AppGrid apps={result.items} /><div className="catalog-pagination"><Pagination currentPage={result.currentPage} totalPages={result.totalPages} /></div>
+      </section>
+    </>}
+  </div>;
 }

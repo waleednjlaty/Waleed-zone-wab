@@ -1,6 +1,6 @@
 # WALEED ZONE Web
 
-Arabic, right-to-left catalog for Waleed Zone's apps and games, connected to its Telegram bot. Built with Next.js 14, TypeScript, Tailwind, and PostgreSQL. The [visual identity](BRAND.md) includes the new mark, colors, typography, and components.
+Arabic, right-to-left catalog for Waleed Zone's apps and games, connected to its Telegram bot. Built with Next.js 15, TypeScript, Tailwind, and PostgreSQL. The [visual identity](BRAND.md) includes the new mark, colors, typography, and components.
 
 ## Run locally
 
