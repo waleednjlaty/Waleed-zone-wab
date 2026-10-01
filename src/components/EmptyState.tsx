@@ -1,2 +1,6 @@
 import Link from 'next/link';
-export default function EmptyState({hasQuery}:{hasQuery:boolean}) {return <div className="surface py-16 text-center"><p className="text-4xl text-[#d9f578]">⌕</p><h2 className="mt-3 text-xl font-black">ما لقينا نتيجة</h2><p className="mt-2 text-sm text-[#a6b5b8]">{hasQuery?'جرّب كلمة ثانية أو ابحث باسم أقصر.':'لا يوجد محتوى منشور حاليًا.'}</p>{hasQuery&&<Link href="/" className="primary-action mt-6">عرض المكتبة</Link>}</div>;}
+import Icon from '@/components/Icon';
+
+export default function EmptyState({ hasQuery }: { hasQuery: boolean }) {
+  return <div className="empty-state"><Icon name="search" width={30} height={30} /><h2>{hasQuery ? 'لا توجد نتائج مطابقة' : 'المكتبة قيد التحديث'}</h2><p>{hasQuery ? 'جرّب اسمًا أقصر أو تصنيفًا آخر.' : 'لا يوجد محتوى منشور حاليًا. عد لاحقًا للاطلاع على الإضافات.'}</p>{hasQuery && <Link href="/" className="secondary-action">عرض المكتبة</Link>}</div>;
+}
