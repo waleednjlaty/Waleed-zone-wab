@@ -310,10 +310,42 @@ test('download PostgreSQL lifecycle, API abuse and concurrency', { skip: !proces
       assert.equal((await http('request', selection, { 'Idempotency-Key': randomUUID() })).status, 200);
       const limited = await http('request', selection, { 'Idempotency-Key': randomUUID() }); assert.equal(limited.status, 429); assert.ok(Number(limited.headers.get('retry-after')) > 0);
     });
-    await t.test('malformed unauthenticated attempts exhaust network bucket; forged forwarding gives no fresh bucket', async () => {
-      let last;
-      for (let i = 0; i < 42; i++) last = await handler('request')(request('/api/downloads/requests', {}, { 'x-forwarded-for': `1.2.3.${i}`, 'x-real-ip': `1.2.4.${i}` }));
-      assert.equal(last.status, 429); assert.ok(Number(last.headers.get('retry-after')) > 0);
+    await t.test('malformed unauthenticated attempts exhaust network bucket; forged forwarding gives no fresh bucket', async (t) => {
+      // Spec sections 5.1/6: invalid attempts spend tokens; 401 is correct while capacity
+      // remains, 429 takes precedence once exhausted. A 42-request wall-clock loop is
+      // flaky: CI can refill >=3 tokens at 120/min while executing the same burst.
+      // Freeze only the services' DB-time read, leaving real SQL locks/state/refill intact.
+      const [clock] = await sql`SELECT clock_timestamp() AS time`;
+      let now = clock.time;
+      t.mock.method(service, 'time', async () => now);
+      t.mock.method(service2, 'time', async () => now);
+      const handlers = [handler('request'), createDownloadHandler('request', { service: service2, env })];
+      const forged = (i) => ({ 'x-forwarded-for': `1.2.3.${i}, 203.0.113.1`, 'x-real-ip': `1.2.4.${i}`,
+        Forwarded: `for="[2001:db8::${i}]";proto=https`, 'cf-connecting-ip': `1.2.5.${i}` });
+      const attempt = (i) => handlers[i % 2](request('/api/downloads/requests', {}, forged(i)));
+      const network = trustedNetworks(request('/api/downloads/requests'), env)[0];
+      const buckets = () => sql`SELECT key,tokens FROM site_download_limit_state WHERE key LIKE 'ingress:%' ORDER BY key`;
+      for (let i = 0; i < 40; i++) {
+        const response = await attempt(i);
+        assert.equal(response.status, 401);
+        assert.equal((await response.json()).error.code, 'DOWNLOAD_SESSION_REQUIRED');
+      }
+      assert.deepEqual(await buckets().then(rows => Array.from(rows)), [{ key: `ingress:${network}`, tokens: 0 }]);
+      for (const response of await Promise.all(Array.from({ length: 10 }, (_, i) => attempt(40 + i)))) {
+        assert.equal(response.status, 429);
+        assert.equal(response.headers.get('retry-after'), '1');
+        const body = await response.json();
+        assert.equal(body.error.code, 'RATE_LIMITED');
+        assert.equal(body.error.retry_after_seconds, 1);
+        assert.equal(Date.parse(body.error.retry_at) - now.getTime(), 500);
+        assert.ok(!JSON.stringify(body).includes(network));
+      }
+      // Spoofing cannot reset the shared bucket; only the configured refill can permit a call.
+      now = new Date(now.getTime() + 499);
+      assert.equal((await attempt(50)).status, 429);
+      now = new Date(now.getTime() + 1);
+      assert.equal((await attempt(51)).status, 401);
+      assert.deepEqual(await buckets().then(rows => Array.from(rows)), [{ key: `ingress:${network}`, tokens: 0 }]);
     });
     await t.test('HTTP status is client-bound, read-limited and never changes cooldown', async () => {
       const id = await start();
