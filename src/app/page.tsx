@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-html-link-for-pages -- Catalog directories intentionally use document navigation. */
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -13,7 +14,9 @@ import SearchResultsSkeleton from '@/components/loading/SearchResultsSkeleton';
 import CatalogSkeleton, { SearchSkeleton } from '@/components/CatalogSkeleton';
 import { homeCollections } from '@/components/catalog/presentation';
 import { getApps, getCategories } from '@/lib/queries';
-import { parsePage, sanitizeSearch } from '@/lib/utils';
+import { parsePage, safeJsonLd, sanitizeSearch } from '@/lib/utils';
+import { HOME_TITLE, SITE_DESCRIPTION } from '@/lib/site';
+import { pageMetadata, websiteStructuredData } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 interface Props { searchParams: Promise<Record<string, string | string[] | undefined>>; }
@@ -25,17 +28,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const category = sanitizeSearch(first(params?.category) || '');
   const page = parsePage(first(params?.page));
   const browse = first(params?.browse) === 'all';
-  if (q || category || page > 1 || browse) return {
-    title: q ? `بحث: ${q}` : category ? `فئة ${category}` : browse && page === 1 ? 'المكتبة' : `صفحة ${page}`,
-    description: `نتائج ${q || category || `الصفحة ${page}`} في وليد زون.`,
-    robots: { index: false, follow: true },
-    alternates: { canonical: '/' },
-  };
-  return {
-    title: 'اكتشف التطبيقات والألعاب',
-    description: 'مساحة عربية لاستكشاف التطبيقات والألعاب والأدوات، مع معلومات واضحة وروابط تحميل ومكتبة مفضلة خاصة بك.',
-    alternates: { canonical: '/' },
-  };
+  if (q || category || page > 1 || browse) return pageMetadata(
+    q ? `بحث: ${q}` : category ? `فئة ${category}` : browse && page === 1 ? 'المكتبة' : `صفحة ${page}`,
+    `نتائج ${q || category || `الصفحة ${page}`} في وليد زون.`, '/', { noindex: true },
+  );
+  return pageMetadata(HOME_TITLE, SITE_DESCRIPTION, '/', { absoluteTitle: true });
 }
 
 export default async function Home({ searchParams }: Props) {
@@ -46,8 +43,9 @@ export default async function Home({ searchParams }: Props) {
   const browse = first(params?.browse) === 'all';
   const filtered = Boolean(q || category || page > 1 || browse);
   return <div className="shell homepage">
+    {!filtered && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(websiteStructuredData()) }} />}
     <section className="catalog-intro" aria-labelledby="discover-title">
-      <div className="intro-copy"><p className="eyebrow">تطبيقات. ألعاب. آخر الإصدارات.</p><h1 id="discover-title">اكتشف أحدث التطبيقات والألعاب<span className="intro-dot">.</span></h1><p className="intro-description">ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.</p></div>
+      <div className="intro-copy"><p className="eyebrow" lang="en" dir="ltr">Waleed Zone</p><h1 id="discover-title">وليد زون — تطبيقات وألعاب<span className="intro-dot">.</span></h1><p className="intro-description">ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.</p><nav className="mt-4 flex flex-wrap gap-4 text-sm" aria-label="مكتبة وليد زون"><a className="view-all" href="/apps">تطبيقات وليد زون ←</a><a className="view-all" href="/games">ألعاب وليد زون ←</a></nav></div>
       <div className="intro-search"><Suspense fallback={<SearchSkeleton />}><SearchBar /></Suspense><p className="search-help">بالعربية أو الإنجليزية، بالاسم أو المطوّر أو التصنيف.</p></div>
     </section>
 
@@ -85,12 +83,12 @@ async function CatalogContent({ q, category, page, browse, filtered }: { q: stri
       </section>
 
       <section id="games" className="catalog-section" aria-labelledby="games-title">
-        <SectionHeading id="games-title" title="ألعاب مختارة" subtitle="اختيارات من أحدث ألعاب المكتبة" href="#categories" linkLabel="تصفح التصنيفات" icon="game" />
+        <SectionHeading id="games-title" title="ألعاب مختارة" subtitle="اختيارات من أحدث ألعاب المكتبة" href="/games" nativeNavigation linkLabel="كل الألعاب" icon="game" />
         {collections.games.length ? <div className="featured-grid">{collections.games.map(app => <AppCard key={app.id} app={app} variant="featured" />)}</div> : <p className="section-empty">لم تُضف ألعاب إلى المكتبة بعد. استكشف التصنيفات المتاحة.</p>}
       </section>
 
       <section id="apps" className="catalog-section" aria-labelledby="apps-title">
-        <SectionHeading id="apps-title" title="تطبيقات مختارة" subtitle="أدوات وتطبيقات تستحق الاستكشاف" href="#categories" linkLabel="تصفح التصنيفات" icon="apps" />
+        <SectionHeading id="apps-title" title="تطبيقات مختارة" subtitle="أدوات وتطبيقات تستحق الاستكشاف" href="/apps" nativeNavigation linkLabel="كل التطبيقات" icon="apps" />
         {collections.apps.length ? <div className="list-grid">{collections.apps.map(app => <AppCard key={app.id} app={app} variant="row" />)}</div> : <p className="section-empty">ستظهر التطبيقات هنا عند إضافتها إلى المكتبة.</p>}
       </section>
 
