@@ -1,5 +1,6 @@
 import 'server-only';
 import { DownloadError, safeFilename } from './rules';
+import { configuredStorageAdapters } from './adapters/s3';
 
 export type ObjectRef = { backend: string; key: string; objectVersion?: string };
 export type ObjectMetadata = { sizeBytes: bigint; contentType: string; objectVersion?: string; sha256: string };
@@ -13,13 +14,14 @@ export interface DownloadStorage {
     contentType: string; requestId: string }, signal: AbortSignal): Promise<DeliveryGrant>;
   matchesObject(grant: DeliveryGrant, ref: ObjectRef): boolean;
 }
-// Deliberately empty: a reviewed provider is wired here in a later PR, never from request input.
-export const storageAdapters: Readonly<Record<string, DownloadStorage>> = Object.freeze({});
+// Server configuration only. Missing/invalid configuration leaves the registry empty and fails closed.
+// This does not enable downloads: deployment + shared database gates still apply independently.
+export const storageAdapters: Readonly<Record<string, DownloadStorage>> = configuredStorageAdapters();
 export function validateGrant(grant: DeliveryGrant, ref: ObjectRef, adapter: DownloadStorage,
   allowedHosts: readonly string[], now: Date) {
   let url: URL;
   try { url = new URL(grant.url); } catch { throw new DownloadError(503, 'STORAGE_UNAVAILABLE'); }
-  if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hash
+  if (url.protocol !== 'https:' || url.username || url.password || url.port || grant.url.includes('#')
     || url.hostname !== grant.deliveryHost || !allowedHosts.includes(url.hostname)
     || !(grant.expiresAt instanceof Date) || !Number.isFinite(grant.expiresAt.getTime())
     || grant.expiresAt.getTime() - now.getTime() < 30000

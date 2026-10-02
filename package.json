@@ -15,9 +15,15 @@
     "test": "node --test tests/*.cjs",
     "test:integration": "node scripts/test-integration.mjs",
     "test:downloads": "node --test tests/downloads.cjs",
-    "migrate:downloads": "node scripts/migrate-downloads.mjs"
+    "test:downloads:strict": "WZ_DOWNLOAD_CONTRACT_STRICT=1 node --test tests/download-contract.cjs",
+    "test:storage": "node --test tests/storage*.cjs",
+    "migrate:downloads": "node scripts/migrate-downloads.mjs",
+    "metadata:downloads": "node scripts/download-metadata.mjs",
+    "test:metadata": "node --test tests/file-metadata.cjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1145.0",
+    "@aws-sdk/s3-request-presigner": "3.1145.0",
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/space-grotesk": "^5.3.0",

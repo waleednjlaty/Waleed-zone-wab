@@ -101,6 +101,10 @@ export class DownloadService {
       || !safeFilename(file.download_filename) || !/^[a-f0-9]{64}$/.test(file.sha256)
       || BigInt(file.size_bytes) <= BigInt(0) || BigInt(file.size_bytes) > BigInt(2147483648)
       || file.mime_type !== 'application/vnd.android.package-archive'
+      || !file.storage_key
+      || (['railway-s3', 's3'].includes(file.storage_backend)
+        && file.storage_key !== `artifacts/${file.id}/${file.sha256}.apk`)
+      || (file.storage_backend === 'railway-s3' && file.storage_object_version !== null)
       || !this.adapter(file.storage_backend) || (r && snapshot(file) !== r.file_snapshot))
       error ??= new DownloadError(404, 'FILE_UNAVAILABLE');
     if (error) { if (r) await this.revoke(tx, r, error.code); return error; }
