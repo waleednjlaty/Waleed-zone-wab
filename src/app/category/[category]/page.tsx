@@ -1,16 +1,59 @@
-import type {Metadata} from 'next';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import {notFound} from 'next/navigation';
+import { cache } from 'react';
+import { notFound, permanentRedirect } from 'next/navigation';
 import AppGrid from '@/components/AppGrid';
 import CategoryPills from '@/components/CategoryPills';
 import Pagination from '@/components/Pagination';
-import {getApps,getCategories} from '@/lib/queries';
-import {SITE_URL} from '@/lib/site';
-import {parsePage,safeJsonLd} from '@/lib/utils';
-export const dynamic='force-dynamic';
-interface Props {params:Promise<{category:string}>;searchParams:Promise<{page?:string|string[]}>;}
-function decode(value:string){try{return decodeURIComponent(value).trim().slice(0,100);}catch{return '';}}
-export async function generateMetadata({params,searchParams}:Props):Promise<Metadata>{const category=decode((await params).category),categories=await getCategories();if(!category||!categories.includes(category))notFound();const page=parsePage((await searchParams)?.page),path=`/category/${encodeURIComponent(category)}`,canonical=page>1?`${path}?page=${page}`:path,title=`${category} — تطبيقات وألعاب${page>1?` | صفحة ${page}`:''}`,description=`تصفح ${category} في وليد زون. تفاصيل الإصدارات والمنصات وروابط التحميل لكل عنصر.`;return{title,description,alternates:{canonical},openGraph:{title,description,url:SITE_URL+canonical,type:'website'}};}
-export default async function CategoryPage({params,searchParams}:Props){const category=decode((await params).category),categories=await getCategories(),canonical=categories.find(x=>x.toLocaleLowerCase()===category.toLocaleLowerCase());if(!canonical)notFound();const page=parsePage((await searchParams)?.page),result=await getApps({category:canonical,page,limit:12});if(page>result.totalPages)notFound();const path=`/category/${encodeURIComponent(canonical)}`,data={'@context':'https://schema.org','@type':'CollectionPage',name:`${canonical} | WALEED ZONE`,url:SITE_URL+path,mainEntity:{'@type':'ItemList',numberOfItems:result.total,itemListElement:result.items.map((app,i)=>({'@type':'ListItem',position:(result.currentPage-1)*12+i+1,url:`${SITE_URL}/app/${app.id}`,name:app.name||`تطبيق ${app.id}`}))}};
- return <div className="shell py-9 sm:py-14"><script type="application/ld+json" dangerouslySetInnerHTML={{__html:safeJsonLd(data)}}/><nav aria-label="مسار التنقل" className="mb-7 text-sm text-[#a6b5b8]"><Link href="/" className="hover:text-[#d9f578]">الرئيسية</Link> / {canonical}</nav><header className="hero-pattern mb-10 overflow-hidden rounded-[30px] border border-white/10 bg-[#142029] p-8 sm:p-12"><p className="eyebrow">CATEGORY / {canonical}</p><h1 className="mt-4 text-4xl font-black sm:text-5xl">{canonical}<span className="text-[#d9f578]">.</span></h1><p className="mt-4 max-w-2xl leading-8 text-[#a6b5b8]">كل {canonical} المتاحة في المكتبة، مع معلومات كل إصدار وخيارات التحميل.</p><span className="mt-5 inline-block rounded-full bg-[#d9f578] px-4 py-2 text-xs font-black text-[#142029]">{result.total} عنصر</span></header><CategoryPills categories={categories} active={canonical}/><div className="mt-8">{result.items.length?<AppGrid apps={result.items}/>:<p className="surface p-10 text-[#a6b5b8]">لا توجد عناصر منشورة في هذه الفئة.</p>}</div><div className="mt-10"><Pagination currentPage={result.currentPage} totalPages={result.totalPages} basePath={path}/></div></div>;
+import { appName } from '@/components/catalog/presentation';
+import { appHref } from '@/lib/catalog/routes';
+import { getApps, getCategories } from '@/lib/queries';
+import { breadcrumbStructuredData, pageMetadata } from '@/lib/seo';
+import { SITE_NAME, SITE_URL } from '@/lib/site';
+import { parsePage, safeJsonLd } from '@/lib/utils';
+
+export const dynamic = 'force-dynamic';
+interface Props { params: Promise<{ category: string }>; searchParams: Promise<{ page?: string | string[] }> }
+function decode(value: string) { try { return decodeURIComponent(value).trim().slice(0, 100); } catch { return ''; } }
+
+const categoryContent = cache(async (value: string, page: number) => {
+  const category = decode(value), categories = await getCategories();
+  const canonical = categories.find(item => item.toLocaleLowerCase() === category.toLocaleLowerCase());
+  if (!canonical) notFound();
+  const path = `/category/${encodeURIComponent(canonical)}`;
+  const url = page > 1 ? `${path}?page=${page}` : path;
+  if (canonical !== category) permanentRedirect(url);
+  const result = await getApps({ category: canonical, page, limit: 12 });
+  if (page > result.totalPages) notFound();
+  return { category: canonical, categories, path, url, result };
+});
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const page = parsePage((await searchParams)?.page);
+  const { category, url, result } = await categoryContent((await params).category, page);
+  const suffix = page > 1 ? ` — صفحة ${page}` : '';
+  return pageMetadata(`${category} — تطبيقات وألعاب${suffix}`, `تصفح ${category} في وليد زون. تفاصيل الإصدارات والمنصات وروابط التحميل لكل عنصر.${suffix}`, url, { noindex: result.total === 0 });
+}
+
+export default async function CategoryPage({ params, searchParams }: Props) {
+  const page = parsePage((await searchParams)?.page);
+  const { category, categories, path, url, result } = await categoryContent((await params).category, page);
+  const data = [{
+    '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${category} | ${SITE_NAME}`, url: SITE_URL + url,
+    mainEntity: { '@type': 'ItemList', numberOfItems: result.items.length, itemListElement: result.items.map((app, index) => ({
+      '@type': 'ListItem', position: index + 1, url: SITE_URL + appHref(app), name: appName(app),
+    })) },
+  }, breadcrumbStructuredData([{ name: 'الرئيسية', item: SITE_URL }, { name: category, item: SITE_URL + url }])];
+  return <div className="shell py-9 sm:py-14">
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(data) }} />
+    <nav aria-label="مسار التنقل" className="mb-7 text-sm text-[#a6b5b8]"><Link href="/" className="hover:text-[#d9f578]">الرئيسية</Link> / <span aria-current="page">{category}</span></nav>
+    <header className="hero-pattern mb-10 overflow-hidden rounded-[30px] border border-white/10 bg-[#142029] p-8 sm:p-12">
+      <p className="eyebrow">CATEGORY / {category}</p><h1 className="mt-4 text-4xl font-black sm:text-5xl">{category}<span className="text-[#d9f578]">.</span></h1>
+      <p className="mt-4 max-w-2xl leading-8 text-[#a6b5b8]">كل {category} المتاحة في المكتبة، مع معلومات كل إصدار وخيارات التحميل.</p>
+      <span className="mt-5 inline-block rounded-full bg-[#d9f578] px-4 py-2 text-xs font-black text-[#142029]">{result.total} عنصر{page > 1 ? ` · صفحة ${page}` : ''}</span>
+    </header>
+    <CategoryPills categories={categories} active={category} />
+    <div className="mt-8">{result.items.length ? <AppGrid apps={result.items} /> : <p className="surface p-10 text-[#a6b5b8]">لا توجد عناصر منشورة في هذه الفئة.</p>}</div>
+    <div className="mt-10"><Pagination currentPage={result.currentPage} totalPages={result.totalPages} basePath={path} /></div>
+  </div>;
 }

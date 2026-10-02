@@ -8,8 +8,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { NavigationSkeleton } from '@/components/CatalogSkeleton';
 import VisitorTracker from '@/components/VisitorTracker';
-import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
-import { safeJsonLd } from '@/lib/utils';
+import { HOME_TITLE, SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
 import { ADSENSE_PUBLISHER_ID, ADSENSE_READY } from '@/lib/ads';
 
 export const viewport: Viewport = {
@@ -19,11 +18,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: SITE_NAME + ' — تحميل التطبيقات والألعاب',
+    default: HOME_TITLE,
     template: '%s | ' + SITE_NAME,
   },
   description: SITE_DESCRIPTION,
-  keywords: ['تحميل تطبيقات', 'تحميل ألعاب', 'WALEED ZONE', 'أدوات مجانية', 'أندرويد', 'ويندوز'],
   verification: {
     google: 'WieAa828zHp-9pQGdlDCsAk9hWj1toB3ulo0Rh8v_bs',
     other: {
@@ -36,13 +34,12 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'ar_SA',
     siteName: SITE_NAME,
-    title: SITE_NAME + ' — تحميل التطبيقات والألعاب',
+    title: HOME_TITLE,
     description: SITE_DESCRIPTION,
-    url: SITE_URL,
   },
   twitter: {
     card: 'summary_large_image',
-    title: SITE_NAME + ' — تحميل التطبيقات والألعاب',
+    title: HOME_TITLE,
     description: SITE_DESCRIPTION,
   },
   icons: {
@@ -60,19 +57,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="ar" dir="rtl">
       <body className="flex min-h-screen flex-col">
         <a href="#main-content" className="skip-link">انتقل إلى المحتوى</a>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: safeJsonLd({
-              '@context': 'https://schema.org',
-              '@type': 'WebSite',
-              name: SITE_NAME,
-              url: SITE_URL,
-              inLanguage: 'ar',
-              description: SITE_DESCRIPTION,
-            }),
-          }}
-        />
         <VisitorTracker />
         {ADSENSE_READY && <Script async strategy="afterInteractive" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`} crossOrigin="anonymous" />}
         <Suspense fallback={<NavigationSkeleton />}><Navbar /></Suspense>

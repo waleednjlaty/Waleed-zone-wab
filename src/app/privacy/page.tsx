@@ -1,14 +1,12 @@
-import type { Metadata } from 'next';
+import Link from 'next/link';
 import { TELEGRAM_CHANNEL_URL } from '@/lib/site';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'سياسة الخصوصية',
-  description: 'كيف يتعامل موقع وليد زون مع بيانات الحساب والجلسة والمفضلة وإحصاءات الزيارة.',
-  alternates: { canonical: '/privacy' },
-};
+export const metadata = pageMetadata('سياسة الخصوصية', 'كيف يتعامل موقع وليد زون مع بيانات الحساب والجلسة والمفضلة وإحصاءات الزيارة.', '/privacy', { noindex: true });
 
 export default function PrivacyPage() {
   return <article className="shell max-w-4xl py-14 sm:py-20">
+    <Link className="view-all mb-6 inline-flex" href="/">وليد زون — الرئيسية ←</Link>
     <p className="eyebrow">YOUR DATA</p><h1 className="mt-3 text-4xl font-black">سياسة الخصوصية</h1>
     <p className="mt-5 leading-8 text-[#a6b5b8]">آخر تحديث: 29 سبتمبر 2026. نوضح هنا البيانات التي يعالجها موقع وليد زون عندما تتصفح أو تنشئ حسابًا.</p>
     <div className="mt-10 space-y-7 leading-8 text-[#a6b5b8]">

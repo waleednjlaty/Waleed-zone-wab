@@ -13,6 +13,7 @@ import { getCatalogDetails } from '@/lib/catalog/metadata';
 import { appHref } from '@/lib/catalog/routes';
 import { resolveDetail } from '@/lib/catalog/resolve';
 import { SITE_URL, telegramDownloadUrl } from '@/lib/site';
+import { breadcrumbStructuredData } from '@/lib/seo';
 import { formatDate, safeExternalUrl, safeJsonLd } from '@/lib/utils';
 
 const available=(value:string|null|undefined)=>value?.trim()&&!/^[-–—.]+$/.test(value.trim())?value.trim():null;
@@ -24,17 +25,16 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
   const direct=safeExternalUrl(app.downloadUrl),download=direct||telegramDownloadUrl(app.id),url=SITE_URL+appHref(app);
   const categoryPath=app.category?`/category/${encodeURIComponent(app.category)}`:null;
   const technical=[['الإصدار',app.version],['حجم الملف',app.size],['متطلبات Android',details.android],['المعمارية',details.architecture],['اسم الحزمة',details.packageName],['نوع الملف',details.fileType],['المنصة',app.platform],['آخر تحديث',formatDate(details.updatedAt)],['تاريخ الإضافة',formatDate(app.createdAt)],['المطور',app.developer],['التصنيف',app.category]].filter((row):row is [string,string]=>Boolean(available(row[1])));
-  const breadcrumbs=[{name:'الرئيسية',item:SITE_URL},{name:kind==='games'?'الألعاب':'التطبيقات',item:`${SITE_URL}/#${kind}`},...(app.category?[{name:app.category,item:SITE_URL+categoryPath}]:[]),{name,item:url}];
+  const breadcrumbs=[{name:'الرئيسية',item:SITE_URL},{name:kind==='games'?'الألعاب':'التطبيقات',item:`${SITE_URL}/${kind}`},...(app.category?[{name:app.category,item:SITE_URL+categoryPath}]:[]),{name,item:url}];
   const structured=[{'@context':'https://schema.org','@type':'SoftwareApplication',name,url,
     ...(app.description?{description:app.description}:{}),...(safeExternalUrl(app.imageUrl)?{image:safeExternalUrl(app.imageUrl)}:{}),
     applicationCategory:isGame(app)?'GameApplication':app.category||undefined,operatingSystem:app.platform||undefined,
     softwareVersion:available(app.version)||undefined,fileSize:available(app.size)||undefined,
-    ...(app.developer?{author:{'@type':'Organization',name:app.developer}}:{}),
     ...(details.updatedAt&&formatDate(details.updatedAt)?{dateModified:details.updatedAt}:{}),
-  },{'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:breadcrumbs.map((item,index)=>({'@type':'ListItem',position:index+1,...item}))}];
+  },breadcrumbStructuredData(breadcrumbs)];
   return <div className="shell detail-page">
     <script type="application/ld+json" dangerouslySetInnerHTML={{__html:safeJsonLd(structured)}}/>
-    <nav className="detail-breadcrumbs" aria-label="مسار التنقل"><ol>{breadcrumbs.map((crumb,index)=><li key={index}>{index===breadcrumbs.length-1?<span aria-current="page" dir="auto">{name}</span>:<Link href={crumb.item.replace(SITE_URL,'')||'/'}>{crumb.name}</Link>}</li>)}</ol></nav>
+    <nav className="detail-breadcrumbs" aria-label="مسار التنقل"><ol>{breadcrumbs.map((crumb,index)=><li key={index}>{index===breadcrumbs.length-1?<span aria-current="page" dir="auto">{name}</span>:(crumb.item===`${SITE_URL}/apps`||crumb.item===`${SITE_URL}/games`)?<a href={crumb.item.replace(SITE_URL,'')}>{crumb.name}</a>:<Link href={crumb.item.replace(SITE_URL,'')||'/'}>{crumb.name}</Link>}</li>)}</ol></nav>
     <article>
       <header className="detail-summary">
         <div className="detail-identity"><span className="detail-icon"><CoverImage src={app.imageUrl} alt={`أيقونة ${name}`} aspectClassName="aspect-square"/></span><div className="detail-name"><p className="eyebrow">{kind==='games'?'لعبة':'تطبيق'}{app.category?` · ${app.category}`:''}</p><h1 dir="auto">{name}</h1>{available(app.developer)&&<p className="detail-developer" dir="auto">{app.developer}</p>}</div></div>
