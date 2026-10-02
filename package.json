@@ -15,7 +15,9 @@
     "test": "node --test tests/*.cjs",
     "test:integration": "node scripts/test-integration.mjs",
     "test:downloads": "node --test tests/downloads.cjs",
-    "migrate:downloads": "node scripts/migrate-downloads.mjs"
+    "migrate:downloads": "node scripts/migrate-downloads.mjs",
+    "metadata:downloads": "node scripts/download-metadata.mjs",
+    "test:metadata": "node --test tests/file-metadata.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1145.0",
