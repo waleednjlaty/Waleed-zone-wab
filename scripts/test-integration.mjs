@@ -43,6 +43,7 @@ try {
   await sql`INSERT INTO site_sessions(token_hash,user_id,expires_at) VALUES(${createHash('sha256').update(expired).digest('hex')},'owner-qa',NOW()-INTERVAL '1 hour')`;
   config.expiredCookie=`__Host-wz_session=${expired}`;
   const configPath=join(folder,'config.json');writeFileSync(configPath,JSON.stringify(config),{mode:0o600});
+  await sql.end(); // Setup is complete; no seed connection is needed during HTTP tests.
   server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{
     env:{...process.env,DATABASE_URL:connection,NEXT_PUBLIC_SITE_URL:base,OWNER_USER_ID:'owner-qa',WEBSITE_STATS_TOKEN:config.statsToken},stdio:['ignore','inherit','inherit'],
   });
@@ -54,7 +55,7 @@ try {
   }
   assert.ok(ready,'Production server did not become ready. Run npm run build first.');
   const code=await new Promise(resolve=>{
-    const tests=spawn(process.execPath,['--test','tests/integration.cjs','tests/seo-integration.cjs','tests/download-integration.cjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
+    const tests=spawn(process.execPath,['--test','tests/integration.cjs','tests/seo-integration.cjs','tests/download-integration.cjs','tests/admin-regression.cjs','tests/admin-api.cjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
     tests.on('exit',(status)=>resolve(status??1));
   });
   process.exitCode=code;
