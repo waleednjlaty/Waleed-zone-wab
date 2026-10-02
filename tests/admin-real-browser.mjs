@@ -9,6 +9,11 @@ assert.equal(new URL(base).hostname,'127.0.0.1');assert.equal(new URL(base).prot
 const {chromium}=await import(pathToFileURL(process.env.WZ_BROWSER_MODULE).href);
 const browser=await chromium.launch({headless:true,args:['--no-sandbox'],...(process.env.WZ_BROWSER_EXECUTABLE?{executablePath:process.env.WZ_BROWSER_EXECUTABLE}:{})});
 let checks=0;
+async function waitUntil(predicate) {
+ const deadline=Date.now()+10000;
+ while(Date.now()<deadline){if(await predicate())return;await new Promise(resolve=>setTimeout(resolve,25));}
+ assert.fail('Expected authoritative browser state did not appear.');
+}
 const versionId='11111111-1111-4111-8111-111111111111';
 const secrets=[...config.secrets,config.ownerCookie.split('=')[1],config.userCookie.split('=')[1],config.statsToken];
 try{
@@ -50,7 +55,7 @@ try{
   const competing=await context.request.put(base+'/api/admin/downloads/config/201',{headers:{Origin:base,'X-CSRF-Token':csrf_token},data:{expected_revision:current.revision,mode:'legacy',current_version_id:null}});assert.equal(competing.status(),200);
   const beforeWrites=writes.length;await page.getByRole('button',{name:'حفظ إعداد التطبيق',exact:true}).click();
   await page.getByText(/تعارض في الحفظ\. أُعيدت قراءة الحالة/).waitFor();
-  await page.waitForFunction(()=>document.querySelector('form[aria-label="إعداد التحميل"] select')?.value==='legacy');
+  await waitUntil(async()=>await page.getByLabel('وضع التحميل',{exact:true}).inputValue()==='legacy');
   assert.equal(writes.length,beforeWrites+1,'Stale write must not retry');await inspect();
   await nav('الإصدارات');await page.getByLabel('اسم الإصدار',{exact:true}).fill(`new-${width}`);await page.getByLabel('مفتاح الإصدار (release_key)',{exact:true}).fill(`qa-${width}`);
   await page.getByRole('button',{name:'إنشاء إصدار pending',exact:true}).click();await confirmed();
@@ -79,7 +84,7 @@ try{
   await nav('الإيقاف العام');
   if(width===360){assert.equal(await page.getByRole('button',{name:'إيقاف التحميل المباشر',exact:true}).isDisabled(),true);await page.getByLabel('أؤكد إيقاف التحميل المباشر لجميع التطبيقات.',{exact:true}).check();await page.getByRole('button',{name:'إيقاف التحميل المباشر',exact:true}).click();await confirmed();}
   await page.getByText('مفتاح الإيقاف مفعّل',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'إيقاف التحميل المباشر',exact:true}).isDisabled(),true);await inspect();
-  await page.getByRole('navigation',{name:'أقسام لوحة المالك'}).getByRole('link',{name:/نظرة عامة/}).focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>document.activeElement?.tagName==='H2');
+  await page.getByRole('navigation',{name:'أقسام لوحة المالك'}).getByRole('link',{name:/نظرة عامة/}).focus();await page.keyboard.press('Enter');await waitUntil(()=>page.getByRole('heading',{name:'نظرة عامة',exact:true}).evaluate(node=>node===document.activeElement));
   assert.deepEqual(external,[]);await context.close();
  }
  console.log(`Real Admin HTTPS/PostgreSQL browser: ${checks} checks passed at 360/768/1440; pending/create/rename/staged actions/stale conflict/kill switch, no mocks.`);
