@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "application_id": 201,
+  "version_label": "1.0.0",
+  "release_key": "1.0.0-r1",
+  "variant_key": "universal",
+  "artifact_type": "apk",
+  "size_bytes": 48,
+  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "mime_type": "application/vnd.android.package-archive",
+  "download_filename": "example-1.0.0.apk",
+  "storage_backend": "unconfigured",
+  "storage_key": "artifacts/example/1.0.0-r1/universal.apk",
+  "storage_object_version": null,
+  "file_state": "pending",
+  "version_state": "pending",
+  "config_mode": "legacy"
+}
