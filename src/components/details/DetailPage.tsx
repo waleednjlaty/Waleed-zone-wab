@@ -4,6 +4,7 @@ import CoverImage from '@/components/CoverImage';
 import SectionHeading from '@/components/SectionHeading';
 import ExpandableDescription from './ExpandableDescription';
 import DownloadActions from './DownloadActions';
+import { getDownloadPresentation } from '@/components/download/presentation';
 import Screenshots from './Screenshots';
 import Versions from './Versions';
 import { appName, isGame } from '@/components/catalog/presentation';
@@ -39,7 +40,7 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
       <header className="detail-summary">
         <div className="detail-identity"><span className="detail-icon"><CoverImage src={app.imageUrl} alt={`أيقونة ${name}`} aspectClassName="aspect-square"/></span><div className="detail-name"><p className="eyebrow">{kind==='games'?'لعبة':'تطبيق'}{app.category?` · ${app.category}`:''}</p><h1 dir="auto">{name}</h1>{available(app.developer)&&<p className="detail-developer" dir="auto">{app.developer}</p>}</div></div>
         <div className="detail-primary-meta">{available(app.version)&&<span><small>الإصدار</small><strong dir="auto">{app.version}</strong></span>}{available(app.size)&&<span><small>حجم الملف</small><strong dir="auto">{app.size}</strong></span>}{available(details.android)&&<span><small>Android</small><strong dir="auto">{details.android}</strong></span>}{typeof app.downloads==='number'&&app.downloads>0&&<span><small>التحميلات</small><strong>{new Intl.NumberFormat('ar').format(app.downloads)}</strong></span>}</div>
-        <div className="detail-download-area"><DownloadActions name={name} appId={app.id} imageUrl={app.imageUrl} size={available(app.size)} href={download} external={Boolean(direct)} initialSaved={saved} signedIn={Boolean(user)}/>{direct&&<a className="detail-alternate-download" href={telegramDownloadUrl(app.id)} target="_blank" rel="noopener noreferrer">التحميل عبر البوت ↗</a>}</div>
+        <div className="detail-download-area"><DownloadActions name={name} appId={app.id} imageUrl={app.imageUrl} size={available(app.size)} href={download} external={Boolean(direct)} initialSaved={saved} signedIn={Boolean(user)} directFile={getDownloadPresentation(app.id)}/>{direct&&<a className="detail-alternate-download" href={telegramDownloadUrl(app.id)} target="_blank" rel="noopener noreferrer">التحميل عبر البوت ↗</a>}</div>
       </header>
       <div className="detail-content-grid"><div className="detail-main">
         {Boolean(details.screenshots?.length)&&<Screenshots images={details.screenshots!} name={name}/>}
