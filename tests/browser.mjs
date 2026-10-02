@@ -10,10 +10,19 @@ let checks=0;
 try {
  for(const width of [360,768,1440]) {
   const page=await browser.newPage({viewport:{width,height:900}}),errors=[];
+  const pending=new Set();
+  page.on('request',request=>pending.add(request.url()));
+  page.on('requestfinished',request=>pending.delete(request.url()));
+  page.on('requestfailed',request=>pending.delete(request.url()));
   page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
-  await page.goto(base,{waitUntil:'networkidle'});
+  try {await page.goto(base,{waitUntil:'domcontentloaded'});} catch(error) {
+   console.error('Navigation diagnostics:',{url:page.url(),pending:[...pending],errors});
+   console.error('Rendered content:',await page.locator('body').innerText({timeout:2000}).catch(()=>'(no body)'));
+   throw error;
+  }
   await page.getByRole('heading',{level:1}).waitFor();
+  await page.locator('main .app-card').first().waitFor();
   assert.ok(await page.locator('main .app-card').count()>0);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   checks++;
@@ -43,14 +52,14 @@ try {
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   assert.equal(await page.locator('.mobile-download-bar').isVisible(),width<1024);
   checks++;
-  await page.goto(`${base}/games/clash-of-clans-207`,{waitUntil:'networkidle'});
+  await page.goto(`${base}/games/clash-of-clans-207`,{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Clash of Clans',exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   checks++;
-  await page.goto(`${base}/?q=zzzzzzzzzz`,{waitUntil:'networkidle'});
+  await page.goto(`${base}/?q=zzzzzzzzzz`,{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'ما لقينا نتيجة مطابقة',exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  await page.goto(`${base}/privacy`,{waitUntil:'networkidle'});
+  await page.goto(`${base}/privacy`,{waitUntil:'domcontentloaded'});
   assert.equal(await page.locator('main [aria-busy="true"]').count(),0);
   assert.deepEqual(errors,[]);
   checks++;
