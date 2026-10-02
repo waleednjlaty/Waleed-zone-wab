@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import CoverImage from '@/components/CoverImage';
 import Icon, { type IconName } from '@/components/Icon';
-import { adminApi, apiErrorMessage } from './api';
+import { adminApi, AdminApiError, apiErrorMessage } from './api';
 import { ConfigForm, Field, FileForm, KillSwitchForm, VersionForm } from './AdminForms';
-import { blockerLabel, directBlockers, formatBytes, formatTime, modeLabels } from './presentation';
+import { blockerLabel, budgetPercent, directBlockers, formatBytes, formatTime, modeLabels } from './presentation';
 import type { AdminApp, AppDetail, Section, SystemStatus } from './types';
 import styles from './admin.module.css';
 
@@ -50,9 +50,11 @@ function Gate({ label, ready }: { label: string; ready: boolean }) {
 
 export default function AdminDashboard() {
   const [section, setSection] = useState<Section>('overview');
-  const [page, setPage] = useState(1);
+  const [cursors, setCursors] = useState<(number | null)[]>([null]);
+  const page = cursors.length;
+  const after = cursors[page - 1];
   const [revision, setRevision] = useState(0);
-  const [catalog, setCatalog] = useState<{ items: AdminApp[]; total: number } | null>(null);
+  const [catalog, setCatalog] = useState<{ items: AdminApp[]; nextAfter: number | null } | null>(null);
   const [catalogError, setCatalogError] = useState('');
   const [system, setSystem] = useState<SystemStatus | null>(null);
   const [systemError, setSystemError] = useState('');
@@ -81,14 +83,14 @@ export default function AdminDashboard() {
   useEffect(() => {
     const abort = new AbortController();
     setCatalog(null); setSystem(null); setCsrf(''); setCatalogError(''); setSystemError(''); setWriteError('');
-    adminApi.applications(page, abort.signal).then(value => { if (!abort.signal.aborted) setCatalog(value); })
+    adminApi.applications(after, abort.signal).then(value => { if (!abort.signal.aborted) setCatalog(value); })
       .catch(error => { if (!abort.signal.aborted) setCatalogError(apiErrorMessage(error)); });
     adminApi.status(abort.signal).then(value => { if (!abort.signal.aborted) setSystem(value); })
       .catch(error => { if (!abort.signal.aborted) setSystemError(apiErrorMessage(error)); });
     adminApi.csrf(abort.signal).then(value => { if (!abort.signal.aborted) setCsrf(value); })
       .catch(error => { if (!abort.signal.aborted) setWriteError(apiErrorMessage(error)); });
     return () => abort.abort();
-  }, [page, revision]);
+  }, [after, revision]);
   useEffect(() => {
     const abort = new AbortController(); setLoadedDetail(null); setDetailError('');
     if (selectedId !== null) adminApi.detail(selectedId, abort.signal).then(value => { if (!abort.signal.aborted) setLoadedDetail(value); })
@@ -108,7 +110,7 @@ export default function AdminDashboard() {
     try {
       await action(csrf); accepted = true;
       const [newDetail, newSystem, newCatalog] = await Promise.all([
-        selectedId === null ? Promise.resolve(null) : adminApi.detail(selectedId), adminApi.status(), adminApi.applications(page),
+        selectedId === null ? Promise.resolve(null) : adminApi.detail(selectedId), adminApi.status(), adminApi.applications(after),
       ]);
       if (!verify(newDetail, newSystem)) throw new Error('UNCONFIRMED_WRITE');
       if (!mounted.current) return;
@@ -117,7 +119,11 @@ export default function AdminDashboard() {
     } catch (error) {
       if (!mounted.current) return;
       setCsrf(''); setLoadedDetail(null); setSystem(null);
-      setWriteError(accepted ? 'استلم الخادم الحفظ، لكن تعذر تأكيد الحالة الجديدة. حدّث الحالة قبل أي عملية إضافية؛ لا تكرر الحفظ مباشرة.' : apiErrorMessage(error));
+      if (error instanceof AdminApiError && error.status === 409) {
+        // Refetch authoritative revisions, preserving a visible conflict. Never retry the write.
+        setRevision(v => v + 1);
+        setNotice('تعارض في الحفظ. أُعيدت قراءة الحالة؛ راجع التغييرات قبل إرسال إجراء جديد.');
+      } else setWriteError(accepted ? 'استلم الخادم الحفظ، لكن تعذر تأكيد الحالة الجديدة. حدّث الحالة قبل أي عملية إضافية؛ لا تكرر الحفظ مباشرة.' : apiErrorMessage(error));
     } finally {
       mutationLock.current = false;
       if (mounted.current) { setBusy(false); requestAnimationFrame(() => feedback.current?.focus()); }
@@ -152,9 +158,9 @@ export default function AdminDashboard() {
 
         {section === 'overview' && <>
           <div className={styles.overviewHero}><div><span className={styles.eyebrow}>CONTROL BEFORE DELIVERY</span><h3>وضوح الحالة، قبل زر التحميل.</h3><p>راقب الإصدارات والملفات وشروط الإطلاق. هذه اللوحة لا ترفع ملفات APK ولا تنشئ تخزينًا.</p></div>
-            <Badge tone={system?.enabled && system.deploymentEnabled ? 'cyan' : 'warning'}>{system ? system.enabled && system.deploymentEnabled ? 'التفعيل العام متاح · افحص شروط كل تطبيق' : 'التحميل المباشر محظور حاليًا' : 'الجاهزية غير معروفة'}</Badge></div>
+            <Badge tone={system?.activationAllowed && system.activationAllowed && system.enabled && system.deploymentEnabled ? 'cyan' : 'warning'}>{system ? system.activationAllowed && system.enabled && system.deploymentEnabled ? 'التفعيل العام متاح · افحص شروط كل تطبيق' : 'التحميل المباشر محظور حاليًا' : 'الجاهزية غير معروفة'}</Badge></div>
           <div className={styles.stats}>
-            <div><span>التطبيقات في الكتالوج</span><strong>{catalog?.total ?? '—'}</strong><small>إجمالي الخادم</small></div>
+            <div><span>التطبيقات في الكتالوج</span><strong>{catalog?.items.length ?? '—'}</strong><small>الصفحة الحالية</small></div>
             <div><span>إصدارات التطبيق المحدد</span><strong>{detail?.versions.length ?? '—'}</strong><small>{detail ? detail.app.name : 'اختر تطبيقًا'}</small></div>
             <div><span>ملفات verified للتطبيق</span><strong>{detail ? detail.files.filter(f => f.scanStatus === 'verified').length : '—'}</strong><small>verified لا تعني active أو published</small></div>
             <div><span>ميزانية معتمدة</span><strong className={styles.statWord}>{system?.budget ? system.budget.verified ? 'معتمدة' : 'غير معتمدة' : '—'}</strong><small>صلاحية الفترة تُفحص مستقلة</small></div>
@@ -167,8 +173,8 @@ export default function AdminDashboard() {
         {section === 'applications' && <Panel title="كتالوج التطبيقات" description="الكتالوج للقراءة والاختيار. إعدادات التحميل تُدار في أقسام مستقلة.">
           {catalogError ? <State title="تعذر قراءة الكتالوج" error>{catalogError}</State> : !catalog ? <Loading label="جارٍ قراءة التطبيقات…" /> : catalog.items.length === 0 ? <State title="لا توجد تطبيقات في هذه الصفحة">أضف التطبيقات عبر مسار الكتالوج المعتمد.</State> : <>
             <div className={styles.appList}>{catalog.items.map(app => <button key={app.id} className={styles.appRow} onClick={() => selectApp(app.id)} disabled={busy} aria-label={`إدارة ${app.name}`}>
-              <AppIdentity app={app} /><Badge tone={app.mode === 'disabled' ? 'danger' : app.mode === 'direct' ? 'cyan' : 'neutral'}>{modeLabels[app.mode]}</Badge><Icon name="chevron" /></button>)}</div>
-            <div className={styles.pagination}><button className={styles.secondary} disabled={page === 1 || busy} onClick={() => setPage(v => v - 1)}>السابق</button><span>صفحة {page} · {catalog.total} تطبيق</span><button className={styles.secondary} disabled={page * 50 >= catalog.total || busy} onClick={() => setPage(v => v + 1)}>التالي</button></div>
+              <AppIdentity app={app} /><Badge tone={app.mode === 'disabled' ? 'danger' : app.mode === 'direct' ? 'cyan' : 'neutral'}>{app.mode ? modeLabels[app.mode] : 'افتح إعداد التحميل لقراءة الوضع'}</Badge><Icon name="chevron" /></button>)}</div>
+            <div className={styles.pagination}><button className={styles.secondary} disabled={page === 1 || busy} onClick={() => setCursors(v => v.slice(0, -1))}>السابق</button><span>صفحة {page} · {catalog.items.length} تطبيق في الصفحة</span><button className={styles.secondary} disabled={catalog.nextAfter === null || busy} onClick={() => { if (catalog.nextAfter !== null) setCursors(v => [...v, catalog.nextAfter]); }}>التالي</button></div>
           </>}
         </Panel>}
 
@@ -188,17 +194,20 @@ export default function AdminDashboard() {
         </>}
 
         {section === 'configuration' && detail && <Panel title="إعداد تحميل التطبيق" description="الوضع المسجّل لا يثبت جاهزية التسليم. كل شروط الخادم يجب أن تجتاز التحقق.">
-          <ConfigForm key={`${detail.app.id}-${system?.checkedAt}-${revision}`} detail={detail} system={system} busy={busy} locked={locked} onSave={input => mutate(token => adminApi.saveConfig(detail.app.id, input, token), updated => !!updated && updated.app.mode === input.mode && updated.app.currentVersionId === input.current_version_id)} />
+          <ConfigForm key={`${detail.app.id}-${detail.app.configRevision}-${revision}`} detail={detail} system={system} busy={busy} locked={locked} onSave={input => mutate(token => adminApi.saveConfig(detail.app.id, input, token), updated => !!updated && updated.app.mode === input.mode && updated.app.currentVersionId === input.current_version_id)} />
         </Panel>}
         {section === 'versions' && detail && <div className={styles.twoColumns}>
           <Panel title="الإصدارات المسجّلة">{detail.versions.length ? <ul className={styles.recordList}>{detail.versions.map(version => <li key={version.id}><div className={styles.recordHead}><strong dir="auto">{version.label}</strong>{version.id === detail.app.currentVersionId && <Badge tone="cyan">الإصدار الحالي</Badge>}</div><small dir="ltr">{version.releaseKey}</small><VersionBadges active={version.active} published={version.published} /></li>)}</ul> : <State title="لا توجد إصدارات">أنشئ أول إصدار بحالة pending.</State>}</Panel>
-          <Panel title="بيانات الإصدار"><VersionForm key={`${detail.app.id}-${system?.checkedAt}-${revision}`} detail={detail} busy={busy} locked={locked} onSave={(input, id) => mutate(token => adminApi.saveVersion(input, token, id), updated => !!updated?.versions.some(v => (id ? v.id === id : v.releaseKey === input.release_key) && v.label === input.version_label && v.active === input.active && v.published === input.published))} /></Panel>
+          <Panel title="بيانات الإصدار"><VersionForm key={`${detail.app.id}-${detail.app.configRevision}-${revision}`} detail={detail} busy={busy} locked={locked} onSave={(input, id) => mutate(token => adminApi.saveVersion(input, token, id), updated => !!updated?.versions.some(v => (id ? v.id === id : 'release_key' in input && v.releaseKey === input.release_key) && ('action' in input ? input.action === 'activate' ? v.active : input.action === 'publish' ? v.published : !v.active && !v.published : v.label === input.version_label && (id ? true : !v.active && !v.published))))} /></Panel>
         </div>}
         {section === 'files' && detail && <>
           <Panel title="ملفات التحميل" description="تعرض القائمة الحالة والبيانات العامة للملف؛ مرجع التخزين والبصمة لا يظهران هنا.">
-            {detail.files.length ? <ul className={styles.recordList}>{detail.files.map(file => <li key={file.id}><div className={styles.recordHead}><strong dir="auto">{file.filename}</strong><span dir="ltr">{formatBytes(file.sizeBytes)}</span></div><small>الإصدار: {detail.versions.find(v => v.id === file.versionId)?.label} · {file.variantKey} · APK</small><ScanBadges status={file.scanStatus} active={file.active} retired={file.retired} /></li>)}</ul> : <State title="لا توجد ملفات">أضف metadata بعد إنشاء الإصدار؛ لا يوجد رفع ملفات هنا.</State>}
+            {detail.files.length ? <ul className={styles.recordList}>{detail.files.map(file => <li key={file.id}><div className={styles.recordHead}><strong dir="auto">{file.filename}</strong><span dir="ltr">{formatBytes(file.sizeBytes)}</span></div><small>الإصدار: {detail.versions.find(v => v.id === file.versionId)?.label} · {file.variantKey} · APK</small><ScanBadges status={file.scanStatus} active={file.active} retired={file.retired} /><div className={styles.formActions}>
+                <button className={styles.secondary} disabled={busy || locked || file.retired || file.active || file.scanStatus !== 'verified'} onClick={() => mutate(token => adminApi.fileAction(file.id, 'activate', file.revision, token), updated => !!updated?.files.some(f => f.id === file.id && f.active && f.scanStatus === 'verified'))}>تفعيل الملف</button>
+                <button className={styles.secondary} disabled={busy || locked || !file.active} onClick={() => mutate(token => adminApi.fileAction(file.id, 'deactivate', file.revision, token), updated => !!updated?.files.some(f => f.id === file.id && !f.active))}>إلغاء تفعيل الملف</button>
+              </div></li>)}</ul> : <State title="لا توجد ملفات">أضف metadata بعد إنشاء الإصدار؛ لا يوجد رفع ملفات هنا.</State>}
           </Panel><Panel title="تسجيل metadata لملف جديد" description="لا يُقبل ملف ثنائي؛ تُحفظ البيانات كـpending فقط.">
-            <FileForm key={`${detail.app.id}-${system?.checkedAt}-${revision}`} detail={detail} busy={busy} locked={locked} onSave={input => mutate(token => adminApi.saveFile(input, token), updated => !!updated?.files.some(f => f.versionId === input.version_id && f.variantKey === input.variant_key && f.filename === input.download_filename && f.sizeBytes === input.size_bytes && f.scanStatus === 'pending' && !f.active))} />
+            <FileForm key={`${detail.app.id}-${detail.app.configRevision}-${revision}`} detail={detail} busy={busy} locked={locked} onSave={input => mutate(token => adminApi.saveFile(input, token), updated => !!updated?.files.some(f => f.id === input.id && f.versionId === input.version_id && f.variantKey === input.metadata.variant_key && f.filename === input.metadata.download_filename && f.sizeBytes === input.metadata.size_bytes && f.scanStatus === 'pending' && !f.active))} />
           </Panel>
         </>}
 
@@ -207,7 +216,7 @@ export default function AdminDashboard() {
           <Panel title="الميزانية والحجز" description="عرض للقراءة فقط. لا تعديل للفوترة أو الميزانية من هذه اللوحة.">
             {!system ? <State title="الميزانية غير متاحة">يلزم رد صالح من الخادم؛ لا نفترض وجود رصيد مجاني.</State> : !system.budget ? <State title="لم تُعتمد ميزانية تحميل">لا يمكن تفعيل direct بدون ميزانية حالية موثقة.</State> : <>
               <dl className={styles.budget}><div><dt>الحالة</dt><dd>{system.budget.verified ? 'معتمدة' : 'غير معتمدة'}</dd></div><div><dt>الحد المعتمد</dt><dd dir="ltr">{formatBytes(system.budget.limitBytes)}</dd></div><div><dt>الحجم المحجوز</dt><dd dir="ltr">{formatBytes(system.budget.reservedBytes)}</dd></div><div><dt>بداية الفترة</dt><dd>{formatTime(system.budget.startsAt)}</dd></div><div><dt>نهاية الفترة</dt><dd>{formatTime(system.budget.expiresAt)}</dd></div></dl>
-              <label className={styles.progressLabel} htmlFor="budget-progress">الحجم المحجوز من الحد المعتمد</label><progress id="budget-progress" max={system.budget.limitBytes || 1} value={system.budget.reservedBytes} />
+              <label className={styles.progressLabel} htmlFor="budget-progress">الحجم المحجوز من الحد المعتمد</label><progress id="budget-progress" max={100} value={budgetPercent(system.budget)} />
             </>}
           </Panel>{detail && <Panel title="عوائق التطبيق المحدد">{blockers.length ? <ul className={styles.blockerList}>{blockers.map(text => <li key={text}>{text}</li>)}</ul> : <p>لا توجد عوائق في آخر قراءة؛ يُعاد التحقق في الخادم لكل طلب.</p>}</Panel>}
         </>}
@@ -225,10 +234,10 @@ export default function AdminDashboard() {
 function SystemGates({ system, error }: { system: SystemStatus | null; error: string }) {
   if (error) return <State title="حالة النظام غير متاحة" error>{error}</State>;
   if (!system) return <Loading label="جارٍ التحقق من شروط النظام…" />;
-  const budgetReady = !!system.budget?.verified && Date.parse(system.budget.startsAt) <= Date.parse(system.checkedAt) && Date.parse(system.budget.expiresAt) > Date.parse(system.checkedAt) && system.budget.reservedBytes < system.budget.limitBytes;
+  const budgetReady = !!system.budget?.verified && system.budget.current && Date.parse(system.budget.startsAt) <= Date.parse(system.checkedAt) && Date.parse(system.budget.expiresAt) > Date.parse(system.checkedAt) && BigInt(system.budget.reservedBytes) < BigInt(system.budget.limitBytes);
   return <><div className={styles.gates}>
     <Gate label="جداول التحميل" ready={system.migrationReady} /><Gate label="إعداد النشر" ready={system.deploymentEnabled} />
     <Gate label="التفعيل العام" ready={system.enabled} /><Gate label="مزود التخزين" ready={system.storageReady} />
-    <Gate label="حماية مدخل الشبكة" ready={system.ingressReady} /><Gate label="الميزانية الحالية" ready={budgetReady} />
+    <Gate label="حماية مدخل الشبكة" ready={system.ingressReady} /><Gate label="canary فعلي" ready={system.canaryReady} /><Gate label="الميزانية الحالية" ready={budgetReady} />
   </div>{system.blockers.length > 0 && <ul className={styles.blockerList}>{[...new Set(system.blockers.map(blockerLabel))].map(text => <li key={text}>{text}</li>)}</ul>}</>;
 }

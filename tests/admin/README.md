@@ -1,3 +1,5 @@
+> Integrated by Agent S: the original P/Q incompatibilities below are historical findings. The real interoperability gate now uses unmodified session tokens and actual handlers; it must pass. See [ADMIN_INTEGRATION_REVIEW](../../docs/ADMIN_INTEGRATION_REVIEW.md). Unauthorized Admin streaming is accepted only with explicit not-found UI, no data, no-store/noindex and independently denied APIs.
+
 # Agent R — Admin security QA (#42)
 
 Tests and test infrastructure only. No production DB, migrations, storage traffic, cloud provisioning, APK transfer, runtime fix or PR merge.

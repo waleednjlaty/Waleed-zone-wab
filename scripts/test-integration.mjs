@@ -43,6 +43,7 @@ try {
   await sql`INSERT INTO site_sessions(token_hash,user_id,expires_at) VALUES(${createHash('sha256').update(expired).digest('hex')},'owner-qa',NOW()-INTERVAL '1 hour')`;
   config.expiredCookie=`__Host-wz_session=${expired}`;
   const configPath=join(folder,'config.json');writeFileSync(configPath,JSON.stringify(config),{mode:0o600});
+  await sql.end(); // Setup is complete; no seed connection is needed during HTTP tests.
   server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{
     env:{...process.env,DATABASE_URL:connection,NEXT_PUBLIC_SITE_URL:base,OWNER_USER_ID:'owner-qa',WEBSITE_STATS_TOKEN:config.statsToken},stdio:['ignore','inherit','inherit'],
   });

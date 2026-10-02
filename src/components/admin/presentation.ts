@@ -4,6 +4,8 @@ export const modeLabels: Record<Mode, string> = {
   legacy: 'legacy · المسار السابق', direct: 'direct · تحميل مباشر', disabled: 'disabled · معطّل',
 };
 const blockerLabels: Record<string, string> = {
+  CANARY_REQUIRED: 'لم يُعتمد اختبار canary فعلي بعد.',
+  PRODUCTION_MIGRATION_UNVERIFIED: 'توفر الجداول في هذه البيئة لا يؤكد تطبيق migration الإنتاج.',
   DIRECT_ACTIVATION_BLOCKED: 'تفعيل direct محظور في هذه المرحلة؛ يلزم اعتماد الإطلاق من الخادم.',
   MIGRATION_REQUIRED: 'جداول التحميل غير جاهزة. يلزم تطبيق migration بإجراء منفصل معتمد.',
   DOWNLOAD_TABLES_MISSING: 'جداول التحميل غير جاهزة.',
@@ -28,18 +30,19 @@ export function directBlockers(detail: AppDetail | null, system: SystemStatus | 
   const blockers = new Set<string>();
   if (!detail || !system) return ['بيانات التحقق غير متاحة؛ تفعيل direct محظور.'];
   for (const code of [...system.blockers, ...detail.blockers]) blockers.add(blockerLabel(code));
-  if (!detail.directActivationAllowed) blockers.add(blockerLabel('DIRECT_ACTIVATION_BLOCKED'));
+  if (!detail.directActivationAllowed || !system.activationAllowed) blockers.add(blockerLabel('DIRECT_ACTIVATION_BLOCKED'));
   if (!system.migrationReady) blockers.add(blockerLabel('MIGRATION_REQUIRED'));
   if (!system.deploymentEnabled) blockers.add(blockerLabel('DEPLOYMENT_DISABLED'));
   if (!system.enabled) blockers.add(blockerLabel('DOWNLOADS_DISABLED'));
   if (!system.storageReady) blockers.add(blockerLabel('STORAGE_UNAVAILABLE'));
   if (!system.ingressReady) blockers.add(blockerLabel('INGRESS_UNVERIFIED'));
+  if (!system.canaryReady) blockers.add(blockerLabel('CANARY_REQUIRED'));
   const budget = system.budget;
   const checkedAt = Date.parse(system.checkedAt);
-  if (!budget || !budget.verified || !Number.isFinite(checkedAt)
+  if (!budget || !budget.verified || !budget.current || !Number.isFinite(checkedAt)
     || Date.parse(budget.startsAt) > checkedAt || Date.parse(budget.expiresAt) <= checkedAt)
     blockers.add(blockerLabel('BUDGET_UNVERIFIED'));
-  else if (budget.reservedBytes >= budget.limitBytes) blockers.add(blockerLabel('BUDGET_EXHAUSTED'));
+  else if (BigInt(budget.reservedBytes) >= BigInt(budget.limitBytes)) blockers.add(blockerLabel('BUDGET_EXHAUSTED'));
   const version = detail.versions.find(v => v.id === (selectedVersionId === undefined ? detail.app.currentVersionId : selectedVersionId));
   if (!version) blockers.add(blockerLabel('VERSION_REQUIRED'));
   else {
@@ -51,12 +54,20 @@ export function directBlockers(detail: AppDetail | null, system: SystemStatus | 
   }
   return [...blockers];
 }
-export function formatBytes(bytes: number) {
-  if (!Number.isFinite(bytes) || bytes < 0) return 'غير متاح';
-  if (bytes < 1024) return `${bytes} B`;
-  const unit = bytes >= 1024 ** 3 ? 'GiB' : bytes >= 1024 ** 2 ? 'MiB' : 'KiB';
-  const divisor = unit === 'GiB' ? 1024 ** 3 : unit === 'MiB' ? 1024 ** 2 : 1024;
-  return `${(bytes / divisor).toLocaleString('en-US', { maximumFractionDigits: 1 })} ${unit}`;
+export function formatBytes(bytes: number | string) {
+  const raw = typeof bytes === 'number' && Number.isSafeInteger(bytes) && bytes >= 0 ? String(bytes) : bytes;
+  if (typeof raw !== 'string' || !/^(0|[1-9][0-9]*)$/.test(raw)) return 'غير متاح';
+  const value = BigInt(raw);
+  // Exact integer arithmetic, including budget BIGINT above Number.MAX_SAFE_INTEGER.
+  const divisor = value >= BigInt(1024) ** BigInt(3) ? BigInt(1024) ** BigInt(3) : value >= BigInt(1024) ** BigInt(2) ? BigInt(1024) ** BigInt(2) : value >= BigInt(1024) ? BigInt(1024) : BigInt(1);
+  const unit = divisor === BigInt(1) ? 'B' : divisor === BigInt(1024) ? 'KiB' : divisor === BigInt(1024) ** BigInt(2) ? 'MiB' : 'GiB';
+  const scaled = value * BigInt(10) / divisor;
+  return `${scaled / BigInt(10)}${scaled % BigInt(10) ? '.' + scaled % BigInt(10) : ''} ${unit} (${value.toLocaleString('en-US')} bytes)`;
+}
+export function budgetPercent(budget: SystemStatus['budget']) {
+  if (!budget || BigInt(budget.limitBytes) === BigInt(0)) return 0;
+  // Convert only a bounded 0..100 progress percentage, never the byte counters.
+  return Number(BigInt(budget.reservedBytes) * BigInt(100) / BigInt(budget.limitBytes));
 }
 export function formatTime(iso?: string | null) {
   return iso && Number.isFinite(Date.parse(iso))

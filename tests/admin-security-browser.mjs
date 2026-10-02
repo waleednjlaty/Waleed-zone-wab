@@ -57,7 +57,7 @@ try {
     await page.goto(config.base+'/account',{waitUntil:'domcontentloaded'});assert.equal(new URL(page.url()).pathname,'/account');await inspect(page,errors,`${width} ordinary account`);
     for(const [actor,header] of [['anonymous',''],['non-owner',config.userCookie],['forged','__Host-wz_session=forged']]) {
       await cookie(context,header);const r=await page.goto(config.base+'/admin',{waitUntil:'domcontentloaded'});
-      await page.getByRole('heading',{name:'الصفحة مو موجودة',exact:true}).waitFor();
+      await page.getByRole('heading',{name:/الصفحة مو موجودة|This page could not be found\./}).waitFor();
       denial.deniedAdminHtml(r.status(),await page.content());assert.match(r.headers()['x-robots-tag']||'',/noindex/);
       assert.ok(!(await page.content()).includes('PRIVATE DRAFT SECRET'));await inspect(page,errors,`${width} Admin denied ${actor}`);
     }

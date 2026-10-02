@@ -1,0 +1,18 @@
+# Agent S owner Admin integration review
+
+Issue #43. Base `de173adb36f160bf769e41c656ca0e7fe7fbbdf0`.
+
+Integrated, in order:
+1. #45 backend `82a45223f4481d4d288f2434696b04367a916d52`.
+2. #44 UI `266bd7558683cc3c939c849382e66f7a6cb8fbbb`.
+3. #46 QA `b1cc767ee04185b07b330e59b2d1819f72b4c74e`.
+
+No textual merge conflicts. Real contract conflicts were resolved in the frontend: session/catalog endpoints, scoped detail composition, dotted CSRF, status projection, decimal BIGINT counters, revisions, staged version/file actions, nested object-bound metadata and legacy/disabled version clearing. Backend origin, CSRF, UUID/SHA/key binding, serializable writes, advisory lock, stale revisions and state guards were retained unchanged.
+
+Security review: owner authorization is enforced in the Admin layout and independently by every API. Unauthorized streaming HTML may return 200 but must render explicit not-found without Admin data, with no-store/noindex; API denial remains independently enforced. An attempted root pre-stream notFound guard returned empty error-shell HTML and was discarded to preserve usable denial UI. Anonymous/non-owner/expired/misconfigured owner cases, CSRF/origin spoofing, malformed/oversized bodies, IDOR and cross-entity binding, immutable metadata, stale writes, unverified activation, direct/re-enable denial, missing schema/outages and private projections are exercised by actual route tests. Revisions are necessary opaque concurrency tokens; raw checksums, keys and provider versions are absent from response/presentation DTOs. Only the file manifest input stage accepts a necessary object key and checksum. No credentials or signed URLs are introduced.
+
+The loading regression now holds search network requests until loading assertions complete and waits for an interactive React control before typing. Search implementation/algorithm is unchanged. The full production public suite, SEO checks, download countdown fixture, Admin presentation fixture/axe checks and real HTTPS Admin form suite are mandatory CI gates. Native multi-connection create/stale-write/advisory-lock coverage uses CI's dedicated disposable PostgreSQL.
+
+Local Node 20.19.5: npm ci, typecheck, lint and production build passed. Full suite: 562 tests, 498 passed, 0 failed, 64 prerequisite-gated skips. Strict Admin API + interoperability + UI unit gate: 47 passed, no skips/failures. Interoperability alone: 9 passed, no skips/TODO/token/body rewriting. Presentation browser/axe: 48 checks at 360/768/1440 passed. Native PostgreSQL and final CI evidence must be green before merge; local PGlite is not native concurrency certification.
+
+Remaining rollout gates: separately approved production migration, provider attestation and immutable verified objects, ingress verification, certified current budget, global deployment/shared enable, real canary and release authorization. The dashboard deliberately cannot activate direct mode or re-enable the shared switch. No Production DB/cloud/storage operation forms part of this integration.

@@ -30,10 +30,17 @@ try {
   assert.ok(await page.locator('main .app-card').count()>0);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   checks++;
+  let releaseSearch;
+  let searchGate = new Promise(resolve => { releaseSearch = resolve; });
   await page.route('**/api/search?*',async route=>{
-   await new Promise(resolve=>setTimeout(resolve,650));
+   const gate = searchGate; await gate;
    try {await route.continue();} catch {} // Superseded searches are intentionally cancelled.
   });
+  // This React control proves hydration before filling the independently hydrated search.
+  await page.getByRole('button', {name:'فتح البحث', exact:true}).click();
+  await page.locator('.search-dialog').waitFor();
+  await page.keyboard.press('Escape');
+  await page.locator('.search-dialog').waitFor({state:'hidden'});
   const input=page.locator('.intro-search input[type="search"]');
   await input.fill('واتساب');
   const suggestion=page.locator('.search-suggestions');
@@ -43,11 +50,14 @@ try {
   assert.equal(await suggestion.locator('.suggestion-loading [aria-hidden="true"]').count(),3);
   await page.emulateMedia({reducedMotion:'reduce'});
   assert.equal(await suggestion.locator('.suggestion-loading span').first().evaluate(node=>getComputedStyle(node).animationName),'none');
+  releaseSearch();
   await suggestion.getByRole('link').filter({hasText:'WhatsApp'}).first().waitFor();
   checks++;
+  searchGate = new Promise(resolve => { releaseSearch = resolve; });
   await input.fill('Telegram');
   await suggestion.locator('.suggestion-loading').waitFor();
   await input.fill('واتساب');
+  releaseSearch();
   await suggestion.getByRole('link').filter({hasText:'WhatsApp'}).first().waitFor();
   assert.ok(!(await suggestion.innerText()).includes('Telegram'));
   await suggestion.getByRole('link').filter({hasText:'WhatsApp'}).first().click();

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { fixture, versionId, fileId, token } from './fixtures/admin-ui/api.mjs';
+import { fixture, versionId, fileId, token, revision } from './fixtures/admin-ui/api.mjs';
 
 export async function verifyAdminUI({ base, root }) {
   const { chromium } = await import(pathToFileURL(process.env.WZ_BROWSER_MODULE).href);
@@ -22,19 +22,33 @@ export async function verifyAdminUI({ base, root }) {
         if (failure) return respond({ error: { message: 'DO_NOT_RENDER_ERROR_SECRET' } }, failure);
         if (request.method() !== 'GET') {
           assert.equal(request.headers()['x-csrf-token'], token); const input = request.postDataJSON(); writes.push([path, input]);
-          if (path.endsWith('/control')) { assert.deepEqual(input, { enabled: false }); state.status.enabled = false; }
-          else if (path.endsWith('/config/201')) { state.detail.application.mode = input.mode; state.detail.application.current_version_id = input.current_version_id; }
-          else if (path.endsWith('/versions')) state.detail.versions.push({ ...input, id: '33333333-3333-4333-8333-333333333333' });
-          else if (path.endsWith('/files')) state.detail.files.push({ ...input, id: '44444444-4444-4444-8444-444444444444', scan_status: 'pending', active: false, retired_at: null });
+          if (path.endsWith('/control')) { assert.deepEqual(input, { enabled: false }); state.status.shared_enabled = false; }
+          else if (path.endsWith('/config/201')) {
+            assert.equal(input.expected_revision, state.detail.application.revision);
+            assert.equal(input.current_version_id, null);
+            state.detail.application.mode = input.mode; state.detail.application.current_version_id = null;
+            state.detail.application.revision = (state.detail.application.revision.startsWith('c') ? 'd' : 'c').repeat(64);
+          } else if (path.endsWith('/versions')) {
+            assert.deepEqual(Object.keys(input).sort(), ['application_id', 'release_key', 'version_label']);
+            state.detail.versions.push({ ...input, id: '33333333-3333-4333-8333-333333333333', active: false, published: false, published_at: null, revision });
+          } else if (path.endsWith('/files')) {
+            assert.deepEqual(Object.keys(input).sort(), ['id', 'metadata', 'version_id']);
+            assert.equal(input.metadata.storage_backend, 'railway-s3');
+            assert.equal(input.metadata.storage_key, `artifacts/${input.id}/${input.metadata.sha256}.apk`);
+            state.detail.files.push({ ...input.metadata, id: input.id, version_id: input.version_id, scan_status: 'pending', active: false, retired_at: null, revision });
+          }
           return respond({ ok: true });
         }
         if (failConfirmation && writes.length) return respond({}, 503);
         if (slow && path.endsWith('/202')) await new Promise(resolve => setTimeout(resolve, 800));
-        if (path.endsWith('/csrf')) return respond({ csrf_token: token });
+        if (path.endsWith('/session')) return respond({ csrf_token: token, expires_at: new Date(Date.now()+900000).toISOString() });
         if (path.endsWith('/status')) { readCount++; return respond(state.status); }
-        if (path.endsWith('/applications')) return respond({ applications: state.applications, total: state.applications.length });
-        if (path.endsWith('/201')) return respond(state.detail);
-        if (path.endsWith('/202')) return respond({ application: state.applications[1], versions: [], files: [], blockers: ['DIRECT_ACTIVATION_BLOCKED'], direct_activation_allowed: false });
+        const query = new URL(request.url()).searchParams;
+        if (path.endsWith('/catalog')) return respond({ items: state.applications.filter(a => a.id > Number(query.get('after') || 0)).slice(0, Number(query.get('limit'))), next_after: null });
+        if (path.endsWith('/config/201')) return respond({ ...state.detail.application, application_id: 201 });
+        if (path.endsWith('/config/202')) return respond({ application_id: 202, mode: 'disabled', current_version_id: null, revision });
+        if (path.endsWith('/versions')) return respond({ items: query.get('application_id') === '201' ? state.detail.versions : [], next_after: null });
+        if (path.endsWith('/files')) return respond({ items: state.detail.files.filter(f => f.version_id === query.get('version_id')), next_after: null });
         return respond({}, 404);
       });
       const navigate = async name => { await page.getByRole('navigation', { name: 'أقسام لوحة المالك' }).getByRole('link', { name, exact: false }).click(); };
@@ -60,7 +74,7 @@ export async function verifyAdminUI({ base, root }) {
       await page.getByText('تم الحفظ وتأكيد الحالة الجديدة من الخادم.', { exact: true }).waitFor();
       assert.equal(state.detail.application.mode, 'disabled'); assert.ok(readCount >= 2); checks++;
       await navigate('الإصدارات');
-      assert.equal(await page.getByLabel('active · إصدار فعّال', { exact: true }).isDisabled(), true);
+      assert.equal(await page.getByLabel('إجراء الإصدار', { exact: true }).count(), 0);
       await page.getByLabel('اسم الإصدار', { exact: true }).fill('2.0.0');
       await page.getByLabel('مفتاح الإصدار (release_key)', { exact: true }).fill('2.0.0-r1');
       await page.getByRole('button', { name: 'إنشاء إصدار pending', exact: true }).click();
@@ -72,9 +86,10 @@ export async function verifyAdminUI({ base, root }) {
       await page.getByRole('form', { name: 'بيانات ملف جديد' }).getByLabel('الإصدار', { exact: true }).selectOption(versionId);
       await page.getByLabel('اسم ملف التنزيل', { exact: true }).fill('new-1.0.0.apk');
       await page.getByLabel('الحجم بالبايت', { exact: true }).fill('48');
+      await page.getByLabel('UUID الملف', { exact: true }).fill('44444444-4444-4444-8444-444444444444');
       await page.getByLabel('SHA-256', { exact: true }).fill('z'.repeat(64));
       await page.getByText('مرجع التخزين الخاص · metadata فقط', { exact: true }).click();
-      await page.getByLabel('مفتاح الكائن (storage_key)', { exact: true }).fill(`artifacts/${fileId}/${'a'.repeat(64)}.apk`);
+      await page.getByLabel('مفتاح الكائن (storage_key)', { exact: true }).fill(`artifacts/44444444-4444-4444-8444-444444444444/${'a'.repeat(64)}.apk`);
       await page.getByRole('button', { name: 'إنشاء metadata بحالة pending', exact: true }).click();
       await page.getByText('SHA-256 يجب أن يتألف من 64 حرفًا سداسيًا صغيرًا.', { exact: true }).waitFor();
       await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'alert');
@@ -98,7 +113,7 @@ export async function verifyAdminUI({ base, root }) {
       await page.waitForTimeout(900);
       assert.equal(await page.getByLabel('وضع التحميل', { exact: true }).inputValue(), 'disabled'); checks++;
       // Kill switch has confirmation, never enables downloads.
-      state.status.enabled = true; state.status.deployment_enabled = true;
+      state.status.shared_enabled = true; state.status.deployment_enabled = true;
       await page.getByRole('button', { name: 'تحديث الحالة', exact: true }).click();
       await page.getByRole('form', { name: 'إعداد التحميل' }).waitFor();
       await navigate('الإيقاف العام');
@@ -107,7 +122,7 @@ export async function verifyAdminUI({ base, root }) {
       await page.getByLabel('أؤكد إيقاف التحميل المباشر لجميع التطبيقات.', { exact: true }).check();
       await page.getByRole('button', { name: 'إيقاف التحميل المباشر', exact: true }).click();
       await page.getByText('مفتاح الإيقاف مفعّل', { exact: true }).waitFor();
-      assert.equal(state.status.enabled, false); checks++;
+      assert.equal(state.status.shared_enabled, false); checks++;
       // A successful write with failed reread is NOT a confirmed success.
       await navigate('إعداد التحميل'); await page.getByLabel('وضع التحميل', { exact: true }).selectOption('legacy');
       failConfirmation = true;
