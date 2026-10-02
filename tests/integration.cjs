@@ -19,7 +19,8 @@ integration('owner session and existing scoped owner automation can read statist
  assert.equal((await request('/api/stats',{headers:{Authorization:'Bearer invalid'}})).status,401);
 });
 integration('all absent administrative pages and APIs disclose no private data',async()=>{
- for(const route of ['users','admin','dashboard','settings','database','debug','logs','uploads','private','manage','management'])for(const path of [`/${route}`,`/api/${route}`]) {
+ // Admin now has its own owner/anonymous acceptance suite; it may be implemented.
+ for(const route of ['users','dashboard','settings','database','debug','logs','uploads','private','manage','management'])for(const path of [`/${route}`,`/api/${route}`]) {
   const response=await request(path);assert.equal(response.status,404,path);
   const body=await response.text();assert.ok(!body.includes('owner-qa@example.test')&&!body.includes('password_hash')&&!body.includes('PRIVATE DRAFT SECRET'),path);
  }
