@@ -40,6 +40,12 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: node --test tests/search.cjs tests/details.cjs tests/loading.cjs
+      - name: Download backend security and PostgreSQL concurrency
+        run: |
+          node -e 'const sql=require("postgres")(process.env.WZ_TEST_DATABASE_URL); (async()=>{try{await sql.unsafe("CREATE DATABASE wz_phase3_test");}finally{await sql.end();}})().catch(()=>process.exitCode=1)'
+          npm run test:downloads
+        env:
+          WZ_DOWNLOAD_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:5432/wz_phase3_test
       - run: npm run build
       - name: Install isolated browser test tooling
         run: |
