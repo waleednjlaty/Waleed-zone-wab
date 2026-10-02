@@ -10,12 +10,16 @@ let checks=0;
 try {
  for(const width of [360,768,1440]) {
   const page=await browser.newPage({viewport:{width,height:900}}),errors=[];
+  if(process.env.WZ_BROWSER_SLOW_HYDRATION==='true') {
+    const session=await page.context().newCDPSession(page);
+    await session.send('Emulation.setCPUThrottlingRate', {rate:4});
+  }
   const pending=new Set();
   page.on('request',request=>pending.add(request.url()));
   page.on('requestfinished',request=>pending.delete(request.url()));
   page.on('requestfailed',request=>pending.delete(request.url()));
-  page.on('pageerror',error=>errors.push(error.message));
-  page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
+  page.on('pageerror',error=>errors.push(page.url() + ': ' + error.message));
+  page.on('console',message=>{if(message.type()==='error')errors.push(page.url() + ': ' + message.text());});
   try {await page.goto(base,{waitUntil:'domcontentloaded'});} catch(error) {
    console.error('Navigation diagnostics:',{url:page.url(),pending:[...pending],errors});
    console.error('Rendered content:',await page.locator('body').innerText({timeout:2000}).catch(()=>'(no body)'));
@@ -71,12 +75,16 @@ try {
   for (const path of ['/download/201', '/login', '/account']) {
     await page.goto(base + path, {waitUntil:'domcontentloaded'});
     await page.locator('main').waitFor();
+    await page.getByRole('button', {name:'فتح البحث', exact:true}).click();
+    await page.locator('.search-dialog').waitFor({state:'visible'});
+    await page.keyboard.press('Escape');
+    await page.locator('.search-dialog').waitFor({state:'hidden'});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     if(path.startsWith('/download')) {
       await page.getByText('التحميل المباشر غير متاح حاليًا', {exact:false}).first().waitFor();
       assert.equal(await page.locator('form[action="/api/downloads/redeem"]').count(),0);
     }
-    assert.deepEqual(errors,[]);
+    assert.deepEqual(errors,[], `Hydration/navigation at ${width}px ${path}`);
     checks++;
   }
   await page.close();
