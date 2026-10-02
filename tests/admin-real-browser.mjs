@@ -82,5 +82,5 @@ try{
   await page.getByRole('navigation',{name:'أقسام لوحة المالك'}).getByRole('link',{name:/نظرة عامة/}).focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>document.activeElement?.tagName==='H2');
   assert.deepEqual(external,[]);await context.close();
  }
- console.log(`Real Admin HTTPS/native PostgreSQL browser: ${checks} checks passed at 360/768/1440; pending/create/rename/staged actions/stale conflict/kill switch, no mocks.`);
+ console.log(`Real Admin HTTPS/PostgreSQL browser: ${checks} checks passed at 360/768/1440; pending/create/rename/staged actions/stale conflict/kill switch, no mocks.`);
 }finally{await browser.close();}

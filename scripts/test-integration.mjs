@@ -60,7 +60,7 @@ try {
   });
   process.exitCode=code;
   if(code===0 && process.env.WZ_BROWSER_TESTS==='true') {
-    for(const file of ['tests/browser.mjs','tests/seo-browser.mjs','tests/admin-security-browser.mjs']) {
+    for(const file of ['tests/browser.mjs','tests/seo-browser.mjs']) {
       process.exitCode=await new Promise(resolve=>{
         const browser=spawn(process.execPath,[file],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
         browser.on('exit',status=>resolve(status??1));

@@ -29,7 +29,7 @@ async function inspect(page,errors,label) {
 }
 try {
   for(const width of [360,768,1440]) {
-    const context=await browser.newContext({viewport:{width,height:900}});
+    const context=await browser.newContext({viewport:{width,height:900},ignoreHTTPSErrors:config.fixture==='native-postgresql-https'});
     const blockedRequests=[];
     await context.route('**/*',route=>{
       const url=new URL(route.request().url());

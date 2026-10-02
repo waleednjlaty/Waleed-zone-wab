@@ -64,7 +64,7 @@ try {
     await new Promise(resolve=>setTimeout(resolve,500));
   }
   assert.ok(ready,'Build first; fixture failed to start.');
-  for(const args of [['--test','tests/admin-regression.cjs'],['tests/admin-real-browser.mjs']]){
+  for(const args of [['--test','tests/admin-regression.cjs'],['tests/admin-security-browser.mjs'],['tests/admin-real-browser.mjs']]){
     const code=await new Promise((resolve,reject)=>{const child=spawn(process.execPath,args,{env:safeEnv,stdio:'inherit'});child.on('error',reject);child.on('exit',code=>resolve(code??1));});
     assert.equal(code,0,'Real Admin integration release gate failed.');
   }

@@ -34,6 +34,16 @@ test('real Admin frontend/backend interoperability release gate',async t=>{
     const detail=await adminApi.detail(201);assert.equal(detail.app.id,201);assert.match(detail.app.configRevision,/^[a-f0-9]{64}$/);
     assert.equal(detail.directActivationAllowed,false);
   });
+  await t.test('catalog/detail reads include all keyset pages without exposing metadata',async()=>{
+    await h.db.exec("INSERT INTO applications(id,name,active,published) SELECT 1001+i,'Catalog fixture '||i,true,true FROM generate_series(1,55) i");
+    const first=await adminApi.applications(null);assert.equal(first.items.length,50);assert.ok(first.nextAfter);
+    const second=await adminApi.applications(first.nextAfter);assert.ok(second.items.length>0);assert.ok(second.items.every(x=>x.id>first.nextAfter));
+    await h.db.exec("INSERT INTO site_download_versions(id,application_id,version_label,release_key) SELECT (lpad(i::text,8,'0')||'-0000-4000-8000-000000000000')::uuid,202,'Fixture '||i,'page-'||i FROM generate_series(1,101) i");
+    await h.db.exec("INSERT INTO site_download_files(id,version_id,variant_key,size_bytes,mime_type,download_filename,sha256,storage_backend,storage_key) SELECT ('10000000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,'00000001-0000-4000-8000-000000000000','v-'||i,1,'application/vnd.android.package-archive','qa.apk',repeat('a',64),'railway-s3','artifacts/10000000-0000-4000-8000-'||lpad(i::text,12,'0')||'/'||repeat('a',64)||'.apk' FROM generate_series(1,101) i");
+    const detail=await adminApi.detail(202);assert.equal(detail.versions.length,101);assert.equal(detail.files.length,101);
+    assert.ok(detail.files.every(f=>detail.versions.some(v=>v.id===f.versionId)));
+    assert.ok(!/storage_key|sha256|storage_object_version/.test(JSON.stringify(detail)));
+  });
   await t.test('status preserves BIGINT decimal strings and cannot invent provider readiness',async()=>{
     await h.db.exec("INSERT INTO site_download_budget(id,starts_at,expires_at,allowance_verified,byte_limit,reserved_bytes) VALUES(1,NOW(),NOW()+INTERVAL '1 day',true,9007199254740993,9007199254740992)");
     const status=await adminApi.status();assert.equal(status.enabled,false);assert.equal(status.activationAllowed,false);
