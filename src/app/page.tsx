@@ -51,12 +51,11 @@ export default async function Home({ searchParams }: Props) {
     filtered ? Promise.resolve(null) : getApps({ limit: 48 }),
   ]);
   const collections = homeCollections(discovery?.items || []);
-  const suggestions = (discovery?.items || result.items).map(({ id, name, category, imageUrl }) => ({ id, name, category, imageUrl }));
 
   return <div className="shell homepage">
     <section className="catalog-intro" aria-labelledby="discover-title">
       <div className="intro-copy"><p className="eyebrow">تطبيقات. ألعاب. آخر الإصدارات.</p><h1 id="discover-title">اكتشف أحدث التطبيقات والألعاب<span className="intro-dot">.</span></h1><p className="intro-description">ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.</p></div>
-      <div className="intro-search"><Suspense fallback={<SearchSkeleton />}><SearchBar suggestions={suggestions} /></Suspense><p className="search-help">بالاسم أو التصنيف، ستجد ما تبحث عنه.</p></div>
+      <div className="intro-search"><Suspense fallback={<SearchSkeleton />}><SearchBar /></Suspense><p className="search-help">بالعربية أو الإنجليزية، بالاسم أو المطوّر أو التصنيف.</p></div>
     </section>
 
     {filtered ? <div className="filtered-catalog">

@@ -1,14 +1,20 @@
+import 'server-only';
 import { and, count, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import { applications } from '@/lib/db/schema';
 import { getDb } from '@/lib/db';
-import { escapeLike } from '@/lib/utils';
+import { searchCatalog } from '@/lib/search/service';
+import { getCatalogDetails } from '@/lib/catalog/metadata';
+import { isGame, appName } from '@/components/catalog/presentation';
+import { normalizeSearch } from '@/lib/search/normalize';
 
 export type Application = typeof applications.$inferSelect;
 
 export interface SitemapApp {
   id: number;
   createdAt: Date | null;
+  name: string | null;
+  category: string | null;
 }
 
 export interface CategorySummary {
@@ -42,15 +48,19 @@ export const getApps = cache(
 
     const conditions = [eq(applications.active, true), eq(applications.published, true)];
 
-    const search = q?.trim();
-    if (search) {
-      const pattern = `%${escapeLike(search)}%`;
-      const searchCondition = or(
-          ilike(applications.name, pattern),
-          ilike(applications.category, pattern),
-          ilike(applications.platform, pattern),
-        );
-      if (searchCondition) conditions.push(searchCondition);
+    const search=q?.trim();
+    if(search) {
+      const ranked=await searchCatalog(search);
+      if(!ranked.length)return {items:[],total:0,totalPages:1,currentPage:1};
+      const rows=await db.select().from(applications).where(and(
+        eq(applications.active,true),eq(applications.published,true),
+        sql`${applications.id} IN (${sql.join(ranked.map(item=>sql`${item.id}`),sql`, `)})`,
+        ...(category?.trim()?[eq(applications.category,category.trim())]:[]),
+      ));
+      const byId=new Map(rows.map(row=>[row.id,row]));
+      const ordered=ranked.map(item=>byId.get(item.id)).filter((item):item is Application=>Boolean(item));
+      const total=ordered.length,totalPages=Math.max(1,Math.ceil(total/safeLimit)),currentPage=Math.min(rawPage,totalPages);
+      return {items:ordered.slice((currentPage-1)*safeLimit,currentPage*safeLimit),total,totalPages,currentPage};
     }
 
     if (category?.trim()) {
@@ -86,7 +96,7 @@ export const getApps = cache(
 export const getAppById = cache(
   async (id: number): Promise<Application | undefined> => {
     const db = getDb();
-    if (!db || !Number.isInteger(id) || id <= 0) return undefined;
+    if (!db || !Number.isInteger(id) || id <= 0 || id > 2147483647) return undefined;
 
     const rows = await db
       .select()
@@ -99,18 +109,24 @@ export const getAppById = cache(
 );
 
 export const getRelatedApps = cache(
-  async (appId: number, category?: string | null, limit = 4): Promise<Application[]> => {
-    const db = getDb();
-    if (!db || !category) return [];
-
-    const rows = await db
-      .select()
-      .from(applications)
-      .where(and(eq(applications.category, category), eq(applications.active, true), eq(applications.published, true), sql`${applications.id} <> ${appId}`))
-      .orderBy(desc(applications.id))
-      .limit(Math.min(8, Math.max(1, limit)));
-
-    return rows;
+  async (appId:number, category?:string|null, limit=4):Promise<Application[]>=>{
+    const db=getDb(),source=await getAppById(appId);
+    if(!db||!source)return [];
+    const conditions=[];
+    if(category?.trim())conditions.push(eq(applications.category,category));
+    if(source.developer?.trim())conditions.push(eq(applications.developer,source.developer));
+    if(!conditions.length)return [];
+    const candidates=await db.select().from(applications).where(and(
+      eq(applications.active,true),eq(applications.published,true),sql`${applications.id} <> ${appId}`,or(...conditions),
+    )).limit(100);
+    const tags=new Set(getCatalogDetails(appId).tags?.map(normalizeSearch)||[]);
+    const words=new Set(normalizeSearch(appName(source)).split(' ').filter(word=>word.length>2));
+    return candidates.filter(app=>isGame(app)===isGame(source)).map(app=>({app,score:
+      (app.category===source.category?40:0)+(source.developer&&app.developer===source.developer?30:0)
+      +(getCatalogDetails(app.id).tags||[]).filter(tag=>tags.has(normalizeSearch(tag))).length*20
+      +normalizeSearch(appName(app)).split(' ').filter(word=>words.has(word)).length*5,
+    })).sort((a,b)=>b.score-a.score || (b.app.downloads||0)-(a.app.downloads||0) || a.app.id-b.app.id)
+      .slice(0,Math.min(8,Math.max(1,limit))).map(item=>item.app);
   },
 );
 
@@ -134,7 +150,7 @@ export const getAllAppsSitemap = cache(async (): Promise<SitemapApp[]> => {
   if (!db) return [];
 
   return db
-    .select({ id: applications.id, createdAt: applications.createdAt })
+    .select({ id: applications.id, name: applications.name, category: applications.category, createdAt: applications.createdAt })
     .from(applications)
     .where(and(eq(applications.active, true), eq(applications.published, true)))
     .orderBy(desc(applications.id));

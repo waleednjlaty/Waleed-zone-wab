@@ -59,7 +59,14 @@ export function sameOrigin(request:Request) {
 export async function readJson(request:Request):Promise<Record<string,unknown>|null> {
   if(!request.headers.get('content-type')?.startsWith('application/json')) return null;
   if(Number(request.headers.get('content-length')||0)>4096) return null;
-  try { const raw=await request.text(); if(raw.length>4096) return null; const data=JSON.parse(raw); return data&&typeof data==='object'&&!Array.isArray(data)?data:null; } catch { return null; }
+  try {
+    if(!request.body)return null;
+    const reader=request.body.getReader(),chunks:Uint8Array[]=[];let bytes=0;
+    while(true){const {done,value}=await reader.read();if(done)break;bytes+=value.byteLength;
+      if(bytes>4096){await reader.cancel();return null;}chunks.push(value);}
+    const data=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    return data&&typeof data==='object'&&!Array.isArray(data)?data:null;
+  } catch { return null; }
 }
 export async function allowAttempt(request:Request,scope:string,identity:string,limit:number,seconds:number) {
   await ensureAuthTables(); const sql=authDb();

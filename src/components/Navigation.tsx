@@ -109,7 +109,7 @@ export default function Navigation({ signedIn, categories }: { signedIn: boolean
     }}>
       <div className="search-dialog-heading"><h2 id="search-dialog-title">ابحث في Waleed Zone</h2><button className="icon-button" type="button" aria-label="إغلاق البحث" onClick={() => setSearchOpen(false)}><Icon name="close" /></button></div>
       {searchOpen && <SearchBar live={false} autoFocus onNavigate={() => setSearchOpen(false)} />}
-      <p className="search-help">ابحث بالاسم أو التصنيف، ثم افتح التفاصيل.</p>
+      <p className="search-help">ابحث بالعربية أو الإنجليزية، ثم افتح التفاصيل.</p>
     </dialog>
   </header>;
 }

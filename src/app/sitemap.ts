@@ -1,6 +1,9 @@
 import type { MetadataRoute } from 'next';
 import { getAllAppsSitemap, getCategories } from '@/lib/queries';
+import { appHref } from '@/lib/catalog/routes';
 import { SITE_URL } from '@/lib/site';
+
+export const dynamic='force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let apps: Awaited<ReturnType<typeof getAllAppsSitemap>> = [];
@@ -14,7 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const appUrls: MetadataRoute.Sitemap = apps.map((app) => ({
-    url: SITE_URL + '/app/' + app.id,
+    url: SITE_URL + appHref(app),
     ...(app.createdAt ? { lastModified: app.createdAt } : {}),
   }));
 
