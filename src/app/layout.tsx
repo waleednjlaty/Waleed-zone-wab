@@ -1,3 +1,4 @@
+import { enforceRouteAccess } from '@/lib/route-access';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { Suspense } from 'react';
@@ -53,7 +54,8 @@ export const metadata: Metadata = {
   ...(ADSENSE_READY ? { other: { 'google-adsense-account': ADSENSE_PUBLISHER_ID! } } : {}),
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  await enforceRouteAccess();
   return (
     <html lang="ar" dir="rtl">
       <body className="flex min-h-screen flex-col">
