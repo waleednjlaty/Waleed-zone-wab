@@ -50,7 +50,12 @@ try {
   await page.waitForURL('**/apps/whatsapp-201');
   await page.getByRole('heading',{name:'WhatsApp',exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  // Agent A shows the sticky CTA only after the primary action scrolls offscreen.
+  assert.equal(await page.locator('.mobile-download-bar').isVisible(),false);
+  await page.locator('.detail-download').evaluate(node=>window.scrollTo(0,node.getBoundingClientRect().bottom+window.scrollY+20));
+  if(width<1024)await page.locator('.mobile-download-bar').waitFor({state:'visible'});
   assert.equal(await page.locator('.mobile-download-bar').isVisible(),width<1024);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   checks++;
   await page.goto(`${base}/games/clash-of-clans-207`,{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Clash of Clans',exact:true}).waitFor();
