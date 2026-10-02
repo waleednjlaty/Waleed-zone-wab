@@ -1,14 +1,16 @@
 'use client';
 
+import ContentState from '@/components/loading/ContentState';
+import styles from '@/components/loading/loading.module.css';
+
 export default function Error({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  return (
-    <main className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-4 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-red-400/15 bg-red-400/10 text-2xl font-black text-red-300">!</span>
-      <h1 className="mt-5 text-2xl font-black text-white">صار خطأ غير متوقع</h1>
-      <p className="mt-2 text-sm text-[#a6b5b8]">جرّب إعادة تحميل المحتوى. إذا استمرت المشكلة فالمشكلة غالبًا مؤقتة.</p>
-      <button type="button" onClick={() => reset()} className="primary-action mt-6 rounded-xl px-5 py-2.5 text-sm font-black">
-        إعادة المحاولة
-      </button>
-    </main>
-  );
+  return <div className={styles.errorPage}>
+    <ContentState
+      kind="error"
+      headingLevel={1}
+      title="صار خطأ غير متوقع"
+      description="جرّب إعادة تحميل المحتوى. إذا استمرت المشكلة فالمشكلة غالبًا مؤقتة."
+      action={<button type="button" onClick={() => reset()} className="primary-action">إعادة المحاولة</button>}
+    />
+  </div>;
 }
