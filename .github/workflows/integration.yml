@@ -30,6 +30,7 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       WZ_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:5432/wz_phase2_test
+      WZ_SEO_FIXTURES: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,13 +40,22 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run lint
-      - run: node --test tests/search.cjs tests/details.cjs tests/loading.cjs
+      - name: Create disposable download test database
+        run: node -e 'const sql=require("postgres")(process.env.WZ_TEST_DATABASE_URL); (async()=>{try{await sql.unsafe("CREATE DATABASE wz_phase3_test");}finally{await sql.end();}})().catch(()=>process.exitCode=1)'
+      - name: Unit and strict download contract tests
+        run: npm test
+        env:
+          WZ_DOWNLOAD_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:5432/wz_phase3_test
+          WZ_DOWNLOAD_CONTRACT_STRICT: '1'
+
       - run: npm run build
       - name: Install isolated browser test tooling
         run: |
           npm install --prefix "$RUNNER_TEMP/wz-browser" --no-audit --no-fund playwright@1.51.1
           "$RUNNER_TEMP/wz-browser/node_modules/.bin/playwright" install --with-deps chromium
           echo "WZ_BROWSER_MODULE=$RUNNER_TEMP/wz-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+      - name: Download UI browser checks
+        run: node scripts/test-download-ui.mjs
       - name: Production API/security and browser integration
         run: npm run test:integration
         env:

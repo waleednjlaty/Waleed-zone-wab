@@ -1,7 +1,9 @@
-export const SITE_NAME = 'WALEED ZONE';
+export const SITE_NAME = 'Waleed Zone';
+export const SITE_ARABIC_NAME = 'وليد زون';
+export const HOME_TITLE = 'Waleed Zone | وليد زون — تطبيقات وألعاب';
 
 export const SITE_DESCRIPTION =
-  'WALEED ZONE — مكتبة تحميل أحدث التطبيقات والألعاب والأدوات المجانية مباشرة أو عبر تيليجرام.';
+  'اكتشف تطبيقات وألعاب وليد زون (Waleed Zone)، وتصفح تفاصيل الإصدارات والأحجام والمنصات وروابط التحميل، مع البحث بالعربية والإنجليزية.';
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, '') || 'https://waleed-zone.up.railway.app';

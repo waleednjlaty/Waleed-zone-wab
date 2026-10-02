@@ -2,12 +2,16 @@ import type { Metadata } from 'next';
 import { resolveDetail } from './resolve';
 import { appName } from '@/components/catalog/presentation';
 import { appHref } from './routes';
-import { SITE_URL } from '@/lib/site';
+import { pageMetadata } from '@/lib/seo';
 import { safeExternalUrl } from '@/lib/utils';
 export async function detailMetadata(slug:string,kind:'apps'|'games'):Promise<Metadata> {
   const app=await resolveDetail(slug,kind),name=appName(app),image=safeExternalUrl(app.imageUrl);
-  const title=`${name}${app.version?` ${app.version}`:''} — ${kind==='games'?'تفاصيل اللعبة':'تفاصيل التطبيق'} والتحميل`;
-  const description=(app.description||`تفاصيل ${name}${app.version?` إصدار ${app.version}`:''}${app.size?` بحجم ${app.size}`:''} في Waleed Zone.`).replace(/\s+/g,' ').slice(0,155);
+  const known=(value:string|null)=>value?.trim()&&!/^[-–—.]+$/.test(value.trim())?value.trim():null;
+  const version=known(app.version),size=known(app.size);
+  const title=`${name}${version?` ${version}`:''} — ${kind==='games'?'تفاصيل اللعبة':'تفاصيل التطبيق'} والتحميل`;
+  // A reused catalog description must not make every app's metadata identical.
+  const description=(`تفاصيل ${name}${version?` إصدار ${version}`:''}${size?` بحجم ${size}`:''} في وليد زون. ${app.description||''}`).replace(/\s+/g,' ').trim().slice(0,160);
   const canonical=appHref(app);
-  return {title,description,alternates:{canonical},openGraph:{title,description,url:SITE_URL+canonical,type:'website',images:image?[{url:image,alt:name}]:[]},twitter:{card:'summary',title,description,images:image?[image]:[]}};
+  const metadata=pageMetadata(title,description,canonical);
+  return {...metadata,openGraph:{...metadata.openGraph,images:image?[{url:image,alt:name}]:[]},twitter:{...metadata.twitter,images:image?[image]:[]}};
 }

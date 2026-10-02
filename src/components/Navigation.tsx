@@ -9,8 +9,8 @@ import SearchBar from '@/components/SearchBar';
 
 const links = [
   { href: '/', label: 'الرئيسية' },
-  { href: '/#apps', label: 'التطبيقات' },
-  { href: '/#games', label: 'الألعاب' },
+  { href: '/apps', label: 'التطبيقات' },
+  { href: '/games', label: 'الألعاب' },
   { href: '/#updates', label: 'التحديثات' },
 ];
 
@@ -79,7 +79,10 @@ export default function Navigation({ signedIn, categories }: { signedIn: boolean
 
   function navLink(link: typeof links[number]) {
     const hash = link.href.includes('#') ? `#${link.href.split('#')[1]}` : '';
-    const active = pathname === '/' && !filtered && hash === activeHash;
+    const active = hash ? pathname === '/' && !filtered && hash === activeHash :
+      link.href === '/' ? pathname === '/' && !filtered && !activeHash :
+      pathname === link.href || pathname.startsWith(`${link.href}/`);
+    if(link.href==='/apps'||link.href==='/games') return <a key={link.href} href={link.href} className={`nav-link${active ? ' is-active' : ''}`} aria-current={active ? 'page' : undefined} onClick={closeNavigation}>{link.label}</a>;
     return <Link key={link.href} href={link.href} className={`nav-link${active ? ' is-active' : ''}`} aria-current={active ? (hash ? 'location' : 'page') : undefined} onClick={() => { setActiveHash(hash); closeNavigation(); }}>{link.label}</Link>;
   }
 

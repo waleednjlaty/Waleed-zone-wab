@@ -20,7 +20,7 @@ export function CardSkeleton({ featured = false, row = false }: { featured?: boo
 export default function CatalogSkeleton({ contentOnly = false }: { contentOnly?: boolean }) {
   return <div className={`${contentOnly ? '' : 'shell'} ${styles.catalog}`}>
     {!contentOnly && <section className="catalog-intro" aria-labelledby="loading-discover-title">
-      <div className="intro-copy"><p className="eyebrow">تطبيقات. ألعاب. آخر الإصدارات.</p><h1 id="loading-discover-title">اكتشف أحدث التطبيقات والألعاب<span className="intro-dot">.</span></h1><p className="intro-description">ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.</p></div>
+      <div className="intro-copy"><p className="eyebrow" lang="en" dir="ltr">Waleed Zone</p><h1 id="loading-discover-title">وليد زون — تطبيقات وألعاب<span className="intro-dot">.</span></h1><p className="intro-description">ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.</p></div>
       <div className="intro-search"><SearchSkeleton /><p className="search-help">بالاسم أو التصنيف، ستجد ما تبحث عنه.</p></div>
     </section>}
     <LoadingRegion label="جارٍ تحميل التطبيقات والألعاب">
@@ -39,15 +39,15 @@ export default function CatalogSkeleton({ contentOnly = false }: { contentOnly?:
 
 const navigationLinks = [
   { href: '/', label: 'الرئيسية' },
-  { href: '/#apps', label: 'التطبيقات' },
-  { href: '/#games', label: 'الألعاب' },
+  { href: '/apps', label: 'التطبيقات' },
+  { href: '/games', label: 'الألعاب' },
   { href: '/#categories', label: 'التصنيفات' },
   { href: '/#updates', label: 'التحديثات' },
 ];
 
 /** Compatibility name: render usable static navigation, never a skeleton header. */
 export function NavigationSkeleton() {
-  const links = navigationLinks.map(link => <Link key={link.href} href={link.href} className="nav-link">{link.label}</Link>);
+  const links = navigationLinks.map(link => link.href==='/apps'||link.href==='/games'?<a key={link.href} href={link.href} className="nav-link">{link.label}</a>:<Link key={link.href} href={link.href} className="nav-link">{link.label}</Link>);
   return <header className="site-header">
     <nav className="shell header-inner" aria-label="التنقل الرئيسي">
       <Link href="/" className="brand-link" aria-label="Waleed Zone، الرئيسية"><Brand /></Link>
