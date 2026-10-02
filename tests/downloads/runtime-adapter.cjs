@@ -12,7 +12,7 @@ const { trustedNetworks } = require('../../src/lib/downloads/network.ts');
 const rules = require('../../src/lib/downloads/rules.ts');
 Module._load = load;
 
-async function createFixture({ clock, origin, data, relaxAttemptLimits = false }) {
+async function createFixture({ clock, origin, data, relaxAttemptLimits = false, storageAdapter }) {
   for (const path of ['service', 'storage', 'http']) delete require.cache[require.resolve('../../src/lib/downloads/' + path + '.ts')];
   Module._load = function(name, ...args) { return name === 'server-only' ? {} : load.call(this, name, ...args); };
   const { DownloadService } = require('../../src/lib/downloads/service.ts');
@@ -56,7 +56,13 @@ async function createFixture({ clock, origin, data, relaxAttemptLimits = false }
     },
     matchesObject(grant, ref) { return new URL(grant.url).pathname === '/' + ref.key; },
   };
-  const services = [0, 1].map(() => new DownloadService(sql, { enabled: true, hosts: ['delivery.example.test'], adapters: { qa: adapter } }));
+  // Test-only provider injection; handlers, service, SQL and production storage guards stay real.
+  const selectedAdapter = storageAdapter ? {
+    async headObject(ref, signal) { storageCalls.push({ operation: 'headObject' }); return storageAdapter.headObject(ref, signal); },
+    async createDeliveryGrant(input, signal) { storageCalls.push({ operation: 'createDeliveryGrant' }); return storageAdapter.createDeliveryGrant(input, signal); },
+    matchesObject(grant, ref) { return storageAdapter.matchesObject(grant, ref); },
+  } : adapter;
+  const services = [0, 1].map(() => new DownloadService(sql, { enabled: true, hosts: ['delivery.example.test'], adapters: { qa: selectedAdapter } }));
   if (relaxAttemptLimits) for (const service of services) { service.attempts = async () => {}; service.attemptPolicies = async () => {}; }
   await db.exec('CREATE TABLE applications(id INTEGER PRIMARY KEY,active BOOLEAN,published BOOLEAN); CREATE TABLE site_users(id TEXT PRIMARY KEY); CREATE TABLE site_sessions(token_hash TEXT PRIMARY KEY,user_id TEXT REFERENCES site_users(id),expires_at TIMESTAMPTZ);');
   await db.exec(stamp(readFileSync(require.resolve('../../migrations/001_downloads.sql'), 'utf8')));
@@ -106,8 +112,9 @@ async function createFixture({ clock, origin, data, relaxAttemptLimits = false }
   async function snapshot() {
     const query = text => db.query(text).then(r => r.rows);
     const requests = await query('SELECT * FROM site_download_requests');
-    return { requests: requests.filter(r => !seeded.has(r.id)), storageCalls, redemptionEvents: requests.filter(r => r.state === 'redeemed'), acceptedNetwork10m: requests.filter(r => r.created_at.getTime() > clock.nowMs - 600000).length, persisted: { requests }, logs: [] };
+    const files = await query('SELECT * FROM site_download_files');
+    return { requests: requests.filter(r => !seeded.has(r.id)), storageCalls, redemptionEvents: requests.filter(r => r.state === 'redeemed'), acceptedNetwork10m: requests.filter(r => r.created_at.getTime() > clock.nowMs - 600000).length, persisted: { requests, files }, logs: [] };
   }
-  return { presentation: id => services[0].presentation(id), dispatch, createActor, patch, snapshot, fault: async (name, value) => { faults[name] = value; if (name === 'adapterMissing') for (const service of services) service.options.adapters = value ? {} : { qa: adapter }; if (name === 'signing' && !value) clock.advance(10000); }, barrier: async () => {}, close: async () => { await queue; await db.close(); global.Date = RealDate; } };
+  return { presentation: id => services[0].presentation(id), dispatch, createActor, patch, snapshot, fault: async (name, value) => { faults[name] = value; if (name === 'adapterMissing') for (const service of services) service.options.adapters = value ? {} : { qa: selectedAdapter }; if (name === 'signing' && !value) clock.advance(10000); }, barrier: async () => {}, close: async () => { await queue; await db.close(); global.Date = RealDate; } };
 }
 module.exports = { createFixture };
