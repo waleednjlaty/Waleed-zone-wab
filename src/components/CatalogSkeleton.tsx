@@ -17,12 +17,12 @@ export function CardSkeleton({ featured = false, row = false }: { featured?: boo
   return <ReusableCardSkeleton variant={featured ? 'featured' : row ? 'row' : 'compact'} />;
 }
 
-export default function CatalogSkeleton() {
-  return <div className={`shell ${styles.catalog}`}>
-    <section className="catalog-intro" aria-labelledby="loading-discover-title">
+export default function CatalogSkeleton({ contentOnly = false }: { contentOnly?: boolean }) {
+  return <div className={`${contentOnly ? '' : 'shell'} ${styles.catalog}`}>
+    {!contentOnly && <section className="catalog-intro" aria-labelledby="loading-discover-title">
       <div className="intro-copy"><p className="eyebrow">تطبيقات. ألعاب. آخر الإصدارات.</p><h1 id="loading-discover-title">اكتشف أحدث التطبيقات والألعاب<span className="intro-dot">.</span></h1><p className="intro-description">ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.</p></div>
       <div className="intro-search"><SearchSkeleton /><p className="search-help">بالاسم أو التصنيف، ستجد ما تبحث عنه.</p></div>
-    </section>
+    </section>}
     <LoadingRegion label="جارٍ تحميل التطبيقات والألعاب">
       <SectionSkeleton layout="rail" heading={<SectionHeading id="loading-trending" title="شائع الآن" subtitle="اختيارات من المكتبة" icon="trend" />} />
       <SectionSkeleton layout="list" heading={<SectionHeading id="loading-updates" title="آخر التحديثات" subtitle="أحدث الإصدارات المضافة إلى المكتبة" icon="refresh" />} />

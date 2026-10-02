@@ -104,3 +104,15 @@ the static placeholder immediately. No minimum loading duration is imposed.
 References: [Next.js loading boundaries](https://nextjs.org/docs/app/api-reference/file-conventions/loading),
 [MDN reduced motion](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion),
 [MDN aria-busy](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-busy).
+
+
+## Completed Phase 2 integration — Agent F
+
+The historical handoff above is now completed on `agent/integration-phase2-phase3`:
+
+- Search fetch/debounce/ranking/cancellation are retained from Agent A. Suggestion loading uses three reusable decorative rows and one announcement.
+- Home catalog queries execute inside a keyed Suspense content region; the intro/search remain usable while the result area waits. Discovery uses the existing catalog fallback without duplicating the intro or shell.
+- Details skeletons reuse the final Phase 2 summary/content/sidebar classes, default to no invented screenshots, and are attached to `/apps/[slug]` and `/games/[slug]`.
+- Category navigation has a local results fallback. Account/login/register use null local loading boundaries; pre-stream authorization in the root layout and API guards are retained.
+- The EmptyState conflict keeps Agent A's bilingual suggestion copy and Agent B's shared ContentState presentation.
+- No minimum waiting time, direct-download runtime, schema or runtime dependencies were introduced.

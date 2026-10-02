@@ -355,3 +355,12 @@ All links below are official, accessed 2026-10-02. Provider figures above refere
 ## 15. Audit completion
 
 Only `docs/CLOUD_FREE_TIER_PLAN.md` is changed. No runtime code, database, dependency, cloud setting, storage/CDN resource, billing method, preview or deployment was changed. No merge is performed. Integration still requires the actual account/quota snapshot and review of Agent A/B/C's final commits.
+
+
+## Integration reconciliation — Agent F (2026-10-02)
+
+PR #12's [Direct Download System Specification](DOWNLOAD_SYSTEM_SPEC.md) is now available alongside the Phase 2 runtime from PR #15. Its opaque, single-use application token and reusable signed delivery URL are distinct grants: application admission counts cannot measure every billed byte from Range requests or replayed storage URLs.
+
+Both documents must be implemented together. Cooldown, eligibility, the shared kill switch and conservative byte-budget reservations must be enforced on the server before delivery URL disclosure. Actual provider traffic/cost remains a separate monitoring and hard-limit concern. The conditional Railway bucket recommendation is still unprovisioned and is not proof of the account's current free allowance.
+
+This integration does not change the cloud plan, activate a paid trial, apply SQL indexes to production, configure storage, or manually deploy. Merging runtime changes to `main` may trigger an already configured provider autodeploy; that configuration has not been verified here. Future storage activation and the Phase 3 rollout require a separate implementation task with the documented zero-cost gates.

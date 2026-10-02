@@ -51,6 +51,12 @@ try {
     tests.on('exit',(status)=>resolve(status??1));
   });
   process.exitCode=code;
+  if(code===0 && process.env.WZ_BROWSER_TESTS==='true') {
+    process.exitCode=await new Promise(resolve=>{
+      const browser=spawn(process.execPath,['tests/browser.mjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
+      browser.on('exit',status=>resolve(status??1));
+    });
+  }
 } finally {
   if(server&&server.exitCode===null&&server.signalCode===null){
     const stopped=new Promise(resolve=>server.once('exit',resolve));server.kill('SIGTERM');await stopped;

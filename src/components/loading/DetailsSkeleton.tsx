@@ -4,17 +4,22 @@ import SectionSkeleton from './SectionSkeleton';
 import Skeleton from './Skeleton';
 import styles from './loading.module.css';
 
-/** For the upcoming icon-led details layout; integrate once Agent A fixes its geometry. */
-export default function DetailsSkeleton({ screenshots = 3, relatedCount = 4 }: { screenshots?: number; relatedCount?: number }) {
-  return <LoadingRegion className={`shell ${styles.details}`} label="جارٍ تحميل تفاصيل التطبيق">
-    <div className={styles.breadcrumb}><Skeleton className={styles.category} /></div>
-    <div className={styles.detailsHeader}>
-      <ImageSkeleton variant="icon" className={styles.detailsIcon} />
-      <div className={styles.detailsCopy}><Skeleton className={styles.detailsTitle} /><Skeleton className={styles.developer} /><div className={styles.facts}>{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className={styles.fact} />)}</div></div>
+/** Reuses Phase 2 geometry; gallery defaults off because it is optional metadata. */
+export default function DetailsSkeleton({ screenshots = 0, relatedCount = 4 }: { screenshots?: number; relatedCount?: number }) {
+  return <LoadingRegion className="shell detail-page" label="جارٍ تحميل تفاصيل التطبيق">
+    <div className="detail-breadcrumbs"><Skeleton className={styles.category} /></div>
+    <div className="detail-summary">
+      <div className="detail-identity"><span className="detail-icon"><ImageSkeleton variant="icon" /></span><div className={`detail-name ${styles.detailsCopy}`}><Skeleton className={styles.category} /><Skeleton className={styles.detailsTitle} /><Skeleton className={styles.developer} /></div></div>
+      <div className="detail-primary-meta">{Array.from({ length: 2 }, (_, i) => <span key={i}><Skeleton className={styles.fact} /></span>)}</div>
+      <div className="detail-download-area"><Skeleton className={styles.downloadAction} /><Skeleton className={styles.downloadAction} /></div>
     </div>
-    {screenshots > 0 && <div className={styles.screenshots}>{Array.from({ length: screenshots }, (_, i) => <ImageSkeleton key={i} variant="screenshot" />)}</div>}
-    <section className={styles.description}><Skeleton className={styles.heading} />{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className={styles.descriptionLine} />)}</section>
-    <dl className={styles.detailsMetadata}>{Array.from({ length: 6 }, (_, i) => <div key={i} className={styles.metadataCell}><dt><Skeleton className={styles.category} /></dt><dd><Skeleton className={styles.title} /></dd></div>)}</dl>
+    <div className="detail-content-grid">
+      <div className="detail-main">
+        {screenshots > 0 && <div className="screenshot-carousel">{Array.from({ length: screenshots }, (_, i) => <figure key={i} className="relative"><ImageSkeleton variant="fill" /></figure>)}</div>}
+        <div className={`detail-section ${styles.description}`}><Skeleton className={styles.heading} />{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className={styles.descriptionLine} />)}</div>
+      </div>
+      <div className="detail-technical detail-section"><Skeleton className={styles.heading} /><dl>{Array.from({ length: 6 }, (_, i) => <div key={i}><dt><Skeleton className={styles.category} /></dt><dd><Skeleton className={styles.title} /></dd></div>)}</dl></div>
+    </div>
     {relatedCount > 0 && <SectionSkeleton count={relatedCount} />}
   </LoadingRegion>;
 }

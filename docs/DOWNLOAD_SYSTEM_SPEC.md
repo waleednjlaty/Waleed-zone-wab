@@ -602,3 +602,17 @@ Sources checked on 2026-10-02. Architecture values and topology are project-spec
 - **R9:** [OWASP File Upload](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html) — validation, quarantine/scanning, size and storage separation.
 - **R10:** [OWASP Authorization](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) — deny by default and permission checks on each operation.
 - **R11:** [Railway Public Networking Specs & Limits](https://docs.railway.com/networking/public-networking/specs-and-limits) — deployment headers and networking constraints; do not substitute this for actual trust-chain verification.
+
+
+## Integration reconciliation — Agent F (2026-10-02)
+
+The baseline analysis above is historical. PR #15 is now integrated with PR #13:
+
+- Public detail routes are `/apps/[slug]` and `/games/[slug]`, shared by `src/components/details/DetailPage.tsx`; `/app/[id]` is a permanent canonical redirect route.
+- The CTA is `src/components/details/DownloadActions.tsx`, including a mobile download bar. It still uses the verified legacy external destination or `telegramDownloadUrl(id)`. Phase 3 must update both CTA surfaces together only after a verified file and server gates are available.
+- `src/lib/authorization.ts` supplies owner checks with `OWNER_USER_ID`; `WEBSITE_STATS_TOKEN` is statistics-only and MUST NOT authorize download administration. `getCurrentUser()` still requires an outage-aware resolver before Phase 3 admission.
+- Phase 2 optional catalog metadata in `src/data/catalog-details.json` is currently empty and read-only. Display history is not trusted object/file metadata. The proposed Phase 3 tables remain additive proposals, not an applied schema.
+- Skeletons are only for data/image loading. The planned 20-second server countdown must use explicit countdown/progress and server timing; it must not use the skeleton system as enforcement.
+- [Cloud free-tier plan](CLOUD_FREE_TIER_PLAN.md) adds the operational release gate: reserve a conservative byte budget transactionally before disclosing a grant, and disable grants when the configured budget or verified account allowance is exhausted. Retry/range/replay traffic must be included in the budget margin. Admission quotas do not independently guarantee a provider spending cap.
+
+Neither architecture document activates storage, direct download endpoints, resources, billing, migrations, or deployments. Live eligibility, current account limits and delivery capabilities still need verification before a separate Phase 3 implementation release.

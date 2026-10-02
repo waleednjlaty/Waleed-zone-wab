@@ -9,7 +9,8 @@ import Icon from '@/components/Icon';
 import Pagination from '@/components/Pagination';
 import SearchBar from '@/components/SearchBar';
 import SectionHeading from '@/components/SectionHeading';
-import { SearchSkeleton } from '@/components/CatalogSkeleton';
+import SearchResultsSkeleton from '@/components/loading/SearchResultsSkeleton';
+import CatalogSkeleton, { SearchSkeleton } from '@/components/CatalogSkeleton';
 import { homeCollections } from '@/components/catalog/presentation';
 import { getApps, getCategories } from '@/lib/queries';
 import { parsePage, sanitizeSearch } from '@/lib/utils';
@@ -44,6 +45,19 @@ export default async function Home({ searchParams }: Props) {
   const page = parsePage(first(params?.page));
   const browse = first(params?.browse) === 'all';
   const filtered = Boolean(q || category || page > 1 || browse);
+  return <div className="shell homepage">
+    <section className="catalog-intro" aria-labelledby="discover-title">
+      <div className="intro-copy"><p className="eyebrow">تطبيقات. ألعاب. آخر الإصدارات.</p><h1 id="discover-title">اكتشف أحدث التطبيقات والألعاب<span className="intro-dot">.</span></h1><p className="intro-description">ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.</p></div>
+      <div className="intro-search"><Suspense fallback={<SearchSkeleton />}><SearchBar /></Suspense><p className="search-help">بالعربية أو الإنجليزية، بالاسم أو المطوّر أو التصنيف.</p></div>
+    </section>
+
+    <Suspense key={`${q}:${category}:${page}:${browse}`} fallback={filtered ? <SearchResultsSkeleton /> : <CatalogSkeleton contentOnly />}>
+      <CatalogContent q={q} category={category} page={page} browse={browse} filtered={filtered} />
+    </Suspense>
+  </div>;
+}
+
+async function CatalogContent({ q, category, page, browse, filtered }: { q: string; category: string; page: number; browse: boolean; filtered: boolean }) {
   // Reuse existing read-only queries. The paginated library keeps its original page size.
   const [result, categories, discovery] = await Promise.all([
     getApps({ q, category, page, limit: 12 }),
@@ -52,12 +66,7 @@ export default async function Home({ searchParams }: Props) {
   ]);
   const collections = homeCollections(discovery?.items || []);
 
-  return <div className="shell homepage">
-    <section className="catalog-intro" aria-labelledby="discover-title">
-      <div className="intro-copy"><p className="eyebrow">تطبيقات. ألعاب. آخر الإصدارات.</p><h1 id="discover-title">اكتشف أحدث التطبيقات والألعاب<span className="intro-dot">.</span></h1><p className="intro-description">ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.</p></div>
-      <div className="intro-search"><Suspense fallback={<SearchSkeleton />}><SearchBar /></Suspense><p className="search-help">بالعربية أو الإنجليزية، بالاسم أو المطوّر أو التصنيف.</p></div>
-    </section>
-
+  return <>
     {filtered ? <div className="filtered-catalog">
       <CategoryPills categories={categories} active={category || undefined} q={q || undefined} />
       <section id="library" className="catalog-section" aria-labelledby="results-title">
@@ -95,5 +104,5 @@ export default async function Home({ searchParams }: Props) {
         <AppGrid apps={result.items} /><div className="catalog-pagination"><Pagination currentPage={result.currentPage} totalPages={result.totalPages} /></div>
       </section>
     </>}
-  </div>;
+  </>;
 }

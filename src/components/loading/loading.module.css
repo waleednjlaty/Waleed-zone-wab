@@ -34,6 +34,7 @@
 .catalog { padding-bottom: 48px; }
 .categoryEntry { display: flex; align-items: center; min-height: 58px; border-bottom: 1px solid var(--line-subtle); }
 .pagination { min-height: 44px; margin-top: 26px; }
+.suggestion { height: 48px; border-radius: var(--radius-small); }
 
 .details { padding-block: 32px 48px; }
 .breadcrumb { min-height: 24px; margin-bottom: 28px; max-width: 320px; display: flex; align-items: center; }
@@ -41,6 +42,7 @@
 .detailsIcon { width: 72px; flex: 0 0 72px; border-radius: 16px; }
 .detailsCopy { min-width: 0; flex: 1; display: grid; gap: 14px; }
 .detailsTitle { width: 90%; max-width: 440px; height: 30px; }
+.downloadAction { height: 48px; width: 100%; margin-bottom: 10px; }
 .developer { width: 65%; max-width: 220px; height: 14px; }
 .facts { display: flex; flex-wrap: wrap; gap: 8px; }
 .fact { width: 64px; height: 28px; border-radius: 12px; }
