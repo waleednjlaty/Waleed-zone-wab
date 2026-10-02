@@ -1,14 +1,11 @@
-import { timingSafeEqual } from 'crypto';
+import { authorizeOwnerRequest } from '@/lib/authorization';
 import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 import { ensureVisitsTable } from '@/lib/visit-store';
 
 export async function GET(request: Request) {
-  const token=process.env.WEBSITE_STATS_TOKEN;
-  const supplied=request.headers.get('authorization') || '';
-  const expected=token ? `Bearer ${token}` : '';
-  const a=Buffer.from(supplied), b=Buffer.from(expected);
-  if (!token || a.length!==b.length || !timingSafeEqual(a,b)) return NextResponse.json({error:'Unauthorized'},{status:401});
+  const denied=await authorizeOwnerRequest(request,true);
+  if(denied) return NextResponse.json({error:denied===401?'Unauthorized':'Forbidden'},{status:denied});
   const sql=getSql(); if(!sql) return NextResponse.json({error:'Database unavailable'},{status:503});
   try {
     await ensureVisitsTable();
