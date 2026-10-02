@@ -6,8 +6,6 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const { deadline, secondsLeft, retrySeconds, downloadApi } = require('../src/components/download/api.ts');
 const Experience = require('../src/components/download/DownloadExperience.tsx').default;
-const { getDownloadPresentation } = require('../src/components/download/presentation.ts');
-const files = require('../src/data/download-presentation.json');
 const id = '11111111-1111-4111-8111-111111111111';
 const file = { application_id: 201, version_id: id, file_id: '22222222-2222-4222-8222-222222222222', version: '9.1', size_bytes: 85000000, file_type: 'apk' };
 const app = { id: 201, name: 'WhatsApp', imageUrl: null, detailHref: '/apps/whatsapp-201', version: '9.1', size: '85 MB' };
@@ -29,23 +27,15 @@ test('429 follows longest server wait, including delta/date Retry-After', () => 
 });
 
 test('unknown artifact metadata never fabricates a direct CTA', () => {
-  assert.equal(getDownloadPresentation(201), null);
-  files['201'] = { ...file, application_id: 202 };
-  assert.equal(getDownloadPresentation(201), null);
-  files['201'] = { ...file, size_bytes: 0 };
-  assert.equal(getDownloadPresentation(201), null);
-  files['201'] = file;
-  assert.deepEqual(getDownloadPresentation(201), file);
-  delete files['201'];
   const markup = renderToStaticMarkup(React.createElement(Experience, { app, file: null }));
   assert.match(markup, /التحميل المباشر غير متاح حاليًا/);
   assert.ok(!/<button[^>]*>تجهيز رابط التحميل/.test(markup));
 });
 
-test('initial known data uses real summary, native POST and no countdown skeleton', () => {
+test('initial known data uses real summary and exposes no redemption form before READY', () => {
   const markup = renderToStaticMarkup(React.createElement(Experience, { app, file }));
   assert.match(markup, /85 MB/); assert.match(markup, />APK</);
-  assert.match(markup, /action="\/api\/downloads\/redeem" method="post" target="_blank"/);
+  assert.ok(!markup.includes('action="/api/downloads/redeem"'));
   assert.match(markup, /aria-live="polite"/);
   assert.ok(!markup.includes('skeleton') && !markup.includes('wzdl1_'));
 });

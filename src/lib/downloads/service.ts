@@ -106,6 +106,23 @@ export class DownloadService {
     if (error) { if (r) await this.revoke(tx, r, error.code); return error; }
     return file;
   }
+  /** Public metadata only; never includes storage identifiers or a delivery grant. */
+  async presentation(applicationId: number) {
+    const [schema] = await this.sql`SELECT to_regclass('site_download_app_config') AS config`;
+    if (!schema.config) return { mode: 'legacy', file: null };
+    const [config] = await this.sql`SELECT mode,current_version_id FROM site_download_app_config WHERE application_id=${applicationId}`;
+    const mode = config?.mode ?? 'legacy';
+    if (mode !== 'direct' || !this.options.enabled || !config.current_version_id) return { mode, file: null };
+    const files = await this.sql`SELECT id FROM site_download_files WHERE version_id=${config.current_version_id} ORDER BY id LIMIT 10`;
+    for (const candidate of files) {
+      const selection = { application_id: applicationId, version_id: String(config.current_version_id), file_id: String(candidate.id) };
+      const file = await this.transaction(tx => this.eligibility(tx, selection)).catch((error: unknown) => { if (error instanceof DownloadError) return error; throw error; });
+      if (file instanceof DownloadError) continue;
+      const [version] = await this.sql`SELECT version_label FROM site_download_versions WHERE id=${selection.version_id}`;
+      return { mode, file: { ...selection, version: String(version.version_label), size_bytes: Number(file.size_bytes), file_type: 'apk' as const } };
+    }
+    return { mode, file: null };
+  }
   private adapter(backend: string) { return (this.options.adapters ?? storageAdapters)[backend]; }
 
   async userId(session: string | undefined): Promise<string | null> {

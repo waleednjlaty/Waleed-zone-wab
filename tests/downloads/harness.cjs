@@ -66,7 +66,7 @@ async function setup(t, options = {}) {
         if (method !== 'GET' && method !== 'HEAD') {
             if (!h.has('Content-Type'))
                 h.set('Content-Type', form ? 'application/x-www-form-urlencoded' : 'application/json');
-            if (csrf && !form && client?.csrf)
+            if (csrf && !form && client?.csrf && !h.has('X-CSRF-Token'))
                 h.set('X-CSRF-Token', client.csrf);
         }
         if (key)

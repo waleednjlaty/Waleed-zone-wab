@@ -1,40 +1,21 @@
 # Agent J — Phase 3 download contract tests
 
 Issue: [#21](https://github.com/waleednjlaty/Waleed-zone-wab/issues/21).
-Only tests, assertions, fixtures and this handoff are added. No runtime API, schema,
-UI, dependency, cloud setting or production database is changed.
+## Agent K integration
 
-## Sources and expected failures
-
-Assertions derive from [DOWNLOAD_SYSTEM_SPEC.md](../../docs/DOWNLOAD_SYSTEM_SPEC.md),
-sections 3–6, 8 and 14, and the fail-closed / zero-cost safeguards in
-[CLOUD_FREE_TIER_PLAN.md](../../docs/CLOUD_FREE_TIER_PLAN.md), sections 9–10 and the
-integration reconciliation. Baseline is `7264a93`; Agent G's remote branch also
-had no download runtime when inspected.
-
-There are **97 expected runtime contract failures**, plus **13 passing assertion/
-fixture checks**. The runtime failures are explicitly marked `TODO` only when
-`tests/downloads/runtime-adapter.cjs` is absent. Each fails at the missing-adapter
-assertion before its scenario executes. These are executable scenario bodies,
-not successful backend verification. An existing but broken adapter is never
-masked as TODO. Integrating Agent G alone does not activate these tests: the
-small test-only runtime adapter described below must also be supplied.
+The runtime adapter is connected. All original 97 scenarios plus three public-metadata/provider-gate regressions execute the real `createDownloadHandler`, `DownloadService`, migration, SQL and storage validation. Strict mode has no TODO cases:
 
 ```sh
-# No services, credentials or network are required.
-node --test --test-reporter=tap tests/download-harness.cjs tests/download-contract.cjs
-
-# Release gate: missing runtime/adapter is a real failure (exit status 1).
-WZ_DOWNLOAD_CONTRACT_STRICT=1 node --test --test-reporter=tap tests/download-contract.cjs
-
-# Included automatically in the existing tests/*.cjs npm test glob.
-npm test
+WZ_DOWNLOAD_CONTRACT_STRICT=1 npm test
 ```
 
-On this branch the first command reports 110 tests: 13 pass, 97 TODO, 0 ordinary
-failures. Strict mode reports 97 failures, 0 pass, 0 TODO. **The default exit code
-must not be interpreted as permission to release downloads.** Run strict mode
-after integration; require zero TODO/skipped cases for these 97 scenarios.
+A pinned **development-only** PGlite dependency runs disposable PostgreSQL in memory. No production DB, socket, HTTP request or artifact transfer is permitted by the harness. The test adapter changes SQL clock expressions to a controlled timestamp, injects tiny metadata/signing fixtures and database faults, and isolates process-local storage circuit state per scenario. It does not implement admission/issuance/redemption behavior or synthesize handler responses.
+
+PGlite serializes transactions, so its two service contexts establish contract behavior rather than native row-lock behavior. The separate `tests/downloads.cjs` gate uses native PostgreSQL and independent pools, including 50 admissions/redemptions and budget/quota contention. CI requires both suites. Attempt limits are relaxed **only in the three dedicated contract concurrency scenarios**; normal contract cases and the native PostgreSQL abuse suite enforce the real limiter.
+
+Quota fixtures seed actual historical SQL rows, excluded only from the adapter's newly-created-request count. Invalid zero-size/null-checksum metadata is rejected by the unmodified migration constraints; those cases also deactivate the file to verify the API denial. No constraint is removed. Multi-field metadata patches are atomic. The admission DTO includes the backend's harmless `can_issue_token` boolean, consistent with its status DTO; no private fields are added. The harness now retains explicit forged CSRF headers instead of overwriting them with valid values.
+
+Public runtime presentation is covered for eligible metadata, an empty provider registry, and disabled files without legacy fallback. Without a migrated schema existing Phase 2 legacy links remain available; direct/disabled mode and DB failure do not downgrade to legacy.
 
 ## Coverage
 
@@ -58,7 +39,7 @@ with injected dependencies. Do not copy the spec into an independent fake
 implementation, return canned HTTP responses, or turn these scenarios into
 self-tests of a reference model. Existing TypeScript test loading is available
 at `tests/helpers/typescript.cjs` if needed. Map actual service/repository names
-after inspecting G's implementation; no runtime names are assumed here.
+against the integrated runtime.
 
 A new fixture owns fresh repository state per test. Fake only external boundaries:
 repository/clock/auth/trusted ingress/storage. The actual runtime must read
@@ -74,7 +55,7 @@ Return these methods:
 | `dispatch(Request, {actor, worker})` | In-process invoke the actual route; return its actual native `Response`. Supply trusted network/auth metadata for the actor. Two worker IDs represent independent service contexts sharing the same repository authority, not two maps. Never follow redirects or make loopback fetches. |
 | `patch(target, value)` | Modify only fixture state: `application`, `config`, `version`/`file` by ID, `settings`, `actor` by ID, `principal` by actor, `acceptedQuota` by actor. Principal patch uses millisecond `next_download_at` and null `active_request_id`. Quota patch seeds valid past accepted events to yield `principal10m` or `network10m` counts without 40 preceding HTTP calls. |
 | `fault(name, mode)` | Inject failures at dependencies; null clears fault. Names: `database`, `limiter`, `auth` (`unavailable`); `headMissing`, `headSizeMismatch`, `headVersionMismatch`, `headChecksumMismatch`, `signing`, `storageTimeout` (`enabled`). Provider/SQL diagnostics should contain fixture sentinels to exercise safe errors. |
-| `barrier(stage, participants)` | Configure an asynchronous rendezvous at admission entry before acquiring authority locks, or at redemption entry before its storage preparation guard. Release automatically when all participants arrive. `admission` and `redemption` must exercise independent worker contexts. Never hold an authority lock at this barrier; otherwise the barrier would itself deadlock. |
+| `barrier(stage, participants)` | PGlite has a no-op barrier: Promise.all starts calls together and SQL transactions serialize. Independent native pools establish contention in the separate PostgreSQL gate. |
 | `snapshot()` | Return `{requests, storageCalls, redemptionEvents, acceptedNetwork10m, persisted:{requests}, logs}`. Storage calls use `{operation:'headObject'|'createDeliveryGrant'}`. `persisted` is a faithful normalized view of actual stored data; token hashes normalize to lowercase hex. Include real captured runtime logs. Do not hide/strip raw secrets in the adapter before assertions. |
 | `close()` | Release fixture state, barriers and dependency patches; no resources outside the test process. |
 
@@ -100,10 +81,7 @@ provisioning or large download is involved. Never run the existing Phase 2
 
 ## Remaining release gates (not claimed as tested)
 
-- Actual PostgreSQL concurrent admission/consumption/rolling quota locks across
-  independent connections, fresh clock after lock acquisition, deadlocks and
-  process failure after commit: require a separate disposable local database.
-  No production DB may be used. An in-memory repository is insufficient evidence.
+- Native PostgreSQL concurrency is tested separately in downloads.cjs and required in CI. Real process termination/recovery and production log pipeline checks remain provider/release gates.
 - Real provider GET/Range expiry, private-origin/CDN authorization and ingress IP
   spoofing checks are intentionally outside this no-cloud-traffic suite.
 - Browser/mobile download behavior, frontend countdown, production log pipeline,

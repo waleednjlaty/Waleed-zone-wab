@@ -154,7 +154,7 @@ export async function verifyDownloadUI({ base, root }) {
 
     const expiry = await fixture(); await prepare(expiry.page); await ready(expiry.page);
     await expiry.page.clock.fastForward(61000); await state(expiry.page, 'EXPIRED');
-    assert.equal(await expiry.page.locator('input[name="token"]').inputValue(), '');
+    assert.equal(await expiry.page.locator('input[name="token"]').count(), 0, 'Expired secrets are removed from the DOM');
     if (screenshotDir) await expiry.page.screenshot({ path: join(screenshotDir, 'download-360-expired.png'), fullPage: true });
     await expiry.page.getByRole('button', { name: 'إعادة تجهيز الرابط', exact: true }).click();
     await ready(expiry.page);

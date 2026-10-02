@@ -46,7 +46,7 @@ async function admitted(response, status = 201) {
     const data = await json(response);
     noPrivate(data);
     assert.match(data.request_id, UUID);
-    assert.deepEqual(Object.keys(data).sort(), ['request_id', 'state', 'server_time', 'ready_at', 'next_download_at', 'request_expires_at', 'wait_seconds', 'status_url'].sort());
+    assert.deepEqual(Object.keys(data).sort(), ['request_id', 'state', 'server_time', 'ready_at', 'next_download_at', 'request_expires_at', 'wait_seconds', 'status_url', 'can_issue_token'].sort());
     assert.equal(data.state, 'pending');
     assert.equal(timestamp(data.ready_at) - timestamp(data.server_time), 20000);
     assert.equal(timestamp(data.next_download_at), timestamp(data.ready_at));

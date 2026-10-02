@@ -15,5 +15,5 @@ export default async function DownloadPage({ params }: { params: Promise<{ id: s
   const app = await getAppById(Number(id));
   if (!app) notFound();
   return <DownloadExperience app={{ id: app.id, name: appName(app), imageUrl: app.imageUrl,
-    detailHref: appHref(app), version: app.version, size: app.size }} file={getDownloadPresentation(app.id)} />;
+    detailHref: appHref(app), version: app.version, size: app.size }} file={await getDownloadPresentation(app.id)} />;
 }

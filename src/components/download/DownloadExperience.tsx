@@ -40,7 +40,7 @@ export default function DownloadExperience({ app, file }: { app: DownloadApp; fi
       <li><Link href="/">الرئيسية</Link></li><li><Link href={app.detailHref} dir="auto">{app.name}</Link></li>
       <li><span aria-current="page">التحميل</span></li>
     </ol></nav>
-    <header className={styles.header}><p className="eyebrow">WALEED ZONE · تحميل مباشر</p><h1>تحميل <bdi>{app.name}</bdi></h1><p>جهّز الرابط، ثم ابدأ التحميل من متصفحك.</p></header>
+    <header className={styles.header}><p className="eyebrow">WALEED ZONE · تحميل مباشر</p><h1>تحميل <bdi>{app.name}</bdi></h1><p>{unavailable ? 'التحميل المباشر غير متاح حاليًا.' : 'جهّز الرابط، ثم ابدأ التحميل من متصفحك.'}</p></header>
     <div className={styles.layout}>
       <aside className={styles.summary} aria-label="معلومات الملف">
         <div className={styles.identity}><span className={styles.icon}><CoverImage src={app.imageUrl} alt={`أيقونة ${app.name}`} aspectClassName="aspect-square" /></span><div><h2 dir="auto">{app.name}</h2><span>ملف التحميل</span></div></div>
@@ -75,12 +75,12 @@ export default function DownloadExperience({ app, file }: { app: DownloadApp; fi
         </div>
         <div className={styles.actions}>
           {/* Native form: no fetch/Blob, no secret in URLs or browser storage. */}
-          <form action="/api/downloads/redeem" method="post" target="_blank" rel="noopener noreferrer" onSubmit={event => { event.preventDefault(); flow.submit(event.currentTarget); }}>
+          {!unavailable && state === 'READY' && flow.token && <form action="/api/downloads/redeem" method="post" target="_blank" rel="noopener noreferrer" onSubmit={event => { event.preventDefault(); flow.submit(event.currentTarget); }}>
             <input type="hidden" name="request_id" value={flow.requestId} />
             <input type="hidden" name="token" value={flow.token?.token || ''} />
             <input type="hidden" name="csrf_token" value={flow.csrf} />
             {state === 'READY' && <button className="primary-action" type="submit" aria-describedby="native-download-note">تحميل الملف <span aria-hidden="true">↓</span></button>}
-          </form>
+          </form>}
           {!unavailable && ['INITIAL', 'RATE_LIMITED', 'FAILED', 'EXPIRED', 'SUCCESS'].includes(state) && <button className={state === 'SUCCESS' ? 'secondary-action' : 'primary-action'} type="button" disabled={retryDisabled} onClick={() => void flow.prepare()}>{state === 'INITIAL' ? 'تجهيز رابط التحميل' : state === 'EXPIRED' ? 'إعادة تجهيز الرابط' : state === 'SUCCESS' ? 'تجهيز طلب جديد' : retryDisabled ? `أعد المحاولة بعد ${remaining} ثانية` : 'إعادة المحاولة'}</button>}
           {['LOADING', 'COUNTDOWN'].includes(state) && <button className="primary-action" disabled type="button">{state === 'COUNTDOWN' ? `جارٍ التجهيز · ${remaining} ثانية` : 'جارٍ التحقق…'}</button>}
           {state === 'DOWNLOADING' && <button type="button" className="secondary-action" onClick={() => void flow.check()}>التحقق من حالة الطلب</button>}

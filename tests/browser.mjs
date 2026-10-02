@@ -68,6 +68,17 @@ try {
   assert.equal(await page.locator('main [aria-busy="true"]').count(),0);
   assert.deepEqual(errors,[]);
   checks++;
+  for (const path of ['/download/201', '/login', '/account']) {
+    await page.goto(base + path, {waitUntil:'domcontentloaded'});
+    await page.locator('main').waitFor();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    if(path.startsWith('/download')) {
+      await page.getByText('التحميل المباشر غير متاح حاليًا', {exact:false}).first().waitFor();
+      assert.equal(await page.locator('form[action="/api/downloads/redeem"]').count(),0);
+    }
+    assert.deepEqual(errors,[]);
+    checks++;
+  }
   await page.close();
  }
  console.log(`Browser integration: ${checks} flows passed at 360/768/1440px, normal/reduced motion, no console/runtime errors.`);

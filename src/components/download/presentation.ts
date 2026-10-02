@@ -1,15 +1,18 @@
-import files from '@/data/download-presentation.json';
-import type { DownloadFile } from './types';
-import { UUID } from './api';
+import 'server-only';
+import { getSql } from '@/lib/db';
+import { DownloadService } from '@/lib/downloads/service';
 
-/**
- * Read-only rollout seam, intentionally empty until the integration agent connects
- * a public eligible-file DTO from the backend. Never derives file IDs from legacy
- * shortener URLs; this presentation map cannot authorize a download.
- */
-export function getDownloadPresentation(applicationId: number): DownloadFile | null {
-  const file = (files as Record<string, DownloadFile>)[String(applicationId)];
-  return file && file.application_id === applicationId && UUID.test(file.version_id) && UUID.test(file.file_id)
-    && typeof file.version === 'string' && file.version.trim() && Number.isSafeInteger(file.size_bytes) && file.size_bytes > 0
-    && (!file.file_type || ['apk', 'apks', 'xapk', 'obb', 'zip'].includes(file.file_type)) ? file : null;
+/** Fail closed when migration/config/storage is absent. IDs are never fabricated. */
+export async function getDownloadAvailability(applicationId: number) {
+  const sql = getSql();
+  if (!sql) return { mode: 'legacy', file: null };
+  try {
+    return await new DownloadService(sql, {
+      enabled: process.env.DIRECT_DOWNLOADS_ENABLED === 'true',
+      hosts: (process.env.DOWNLOAD_ALLOWED_DELIVERY_HOSTS || '').split(',').filter(Boolean),
+    }).presentation(applicationId);
+  } catch { return { mode: 'disabled', file: null }; }
+}
+export async function getDownloadPresentation(applicationId: number) {
+  return (await getDownloadAvailability(applicationId)).file;
 }

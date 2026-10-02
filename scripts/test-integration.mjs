@@ -54,7 +54,7 @@ try {
   }
   assert.ok(ready,'Production server did not become ready. Run npm run build first.');
   const code=await new Promise(resolve=>{
-    const tests=spawn(process.execPath,['--test','tests/integration.cjs','tests/seo-integration.cjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
+    const tests=spawn(process.execPath,['--test','tests/integration.cjs','tests/seo-integration.cjs','tests/download-integration.cjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
     tests.on('exit',(status)=>resolve(status??1));
   });
   process.exitCode=code;

@@ -6,7 +6,7 @@ const A = require('./downloads/assertions.cjs');
 const F = require('./downloads/fixtures.cjs');
 const headers = { 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow, noarchive', 'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff', 'content-type': 'application/json' };
 const response = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { ...headers, ...extra } });
-const r = { request_id: '33333333-3333-4333-8333-333333333333', state: 'pending', server_time: '2026-10-02T04:40:00.000Z', ready_at: '2026-10-02T04:40:20.000Z', next_download_at: '2026-10-02T04:40:20.000Z', request_expires_at: '2026-10-02T04:45:20.000Z', wait_seconds: 20, status_url: '/api/downloads/requests/33333333-3333-4333-8333-333333333333' };
+const r = { request_id: '33333333-3333-4333-8333-333333333333', state: 'pending', can_issue_token: false, server_time: '2026-10-02T04:40:00.000Z', ready_at: '2026-10-02T04:40:20.000Z', next_download_at: '2026-10-02T04:40:20.000Z', request_expires_at: '2026-10-02T04:45:20.000Z', wait_seconds: 20, status_url: '/api/downloads/requests/33333333-3333-4333-8333-333333333333' };
 const admitted = x => response(x, 201, { Location: x.status_url });
 test('QA assertion accepts exact documented admission DTO', async () => { await A.admitted(admitted(r)); });
 test('QA assertion rejects client-only or 19.999s readiness', async () => { await assert.rejects(A.admitted(admitted({ ...r, ready_at: '2026-10-02T04:40:19.999Z' }))); });
