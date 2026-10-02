@@ -27,16 +27,24 @@ export function validateManifest(input) {
   text(input.sha256, 'sha256', 64, /^[a-f0-9]{64}$/);
   text(input.download_filename, 'download_filename', 180, /^[^/\\]+\.apk$/);
   if (input.download_filename === '.apk' || input.download_filename.startsWith('.')) fail('Invalid download_filename');
+  if (/[";%]/.test(input.download_filename)) fail('Invalid attachment download_filename');
   text(input.storage_key, 'storage_key', 512, /^[a-zA-Z0-9][a-zA-Z0-9/._-]*$/);
   if (input.storage_key.split('/').some(x => !x || x === '.' || x === '..')) fail('storage_key must be a relative object key without traversal, URLs, query strings or empty segments');
   if (input.storage_object_version !== null) text(input.storage_object_version, 'storage_object_version', 200);
+  if (['railway-s3', 's3'].includes(input.storage_backend)
+    && !new RegExp(`^artifacts/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/${input.sha256}\\.apk$`).test(input.storage_key)) {
+    fail('S3 artifacts require a canonical content-addressed key matching SHA-256');
+  }
+  if (input.storage_backend === 'railway-s3' && input.storage_object_version !== null) fail('Railway does not support object versions');
   const m = { ...input, file_state: input.file_state ?? 'pending', version_state: input.version_state ?? 'pending' };
   if (!['pending', 'verified', 'active'].includes(m.file_state)) fail('Invalid file_state');
   if (!['pending', 'active', 'published'].includes(m.version_state)) fail('Invalid version_state');
   if (m.config_mode !== undefined && !['legacy', 'direct', 'disabled'].includes(m.config_mode)) fail('Invalid config_mode');
   if (m.file_state !== 'pending') {
-    if (!m.storage_object_version) fail('Verified files require an immutable storage_object_version');
-    object(m.verification, ['scanner', 'scan_reference', 'scanned_sha256'], 'verification');
+    if (!m.storage_object_version && m.storage_backend !== 'railway-s3') fail('Verified files require an immutable storage_object_version');
+    object(m.verification, ['scanner', 'scan_reference', 'scanned_sha256', 'immutable_key'], 'verification');
+    if (m.storage_backend === 'railway-s3' && m.verification.immutable_key !== true) fail('Railway verification requires an explicit immutable_key publishing assertion');
+    if (m.verification.immutable_key !== undefined && m.verification.immutable_key !== true) fail('immutable_key must be true when supplied');
     text(m.verification.scanner, 'scanner', 100);
     text(m.verification.scan_reference, 'scan_reference', 200);
     if (m.verification.scanned_sha256 !== m.sha256) fail('Scan evidence must bind to the manifest SHA-256');
@@ -77,6 +85,12 @@ function fileView(row) {
     .map(key => [key, key === 'size_bytes' ? Number(row[key]) : row[key]]));
 }
 const versionView = row => row ? Object.fromEntries(['id', 'application_id', 'version_label', 'release_key', 'active', 'published', 'published_at'].map(k => [k, row[k]])) : null;
+// A Railway object has no provider version. The publisher must never overwrite this
+// exact key; local verification/scan assertions alone do not certify provider bytes.
+const immutableFile = f => f.storage_backend === 'railway-s3'
+  ? f.storage_object_version === null && f.storage_key === `artifacts/${f.id}/${f.sha256}.apk`
+  : Boolean(f.storage_object_version);
+const rolloutBlocker = 'Direct activation is intentionally blocked by the Phase 4 metadata CLI; a separately reviewed rollout is required';
 
 export async function planMetadata(tx, m, { allowPendingUpdate = false, database } = {}) {
   const [app] = await tx`SELECT id,active,published FROM applications WHERE id=${m.application_id}`;
@@ -99,9 +113,9 @@ export async function planMetadata(tx, m, { allowPendingUpdate = false, database
   if (version && (Number(m.version_state !== 'pending') < Number(version.active) || Number(m.version_state === 'published') < Number(version.published))) fail('Version state downgrade is prohibited; disable app config instead');
   if (m.version_state === 'published' && (!app.active || !app.published)) fail('Publishing requires an active published application');
   if (m.version_state === 'published') {
-    const siblings = await tx`SELECT scan_status,verified_at,storage_object_version,retired_at FROM site_download_files
+    const siblings = await tx`SELECT id,sha256,storage_backend,storage_key,scan_status,verified_at,storage_object_version,retired_at FROM site_download_files
       WHERE version_id=${version.id} AND active=true AND variant_key<>${m.variant_key}`;
-    if (siblings.some(f => f.scan_status !== 'verified' || !f.verified_at || !f.storage_object_version || f.retired_at)) fail('Publication requires all active variants to be verified immutable objects');
+    if (siblings.some(f => f.scan_status !== 'verified' || !f.verified_at || !immutableFile(f) || f.retired_at)) fail('Publication requires all active variants to be verified immutable objects');
   }
   const collisions = await tx`SELECT id FROM site_download_files WHERE storage_backend=${m.storage_backend} AND storage_key=${m.storage_key}`;
   if (collisions.some(row => row.id !== file?.id)) fail('Storage object key already belongs to another artifact');
@@ -117,14 +131,16 @@ export async function planMetadata(tx, m, { allowPendingUpdate = false, database
   const targetFile = { id: file?.id ?? idFor('file'), version_id: versionId, ...Object.fromEntries(FILE_FIELDS.map(k => [k, m[k]])),
     scan_status: m.file_state === 'pending' ? 'pending' : 'verified',
     verified_at: file?.verified_at ?? (m.file_state !== 'pending' ? 'ON_COMMIT' : null), active: m.file_state === 'active', retired_at: null };
+  if (['railway-s3', 's3'].includes(m.storage_backend)
+    && m.storage_key !== `artifacts/${targetFile.id}/${m.sha256}.apk`) fail('S3 storage key must bind the exact planned file UUID and SHA-256');
   const targetConfig = m.config_mode === undefined
     ? config ?? { application_id: m.application_id, mode: 'legacy', current_version_id: null }
     : { application_id: m.application_id, mode: m.config_mode, current_version_id: m.config_mode === 'direct' ? versionId : config?.current_version_id ?? null };
   const blockers = [];
   if (m.config_mode === 'direct') {
-    // Mirrors the empty production registry in src/lib/downloads/storage.ts. No operator
-    // flag/manifest can invent a provider, attest ingress, or increase budget/settings.
-    blockers.push('Production storage adapter registry is empty; Phase 4 cannot enable direct mode');
+    // Adapter registration is now conditional. This independent deny cannot be
+    // lifted by credentials, deployment flags, manifests or database settings.
+    blockers.push(rolloutBlocker);
     const [settings] = await tx`SELECT enabled FROM site_download_settings WHERE id=1`;
     const [budget] = await tx`SELECT allowance_verified,byte_limit,reserved_bytes,amplification_factor,
       starts_at<=clock_timestamp() AND expires_at>clock_timestamp() AS current FROM site_download_budget WHERE id=1`;
@@ -218,10 +234,10 @@ export async function manageConfig(sql, input, options = {}) {
     let selection = null, files = [];
     if (m.config_mode === 'direct') {
       [selection] = await tx`SELECT id,active,published FROM site_download_versions WHERE application_id=${m.application_id} AND release_key=${m.release_key}`;
-      if (selection) files = await tx`SELECT id,scan_status,verified_at,storage_object_version,retired_at FROM site_download_files WHERE version_id=${selection.id} AND active=true ORDER BY id`;
+      if (selection) files = await tx`SELECT id,sha256,storage_backend,storage_key,scan_status,verified_at,storage_object_version,retired_at FROM site_download_files WHERE version_id=${selection.id} AND active=true ORDER BY id`;
       if (!app.active || !app.published || !selection?.active || !selection.published || !files.length
-        || files.some(f => f.scan_status !== 'verified' || !f.verified_at || !f.storage_object_version || f.retired_at)) blockers.push('Direct mode requires active/published app/version and verified immutable active artifacts');
-      blockers.push('Production storage adapter registry is empty; Phase 4 cannot enable direct mode',
+        || files.some(f => f.scan_status !== 'verified' || !f.verified_at || !immutableFile(f) || f.retired_at)) blockers.push('Direct mode requires active/published app/version and verified immutable active artifacts');
+      blockers.push(rolloutBlocker,
         'Shared settings, verified budget, provider/ingress/private-origin/Range/expiry/mobile gates require a separately reviewed rollout');
     }
     const after = { application_id: m.application_id, mode: m.config_mode,

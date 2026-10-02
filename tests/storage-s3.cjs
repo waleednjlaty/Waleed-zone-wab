@@ -18,6 +18,7 @@ const config = { backend: 'railway-s3', endpoint: 'https://storage.example.test'
   allowedHosts: ['wz-fixture.storage.example.test'], forcePathStyle: false, versioningEnabled: false,
   checksumSource: 'metadata', timeoutMs: 2500 };
 const env = { DOWNLOAD_STORAGE_BACKEND: 'railway-s3', DOWNLOAD_S3_ENDPOINT: config.endpoint,
+  DOWNLOAD_STORAGE_PROVIDER_VERIFIED: 'true',
   DOWNLOAD_S3_REGION: config.region, DOWNLOAD_S3_BUCKET: config.bucket,
   DOWNLOAD_S3_ACCESS_KEY_ID: config.accessKeyId, DOWNLOAD_S3_SECRET_ACCESS_KEY: config.secretAccessKey,
   DOWNLOAD_ALLOWED_DELIVERY_HOSTS: config.allowedHosts[0] };
@@ -40,6 +41,8 @@ test('S3 env contract: optional registry, fail-closed invalid config, frozen con
   const registry = configuredStorageAdapters(env);
   assert.ok(registry['railway-s3'] instanceof S3DownloadStorage);
   assert.ok(Object.isFrozen(registry));
+  for (const value of [undefined, '', 'false', 'yes'])
+    assert.deepEqual(configuredStorageAdapters({ ...env, DOWNLOAD_STORAGE_PROVIDER_VERIFIED: value }), {});
   for (const name of ['DOWNLOAD_S3_ENDPOINT', 'DOWNLOAD_S3_REGION', 'DOWNLOAD_S3_BUCKET', 'DOWNLOAD_S3_ACCESS_KEY_ID',
     'DOWNLOAD_S3_SECRET_ACCESS_KEY', 'DOWNLOAD_ALLOWED_DELIVERY_HOSTS']) {
     assert.throws(() => s3ConfigFromEnv({ ...env, [name]: '' }), fails('STORAGE_UNAVAILABLE'));
@@ -54,7 +57,7 @@ test('S3 env contract: optional registry, fail-closed invalid config, frozen con
 test('S3 configuration denies unsafe endpoint, bucket and delivery allowlist', () => {
   for (const endpoint of ['http://storage.example.test', 'https://user:password@storage.example.test',
     'https://storage.example.test:444', 'https://storage.example.test/path', 'https://storage.example.test?x=1',
-    'https://storage.example.test#x']) assert.throws(() => fixture({ endpoint }), fails('STORAGE_UNAVAILABLE'));
+    'https://storage.example.test#x', 'https://storage.example.test#']) assert.throws(() => fixture({ endpoint }), fails('STORAGE_UNAVAILABLE'));
   for (const bucket of ['../other', 'bucket.with.dots', 'Uppercase', 'a', 'ab-', 'a'.repeat(64)])
     assert.throws(() => fixture({ bucket }), fails('STORAGE_UNAVAILABLE'));
   for (const allowedHosts of [[], ['*.example.test'], ['https://storage.example.test'], ['evil.example.test'], ['storage.example.test:443']])
@@ -113,7 +116,8 @@ test('S3 provider SHA-256 accepts canonical full object digest only', async () =
   });
   assert.equal((await adapter.headObject(ref, controller().signal)).sha256, sha);
   for (const patch of [{ ChecksumSHA256: undefined }, { ChecksumSHA256: checksum + '-2' },
-    { ChecksumSHA256: checksum, ChecksumType: 'COMPOSITE' }, { ChecksumSHA256: 'bad' },
+    { ChecksumSHA256: checksum, ChecksumType: 'COMPOSITE' }, { ChecksumSHA256: checksum },
+    { ChecksumSHA256: checksum, ChecksumType: 'UNKNOWN' }, { ChecksumSHA256: 'bad' },
     { ChecksumSHA256: Buffer.from('b'.repeat(64), 'hex').toString('base64') }])
     await assert.rejects(fixture({ checksumSource: 'provider' }, async () => metadata(patch)).headObject(ref, controller().signal), fails('FILE_INTEGRITY_UNAVAILABLE'));
 });
@@ -128,6 +132,7 @@ test('Railway denies object version requests; compatible versioned S3 pins HEAD 
   });
   assert.equal((await adapter.headObject(versionRef, controller().signal)).objectVersion, versionRef.objectVersion);
   const grant = await adapter.createDeliveryGrant(input({ ref: versionRef }), controller().signal);
+  await assert.rejects(adapter.headObject({ ...ref, backend: 's3' }, controller().signal), fails('FILE_INTEGRITY_UNAVAILABLE'));
   assert.equal(new URL(grant.url).searchParams.get('versionId'), versionRef.objectVersion);
   assert.equal(adapter.matchesObject(grant, { ...versionRef, objectVersion: 'different' }), false);
   await assert.rejects(fixture({ backend: 's3', versioningEnabled: true }).headObject(versionRef, controller().signal), fails('FILE_INTEGRITY_UNAVAILABLE'));
@@ -226,6 +231,8 @@ test('exact matching rejects foreign grants and every alteration of minted grant
 test('signer URL validation denies unexpected hosts, keys, versions and non-GET operations', async () => {
   const valid = await fixture().createDeliveryGrant(input(), controller().signal);
   for (const change of [u => u.replace('https:', 'http:'), u => u.replace(config.allowedHosts[0], 'evil.test'),
+    u => u + '#', u => u + '#fragment', u => u.replace('https://', 'https://user:password@'),
+    u => u.replace(config.allowedHosts[0], config.allowedHosts[0] + ':444'),
     u => u.replace('/artifacts/', '/wz-fixture/artifacts/'), u => u.replace(sha + '.apk', 'b'.repeat(64) + '.apk'),
     u => u + '&versionId=evil', u => u + '&partNumber=1', u => u + '&X-Amz-Expires=300',
     u => u.replace('X-Amz-SignedHeaders=host', 'X-Amz-SignedHeaders=host%3Brange')])

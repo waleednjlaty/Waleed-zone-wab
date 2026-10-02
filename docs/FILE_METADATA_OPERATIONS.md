@@ -56,13 +56,13 @@ selection, or creates a `legacy` config for a newly added legacy application.
 | `size_bytes` | JSON integer 1–2147483648, no strings/floats |
 | `sha256` | Exactly 64 lowercase hexadecimal characters; ETags are not SHA-256 |
 | `mime_type` | Exactly `application/vnd.android.package-archive`, no parameters |
-| `download_filename` | 1–180 characters, `.apk` suffix, no slash/backslash, hidden name, controls or bidi formatting |
-| `storage_key` | Relative ASCII object key, 1–512 characters; no traversal, URL, encoded path, empty segment, query or signature |
-| `storage_object_version` | Required field: `null` while pending, or nonempty immutable provider version up to 200 characters; verified/active require non-null |
+| `download_filename` | 1–180 characters, `.apk` suffix, no slash/backslash, hidden name, controls, bidi formatting, quote, semicolon or percent |
+| `storage_key` | Relative ASCII key, 1–512 characters; no traversal/URL/encoding/query. `railway-s3`/`s3` require `artifacts/<planned-file-uuid>/<sha256>.apk` |
+| `storage_object_version` | Required field: immutable provider version (up to 200 characters) for versioned backends. `railway-s3` requires `null` at every state because it has no versioning; verification requires a canonical immutable key and explicit publishing assertion |
 | `file_state` | `pending`, `verified`, `active` |
 | `version_state` | `pending`, `active`, `published` |
 | `config_mode` | Optional `legacy`, `disabled`, `direct` |
-| `verification` | Required for verified/active: exactly `scanner`, `scan_reference`, `scanned_sha256`; SHA must match artifact |
+| `verification` | Required for verified/active: `scanner`, `scan_reference`, `scanned_sha256`; SHA must match. Railway also requires `immutable_key: true` as a publisher no-overwrite assertion |
 
 The CLI streams the local artifact to check exact size and SHA-256; it never uploads it.
 MIME/extension validation is metadata validation, not an APK signature/package audit.
@@ -127,7 +127,7 @@ never place secrets in a manifest. Stdout success is emitted only after commit.
 1. **Pending:** insert file/version inactive and unpublished. Keep config `legacy`
    or `disabled`. Choose a new release/object key rather than replacing live bytes.
 2. **Verify:** keep version pending, set file `verified`, add truthful scan evidence
-   and immutable object version. Use `--verify-file ./reviewed.apk` for both dry-run
+   and immutable object identity. Railway uses `storage_object_version: null`, the exact planned UUID/hash key and `verification.immutable_key: true`; versioned providers use a genuine provider version. Use `--verify-file ./reviewed.apk` for both dry-run
    and apply. Match bytes to the scanner report and independently confirmed object.
 3. **Activate:** set file `active` and version `active`; keep config unchanged.
    Local bytes/evidence are required again. `published` remains false.
@@ -169,12 +169,11 @@ same separately reviewed rollout requirement. Config-only no-ops preserve timest
 
 ## Direct rollout remains blocked
 
-The production registry in `src/lib/downloads/storage.ts` is empty. No manifest flag
-can manufacture a trusted adapter. The CLI also reports missing shared settings and
+The server registry in `src/lib/downloads/storage.ts` is conditionally populated only with valid configuration and `DOWNLOAD_STORAGE_PROVIDER_VERIFIED=true`. It is empty by default. The CLI retains an independent unconditional direct-activation blocker even if an adapter is configured. No manifest or deployment flag removes it. The CLI also reports missing shared settings and
 owner-confirmed current budget. Provider/immutable-object/private-origin/Range/expiry,
 verified ingress and real mobile redirect/CSP compatibility need a separately reviewed
 storage rollout, as documented by the Phase 3 review. The conservative direct deny
-must be revised alongside that implementation; merely wiring an adapter elsewhere
+requires a separately reviewed rollout change; merely wiring an adapter elsewhere
 will not silently unlock this CLI. Tests using fixture rows are not provider evidence.
 
 The tool never writes settings, budget, requests, grants or quota counters, never sets
@@ -207,3 +206,7 @@ is not sufficient evidence for this task. Use a fresh DB for each native run.
 PostgreSQL references: [read-only transactions](https://www.postgresql.org/docs/16/sql-set-transaction.html),
 [transaction advisory locks](https://www.postgresql.org/docs/16/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS),
 [serializable isolation](https://www.postgresql.org/docs/16/transaction-iso.html).
+
+## Phase 4 integration compatibility
+
+To discover a new file UUID before choosing its S3 key, run a read-only pending dry-run with an `unconfigured` backend and a placeholder relative key, then use `file.after.id` in the final canonical Railway/S3 manifest and review a fresh plan. Do not apply the placeholder unless explicitly intended. The deterministic identity is bound to app/release/variant; no cloud operation occurs. Never invent a Railway object version. `immutable_key: true` asserts an externally enforced no-overwrite publishing policy; it does not verify provider bytes or locks. Keep direct activation blocked until authentic provider and budget/ingress/migration/mobile evidence is reviewed.

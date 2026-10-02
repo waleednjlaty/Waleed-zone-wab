@@ -9,6 +9,7 @@ Implements issue #28 against `DownloadStorage`, starting at main `1581874aab782b
 | Variable | Required when backend is selected | Contract |
 | --- | --- | --- |
 | `DOWNLOAD_STORAGE_BACKEND` | Yes | Empty disables registration; `railway-s3` or `s3` only. File metadata backend must match exactly. |
+| `DOWNLOAD_STORAGE_PROVIDER_VERIFIED` | Yes | Defaults `false`; only exact `true` allows registration after a separately authorized real private-origin/Range/expiry/provider review. Credentials/configuration alone are insufficient. This is an operator attestation, not an automated provider probe. |
 | `DOWNLOAD_S3_ENDPOINT` | Yes | Base HTTPS endpoint from bucket credentials, no userinfo, port, path, query or fragment. No request-supplied endpoints. |
 | `DOWNLOAD_S3_REGION` | Yes | Signing region from provider credentials; Railway publishes `REGION` (example `auto`). |
 | `DOWNLOAD_S3_BUCKET` | Yes | Actual S3 `BUCKET`, not the Railway display name. DNS-safe 3–63 lowercase alphanumeric/hyphen characters; dotted buckets deliberately excluded for predictable TLS host matching. |
@@ -30,11 +31,11 @@ The adapter accepts only canonical `artifacts/<lowercase-file-uuid>/<64-lowercas
 
 `metadata`: authenticated HEAD must provide `x-amz-meta-sha256` as exactly 64 lowercase hex characters. This is trusted **only because an offline publishing operator computes/verifies the full-object digest and sets the metadata using separate controlled credentials**. A metadata hash alone does not prove the bytes, provenance or malware safety. Missing metadata fails closed; `ETag`, arbitrary checksums and the key hash alone are never substitutes. No provider `ChecksumMode` is requested in this mode, avoiding an assumption about Railway checksum-header support.
 
-`provider`: HEAD requests `ChecksumMode=ENABLED`. Accepts only canonical base64 of a 32-byte `ChecksumSHA256` and rejects composite/multipart checksums and mismatched content-addressed keys. If the provider omits the checksum, redemption fails; it never falls back to metadata/ETag. Provider support/semantics must be confirmed before selecting this mode.
+`provider`: HEAD requests `ChecksumMode=ENABLED`. Requires explicit `ChecksumType=FULL_OBJECT` and canonical base64 of a 32-byte `ChecksumSHA256`; missing/unknown type, composite/multipart checksums and mismatched content-addressed keys fail closed. No metadata/ETag fallback. Provider support/semantics must be confirmed before selecting this mode.
 
-Metadata must describe positive safe-integer bytes, exact `application/vnd.android.package-archive`, and a nondeleted object. If an object version is supplied, enabled version support is required, HEAD must report that exact ID, and GET is signed with the same `versionId`. `null`/empty/oversized/control-containing version IDs are rejected. No lookup silently substitutes the latest version.
+Metadata must describe positive safe-integer bytes, exact `application/vnd.android.package-archive`, and a nondeleted object. A version-enabled adapter requires an explicit object version, HEAD must report that exact ID, and GET is signed with the same `versionId`. A supplied version also requires enabled support. `null`/empty/oversized/control-containing version IDs are rejected. No lookup silently substitutes the latest version.
 
-Railway currently documents no object versioning/locks. For it, file records omit objectVersion and the publisher must **never overwrite a published content-addressed key**, restrict write credentials, and withdraw references before deletion. HEAD plus a signature cannot independently eliminate a replacement race without that publishing control. Even on a versioned provider, an unversioned ref still requires the same immutability rule. This PR provides no publishing tool or production validation.
+Railway currently documents no object versioning/locks. For it, file records omit objectVersion and the publisher must **never overwrite a published content-addressed key**, restrict write credentials, and withdraw references before deletion. HEAD plus a signature cannot independently eliminate a replacement race without that publishing control. An unversioned generic provider requires the same immutability rule; version-enabled adapters require pinned references. This PR provides no publishing tool or production validation.
 
 ## Delivery and failure behavior
 

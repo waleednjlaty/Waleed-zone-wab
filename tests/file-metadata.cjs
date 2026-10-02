@@ -33,6 +33,7 @@ test('metadata strict validation and input limits', async t => {
     ['artifact type', { artifact_type: 'zip' }], ['filename path', { download_filename: '../qa.apk' }], ['filename backslash', { download_filename: 'x\\qa.apk' }],
     ['filename header injection', { download_filename: 'qa\r\n.apk' }], ['filename bidi', { download_filename: 'qa\u202e.apk' }],
     ['filename extension', { download_filename: 'qa.exe' }], ['filename length', { download_filename: 'a'.repeat(177) + '.apk' }],
+    ['filename quote', { download_filename: 'qa".apk' }], ['filename percent', { download_filename: 'qa%.apk' }], ['filename semicolon', { download_filename: 'qa;.apk' }],
     ['object traversal', { storage_key: 'objects/../qa.apk' }], ['object URL', { storage_key: 'https://example.test/qa.apk' }],
     ['object absolute path', { storage_key: '/qa.apk' }], ['object empty segment', { storage_key: 'objects//qa.apk' }],
     ['object query', { storage_key: 'qa.apk?token=secret' }], ['object percent traversal', { storage_key: 'objects/%2e%2e/qa.apk' }],
@@ -45,6 +46,16 @@ test('metadata strict validation and input limits', async t => {
       { verification: { ...verified().verification, approved: true } }]) assert.throws(() => validate({ ...verified(), ...patch }));
   });
   await t.test('pending scan assertion is rejected', () => assert.throws(() => validate({ ...pending(), verification: verified().verification })));
+  await t.test('Railway verifies canonical immutable keys without inventing provider versions', () => {
+    const m = { ...verified(), storage_backend: 'railway-s3', storage_object_version: null,
+      storage_key: `artifacts/12345678-1234-4234-8234-123456789abc/${hash}.apk`,
+      verification: { ...verified().verification, immutable_key: true } };
+    assert.equal(validate(m).storage_object_version, null);
+    for (const patch of [{ storage_object_version: 'invented' }, { storage_key: 'legacy.apk' },
+      { storage_key: m.storage_key.replace(hash, 'a'.repeat(64)) },
+      { verification: verified().verification }, { verification: { ...m.verification, immutable_key: false } }])
+      assert.throws(() => validate({ ...m, ...patch }));
+  });
   await t.test('all config enum values parse with correct state', () => { for (const mode of ['legacy', 'disabled', 'direct']) assert.equal(validate({ ...published(), config_mode: mode }).config_mode, mode); });
   await t.test('config-only schema accepts mode and rejects artifact fields/missing direct selection', () => {
     const base = { schema_version: 1, application_id: 201, config_mode: 'disabled' };
@@ -173,7 +184,7 @@ test('native disposable PostgreSQL metadata lifecycle', { skip: !process.env.WZ_
     });
     await t.test('direct dry-run gives blockers; apply cannot mutate anything or global switches', async () => {
       const m = { ...published(), config_mode: 'direct' }; const before = await snapshot(); const p = await manage(sql, m, options);
-      assert.ok(p.blockers.some(x => /adapter registry/.test(x))); assert.ok(p.blockers.some(x => /budget/.test(x)));
+      assert.ok(p.blockers.some(x => /intentionally blocked/.test(x))); assert.ok(p.blockers.some(x => /budget/.test(x)));
       await assert.rejects(manage(sql, m, { ...options, apply: true, expectPlan: p.plan_sha256 }), /Direct mode blocked/);
       assert.equal(await snapshot(), before); assert.equal((await sql`SELECT enabled FROM site_download_settings`)[0].enabled, false);
     });
@@ -259,6 +270,22 @@ test('native disposable PostgreSQL metadata lifecycle', { skip: !process.env.WZ_
         VALUES('dddddddd-dddd-4ddd-8ddd-dddddddddddd',${v.id},'bad-sibling','apk',${bytes.length},${hash},${pending().mime_type},'qa.apk','fixture','bad-sibling.apk','pending',true)`;
       await assert.rejects(manage(sql, published(), options), /all active variants/);
       await sql`UPDATE site_download_files SET active=false WHERE variant_key='bad-sibling'`;
+    });
+    await t.test('Railway staged metadata binds planned UUID/hash, preserves null version, and never enables direct', async () => {
+      const seed = { ...pending(), release_key: 'railway-r1', storage_key: 'railway-seed.apk' };
+      const id = (await manage(sql, seed, options)).file.after.id;
+      const m = { ...seed, storage_backend: 'railway-s3', storage_object_version: null, storage_key: `artifacts/${id}/${hash}.apk` };
+      await assert.rejects(manage(sql, { ...m, storage_key: m.storage_key.replace(id, '12345678-1234-4234-8234-123456789abc') }, options), /exact planned file UUID/);
+      await apply(m);
+      const v = { ...m, file_state: 'verified', verification: { ...verified().verification, immutable_key: true } };
+      await apply(v); await apply({ ...v, file_state: 'active', version_state: 'active' });
+      const pub = { ...v, file_state: 'active', version_state: 'published' };
+      await apply(pub); const before = await snapshot(); await apply(pub); assert.equal(await snapshot(), before);
+      const [f] = await sql`SELECT id,storage_key,storage_object_version,scan_status FROM site_download_files WHERE id=${id}`;
+      assert.equal(f.storage_key, `artifacts/${id}/${hash}.apk`); assert.equal(f.storage_object_version, null); assert.equal(f.scan_status, 'verified');
+      const direct = { ...pub, config_mode: 'direct' }, plan = await manage(sql, direct, options);
+      await assert.rejects(manage(sql, direct, { ...options, apply: true, expectPlan: plan.plan_sha256 }), /Direct mode blocked/);
+      assert.equal(await snapshot(), before);
     });
   } finally {
     await sql.end(); await other.end(); rmSync(folder, { recursive: true, force: true });

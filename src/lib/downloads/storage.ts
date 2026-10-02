@@ -21,7 +21,7 @@ export function validateGrant(grant: DeliveryGrant, ref: ObjectRef, adapter: Dow
   allowedHosts: readonly string[], now: Date) {
   let url: URL;
   try { url = new URL(grant.url); } catch { throw new DownloadError(503, 'STORAGE_UNAVAILABLE'); }
-  if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hash
+  if (url.protocol !== 'https:' || url.username || url.password || url.port || grant.url.includes('#')
     || url.hostname !== grant.deliveryHost || !allowedHosts.includes(url.hostname)
     || !(grant.expiresAt instanceof Date) || !Number.isFinite(grant.expiresAt.getTime())
     || grant.expiresAt.getTime() - now.getTime() < 30000

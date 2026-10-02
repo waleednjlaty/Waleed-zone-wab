@@ -25,7 +25,7 @@ function validateConfig(config: S3StorageConfig) {
   let endpoint: URL;
   try { endpoint = new URL(config.endpoint); } catch { throw unavailable(); }
   if (!['railway-s3', 's3'].includes(config.backend) || endpoint.protocol !== 'https:' || endpoint.username
-    || endpoint.password || endpoint.port || endpoint.search || endpoint.hash || endpoint.pathname !== '/'
+    || endpoint.password || endpoint.port || endpoint.search || config.endpoint.includes('#') || endpoint.pathname !== '/'
     || !hostname(endpoint.hostname) || !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(config.bucket)
     || !/^[a-z0-9-]{1,63}$/.test(config.region) || !config.accessKeyId || !config.secretAccessKey
     || !['metadata', 'provider'].includes(config.checksumSource)
@@ -90,6 +90,7 @@ export class S3DownloadStorage implements DownloadStorage {
 
   private validateRef(ref: ObjectRef) {
     if (ref.backend !== this.config.backend || !validS3ObjectKey(ref.key)
+      || (this.config.versioningEnabled && ref.objectVersion === undefined)
       || (ref.objectVersion !== undefined && (!this.config.versioningEnabled
         || !ref.objectVersion || ref.objectVersion === 'null' || ref.objectVersion.length > 1024
         || /[\x00-\x20\x7f]/.test(ref.objectVersion)))) throw integrity();
@@ -134,7 +135,7 @@ export class S3DownloadStorage implements DownloadStorage {
       } else {
         const checksum = metadata.ChecksumSHA256 || '';
         // Multipart/composite digests are not full-object SHA-256.
-        if (metadata.ChecksumType === 'COMPOSITE' || !/^[A-Za-z0-9+/]{43}=$/.test(checksum)) throw integrity();
+        if (metadata.ChecksumType !== 'FULL_OBJECT' || !/^[A-Za-z0-9+/]{43}=$/.test(checksum)) throw integrity();
         const bytes = Buffer.from(checksum, 'base64');
         if (bytes.length !== 32 || bytes.toString('base64') !== checksum) throw integrity();
         sha256 = bytes.toString('hex');
@@ -180,7 +181,7 @@ export class S3DownloadStorage implements DownloadStorage {
         || owned.expiry !== grant.expiresAt.getTime()) return false;
       const url = new URL(grant.url), params = url.searchParams;
       const path = '/' + (this.config.forcePathStyle ? this.config.bucket + '/' : '') + ref.key.split('/').map(encode).join('/');
-      if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hash
+      if (url.protocol !== 'https:' || url.username || url.password || url.port || grant.url.includes('#')
         || url.hostname !== this.deliveryHost || grant.deliveryHost !== this.deliveryHost
         || !this.config.allowedHosts.includes(url.hostname) || url.pathname !== path) return false;
       const keys = [...params.keys()];
@@ -202,6 +203,9 @@ export class S3DownloadStorage implements DownloadStorage {
 /** Missing/invalid provider configuration fails closed without breaking unrelated catalog builds. */
 export function configuredStorageAdapters(env: NodeJS.ProcessEnv = process.env): Readonly<Record<string, DownloadStorage>> {
   try {
+    // Configuration is not provider certification. Keep deployment registration
+    // closed until the operator has verified the real private delivery contract.
+    if (env.DOWNLOAD_STORAGE_PROVIDER_VERIFIED !== 'true') return Object.freeze({});
     const config = s3ConfigFromEnv(env);
     return Object.freeze(config ? { [config.backend]: new S3DownloadStorage(config) } : {});
   } catch { return Object.freeze({}); }
