@@ -5,6 +5,8 @@ const csp = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
+  ...(!adsReady ? ["frame-src 'none'"] : []),
+  "script-src-attr 'none'",
   "frame-ancestors 'none'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${adsReady ? ' https://pagead2.googlesyndication.com https://www.googletagservices.com https://googleads.g.doubleclick.net' : ''}`,
   "style-src 'self' 'unsafe-inline'",
@@ -30,7 +32,8 @@ const securityHeaders = [
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
-  { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
+  ...(!isDev && (process.env.NEXT_PUBLIC_SITE_URL || 'https://waleed-zone.up.railway.app').startsWith('https://') ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000' }] : []),
+  { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
   {
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()',

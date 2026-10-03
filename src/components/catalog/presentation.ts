@@ -1,7 +1,8 @@
 import type { Application } from '@/lib/queries';
 
 // Presentation only: the bot's schema and existing queries remain the source of truth.
-const gameCategory = /games?|gaming|ألعاب|العاب|لعبة|اكشن|أكشن|مغامرات|سباق|محاكاة|استراتيجية|رياضة|ألغاز|الغاز|arcade|action|adventure|racing|simulation|strategy|puzzle|role.?playing/i;
+export const GAME_CATEGORY_PATTERN = 'games?|gaming|ألعاب|العاب|لعبة|اكشن|أكشن|مغامرات|سباق|محاكاة|استراتيجية|رياضة|ألغاز|الغاز|arcade|action|adventure|racing|simulation|strategy|puzzle|role.?playing';
+const gameCategory = new RegExp(GAME_CATEGORY_PATTERN,'i');
 
 export function isGame(app: Pick<Application, 'category'>) {
   return gameCategory.test(app.category || '');

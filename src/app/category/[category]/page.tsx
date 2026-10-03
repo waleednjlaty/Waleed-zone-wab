@@ -1,3 +1,4 @@
+import JsonLd from '@/components/JsonLd';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { cache } from 'react';
@@ -10,7 +11,7 @@ import { appHref } from '@/lib/catalog/routes';
 import { getApps, getCategories } from '@/lib/queries';
 import { breadcrumbStructuredData, pageMetadata } from '@/lib/seo';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
-import { parsePage, safeJsonLd } from '@/lib/utils';
+import { parsePage } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 interface Props { params: Promise<{ category: string }>; searchParams: Promise<{ page?: string | string[] }> }
@@ -45,7 +46,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     })) },
   }, breadcrumbStructuredData([{ name: 'الرئيسية', item: SITE_URL }, { name: category, item: SITE_URL + url }])];
   return <div className="shell py-9 sm:py-14">
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(data) }} />
+    <JsonLd data={data} />
     <nav aria-label="مسار التنقل" className="mb-7 text-sm text-[#a6b5b8]"><Link href="/" className="hover:text-[#d9f578]">الرئيسية</Link> / <span aria-current="page">{category}</span></nav>
     <header className="hero-pattern mb-10 overflow-hidden rounded-[30px] border border-white/10 bg-[#142029] p-8 sm:p-12">
       <p className="eyebrow">CATEGORY / {category}</p><h1 className="mt-4 text-4xl font-black sm:text-5xl">{category}<span className="text-[#d9f578]">.</span></h1>

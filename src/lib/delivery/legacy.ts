@@ -1,5 +1,5 @@
 import 'server-only';
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Sql } from 'postgres';
 import { DownloadError } from '@/lib/downloads/rules';
 import { telegramDestination } from './telegram';
@@ -9,19 +9,21 @@ const fail = () => new DownloadError(404,'SOURCE_UNAVAILABLE');
 export type Delivery = { destination: string; revision: string; provider: 'telegram' | 'external' };
 /** Re-read publication, disable gate and the exact source on every redemption. */
 export async function legacyDelivery(sql: Sql, applicationId: number, env: NodeJS.ProcessEnv): Promise<Delivery> {
-  const [app] = await sql`SELECT id,active,published,revision,shrankme_url,devupload_url FROM applications WHERE id=${applicationId}`;
-  if (!app?.active || !app.published) throw fail();
   const [schema] = await sql`SELECT to_regclass('site_download_app_config') AS config,to_regclass('site_delivery_sources') AS sources`;
-  if (schema.config) {
-    const [config] = await sql`SELECT mode FROM site_download_app_config WHERE application_id=${applicationId}`;
-    if (config?.mode === 'disabled') throw fail();
-  }
-  if (!schema.sources) throw new DownloadError(503,'DELIVERY_SCHEMA_UNAVAILABLE');
-  const [source] = await sql`SELECT telegram_channel_username,telegram_message_id FROM site_delivery_sources
-    WHERE application_id=${applicationId} AND provider='telegram'`;
-  if (source) {
-    let destination; try { destination = telegramDestination(source.telegram_channel_username,source.telegram_message_id,env); } catch { throw fail(); }
-    return { destination, revision: String(app.revision), provider: 'telegram' };
+  if (!schema.sources || !schema.config) throw new DownloadError(503,'DELIVERY_SCHEMA_UNAVAILABLE');
+  // One statement snapshot: no mixture of old publication/revision and new source.
+  const [app] = await sql`SELECT a.id,a.active,a.published,a.revision,a.shrankme_url,a.devupload_url,c.mode,
+    s.telegram_channel_username,s.telegram_message_id FROM applications a
+    LEFT JOIN site_download_app_config c ON c.application_id=a.id
+    LEFT JOIN site_delivery_sources s ON s.application_id=a.id AND s.provider='telegram'
+    WHERE a.id=${applicationId}`;
+  if (!app?.active || !app.published || app.mode==='disabled') throw fail();
+  const delivery = (destination: string, provider: Delivery['provider']): Delivery => ({ destination,provider,
+    // Hash hides internal revision and binds the grant to the exact source even if a trigger is absent.
+    revision:createHash('sha256').update(JSON.stringify([String(app.revision),provider,destination])).digest('hex') });
+  if (app.telegram_message_id !== null && app.telegram_message_id !== undefined) {
+    let destination; try { destination = telegramDestination(app.telegram_channel_username,app.telegram_message_id,env); } catch { throw fail(); }
+    return delivery(destination,'telegram');
   }
   const raw = app.shrankme_url || app.devupload_url;
   if (typeof raw !== 'string' || raw.length > 2000) throw fail();
@@ -29,10 +31,10 @@ export async function legacyDelivery(sql: Sql, applicationId: number, env: NodeJ
   if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hash) throw fail();
   // SteamRIP's column is a source page, not a downloadable APK. Keep its live bot extractor.
   if (url.hostname === 'steamrip.com' || url.hostname === 'www.steamrip.com')
-    return { destination: telegramDownloadUrl(applicationId), revision: String(app.revision), provider: 'external' };
+    return delivery(telegramDownloadUrl(applicationId),'external');
   const hosts = (env.LEGACY_DOWNLOAD_ALLOWED_HOSTS || 'devuploads.com,shrinkme.io,shrinkme.site').split(',').map(v=>v.trim());
   if (!hosts.includes(url.hostname)) throw fail();
-  return { destination: url.href, revision: String(app.revision), provider: 'external' };
+  return delivery(url.href,'external');
 }
 type Payload = { application_id: number; ready_at: number; expires_at: number; nonce: string; revision: string; client: string };
 export class LegacyCountdown {
@@ -56,7 +58,7 @@ export class LegacyCountdown {
       || Buffer.from(parts[1],'base64url').toString('base64url') !== parts[1]
       || !timingSafeEqual(Buffer.from(parts[1],'base64url'),this.mac(parts[0]))) throw new DownloadError(400,'INVALID_TOKEN');
     let data: Payload; try { data = JSON.parse(Buffer.from(parts[0],'base64url').toString()); } catch { throw new DownloadError(400,'INVALID_TOKEN'); }
-    if (data.application_id !== applicationId || data.client !== this.client(client) || data.revision !== revision
+    if (!data || typeof data !== 'object' || data.application_id !== applicationId || data.client !== this.client(client) || data.revision !== revision
       || !Number.isSafeInteger(data.ready_at) || !Number.isSafeInteger(data.expires_at)
       || data.expires_at-data.ready_at !== 180000 || typeof data.nonce !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(data.nonce))
       throw new DownloadError(400,'INVALID_TOKEN');

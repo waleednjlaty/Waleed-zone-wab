@@ -8,7 +8,9 @@ export function getSql() {
   if(!globalForDb.waleedSqlClient) {
     const connectionString=process.env.DATABASE_URL;
     const forceSsl=connectionString.includes('neon.tech')||connectionString.includes('sslmode')||connectionString.includes('ssl=true');
-    globalForDb.waleedSqlClient=postgres(connectionString,{prepare:false,max:1,idle_timeout:10,connect_timeout:10,...(forceSsl?{ssl:'require' as const}:{})});
+    globalForDb.waleedSqlClient=postgres(connectionString,{prepare:false,max:1,idle_timeout:10,connect_timeout:10,
+      connection:{statement_timeout:5000,lock_timeout:2000,idle_in_transaction_session_timeout:10000},
+      ...(forceSsl?{ssl:'require' as const}:{})});
   }
   return globalForDb.waleedSqlClient;
 }

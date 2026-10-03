@@ -36,6 +36,8 @@ export async function downloadBody(request: Request, form = false, maxBytes = 20
   if (Number(request.headers.get('content-length') || 0) > maxBytes) throw new DownloadError(413, 'REQUEST_TOO_LARGE');
   if (!request.body) throw new DownloadError(400, 'INVALID_REQUEST');
   const reader = request.body.getReader(), chunks: Uint8Array[] = []; let length = 0;
+  let timedOut=false;
+  const timer=setTimeout(()=>{ timedOut=true; void reader.cancel().catch(()=>{}); },5000);
   try {
     while (true) {
       const { done, value } = await reader.read(); if (done) break;
@@ -43,6 +45,7 @@ export async function downloadBody(request: Request, form = false, maxBytes = 20
       if (length > maxBytes) { await reader.cancel(); throw new DownloadError(413, 'REQUEST_TOO_LARGE'); }
       chunks.push(value);
     }
+    if(timedOut) throw new DownloadError(408,'REQUEST_TIMEOUT');
     const text = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks));
     if (form) {
       const data: Record<string, unknown> = {};
@@ -58,7 +61,7 @@ export async function downloadBody(request: Request, form = false, maxBytes = 20
   } catch (error) {
     if (error instanceof DownloadError) throw error;
     throw new DownloadError(400, 'INVALID_REQUEST');
-  } finally { reader.releaseLock(); }
+  } finally { clearTimeout(timer); reader.releaseLock(); }
 }
 const message = (error: DownloadError) => error.status === 429 ? 'طلبات كثيرة؛ انتظر قبل المحاولة مجددًا.'
   : error.status === 425 ? 'لم تنتهِ مهلة تجهيز التحميل.' : 'تعذر تنفيذ طلب التحميل.';

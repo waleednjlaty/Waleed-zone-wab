@@ -61,6 +61,8 @@ jobs:
         run: npm audit --omit=dev --audit-level=low
 
       - run: npm run build
+      - name: Scan compiled client assets for private configuration
+        run: node scripts/scan-client-secrets.mjs
       - name: Install isolated browser test tooling
         run: |
           npm install --prefix "$RUNNER_TEMP/wz-browser" --no-audit --no-fund playwright@1.51.1

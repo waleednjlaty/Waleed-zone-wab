@@ -1,3 +1,4 @@
+import JsonLd from '@/components/JsonLd';
 /* eslint-disable @next/next/no-html-link-for-pages -- Catalog directories intentionally use document navigation. */
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -14,7 +15,7 @@ import SearchResultsSkeleton from '@/components/loading/SearchResultsSkeleton';
 import CatalogSkeleton, { SearchSkeleton } from '@/components/CatalogSkeleton';
 import { homeCollections } from '@/components/catalog/presentation';
 import { getApps, getCategories } from '@/lib/queries';
-import { parsePage, safeJsonLd, sanitizeSearch } from '@/lib/utils';
+import { parsePage, sanitizeSearch } from '@/lib/utils';
 import { HOME_TITLE, SITE_DESCRIPTION } from '@/lib/site';
 import { pageMetadata, websiteStructuredData } from '@/lib/seo';
 
@@ -43,7 +44,7 @@ export default async function Home({ searchParams }: Props) {
   const browse = first(params?.browse) === 'all';
   const filtered = Boolean(q || category || page > 1 || browse);
   return <div className="shell homepage">
-    {!filtered && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(websiteStructuredData()) }} />}
+    {!filtered && <JsonLd data={websiteStructuredData()} />}
     <section className="catalog-intro" aria-labelledby="discover-title">
       <div className="intro-copy"><p className="eyebrow" lang="en" dir="ltr">Waleed Zone</p><h1 id="discover-title">وليد زون — تطبيقات وألعاب<span className="intro-dot">.</span></h1><p className="intro-description">ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.</p><nav className="mt-4 flex flex-wrap gap-4 text-sm" aria-label="مكتبة وليد زون"><a className="view-all" href="/apps">تطبيقات وليد زون ←</a><a className="view-all" href="/games">ألعاب وليد زون ←</a></nav></div>
       <div className="intro-search"><Suspense fallback={<SearchSkeleton />}><SearchBar /></Suspense><p className="search-help">بالعربية أو الإنجليزية، بالاسم أو المطوّر أو التصنيف.</p></div>

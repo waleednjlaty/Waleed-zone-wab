@@ -16,7 +16,7 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
       if(now>=deadline.current.expires){setGrant(null);setError('انتهت صلاحية الطلب. أعد تجهيز الرابط.');return;}
       setRemaining(Math.max(0,Math.ceil((deadline.current.ready-now)/1000)));
     };
-    tick(); const timer=setInterval(tick,100); return ()=>clearInterval(timer);
+    tick(); const timer=setInterval(tick,250); return ()=>clearInterval(timer);
   },[grant]);
   useEffect(()=>{if(grant&&remaining===0)heading.current?.focus({preventScroll:true});},[grant,remaining]);
   async function prepare(){

@@ -10,6 +10,7 @@ import { NavigationSkeleton } from '@/components/CatalogSkeleton';
 import VisitorTracker from '@/components/VisitorTracker';
 import { HOME_TITLE, SITE_NAME, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
 import { ADSENSE_PUBLISHER_ID, ADSENSE_READY } from '@/lib/ads';
+import { headers } from 'next/headers';
 
 export const viewport: Viewport = {
   themeColor: '#0B0D10',
@@ -53,12 +54,13 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   await enforceRouteAccess();
+  const nonce=(await headers()).get('x-nonce')||undefined;
   return (
     <html lang="ar" dir="rtl">
       <body className="flex min-h-screen flex-col">
         <a href="#main-content" className="skip-link">انتقل إلى المحتوى</a>
         <VisitorTracker />
-        {ADSENSE_READY && <Script async strategy="afterInteractive" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`} crossOrigin="anonymous" />}
+        {ADSENSE_READY && <Script nonce={nonce} async strategy="afterInteractive" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`} crossOrigin="anonymous" />}
         <Suspense fallback={<NavigationSkeleton />}><Navbar /></Suspense>
         <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
         <Footer />

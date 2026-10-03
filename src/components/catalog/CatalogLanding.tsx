@@ -1,3 +1,4 @@
+import JsonLd from '@/components/JsonLd';
 import Link from 'next/link';
 import Icon from '@/components/Icon';
 import Pagination from '@/components/Pagination';
@@ -6,7 +7,6 @@ import { appHref } from '@/lib/catalog/routes';
 import { getLanding, landingName, landingPath, type CatalogKind } from '@/lib/catalog/landing';
 import { breadcrumbStructuredData } from '@/lib/seo';
 import { SITE_URL } from '@/lib/site';
-import { safeJsonLd } from '@/lib/utils';
 
 export default async function CatalogLanding({ kind, page }: { kind: CatalogKind; page: number }) {
   const result = await getLanding(kind, page), name = landingName(kind), path = landingPath(kind, page);
@@ -18,7 +18,7 @@ export default async function CatalogLanding({ kind, page }: { kind: CatalogKind
     })) },
   }];
   return <div className="shell py-9 sm:py-14">
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structured) }} />
+    <JsonLd data={structured} />
     <nav className="detail-breadcrumbs" aria-label="مسار التنقل"><ol><li><Link href="/">الرئيسية</Link></li><li><span aria-current="page">{name}</span></li></ol></nav>
     <header className="mb-10">
       <p className="eyebrow" lang="en" dir="ltr">Waleed Zone</p><h1 className="mt-3 text-3xl font-black sm:text-5xl">{name}</h1>

@@ -13,7 +13,7 @@ const connection=process.env.WZ_ADMIN_TEST_DATABASE_URL;
 assert.ok(connection,'Set WZ_ADMIN_TEST_DATABASE_URL to EMPTY loopback wz_admin_test.');
 const dbUrl=new URL(connection);
 assert.ok(['postgres:','postgresql:'].includes(dbUrl.protocol)&&['127.0.0.1','localhost'].includes(dbUrl.hostname)&&/^\/wz_admin_test(?:_[a-z0-9]+)?$/.test(dbUrl.pathname)&&!dbUrl.search&&!dbUrl.hash,'Only dedicated local Admin test DB accepted.');
-const sql=postgres(connection,{max:2,onnotice(){}});
+const sql=postgres(connection,{max:1,onnotice(){}});
 const folder=mkdtempSync(join(tmpdir(),'wz-admin-native-'));
 const backendPort=Number(process.env.WZ_ADMIN_BACKEND_PORT||3103),tlsPort=Number(process.env.WZ_ADMIN_TLS_PORT||3443);
 for(const port of [backendPort,tlsPort])assert.ok(Number.isInteger(port)&&port>=1024&&port<=65535);
@@ -28,7 +28,9 @@ try {
   for(const [i,name] of ['WhatsApp','Telegram','Instagram','Spotify','TikTok','Facebook','Clash of Clans','Grand Theft Auto','Call of Duty'].entries())
     await sql`INSERT INTO applications(id,name,description,version,size,category,platform,developer,downloads,views,active,published,created_at) VALUES(${201+i},${name},${'Local QA catalog. '.repeat(40)},'9.1','85 MB',${i>=6?'ألعاب':'تواصل'},'Android','Test Developer',10,0,true,true,NOW())`;
   await sql`INSERT INTO applications(id,name,category,active,published) VALUES(999,'PRIVATE DRAFT SECRET','تواصل',true,false),(1000,'INACTIVE PRIVATE','تواصل',false,true)`;
+  await sql.unsafe((await import('node:fs')).readFileSync('migrations/003_runtime_security.sql','utf8'));
   await sql.unsafe(readFileSync('migrations/001_downloads.sql','utf8'));
+  await sql.unsafe(readFileSync('migrations/002_delivery_sources.sql','utf8'));
   await sql`INSERT INTO site_download_budget(id,starts_at,expires_at,allowance_verified,byte_limit,reserved_bytes) VALUES(1,NOW(),NOW()+INTERVAL '1 day',true,9007199254740993,9007199254740992)`;
   // Exact immutable trusted-publisher fixture; no real object or provider attestation.
   await sql`INSERT INTO site_download_versions(id,application_id,version_label,release_key) VALUES('11111111-1111-4111-8111-111111111111',201,'QA draft','qa-draft')`;

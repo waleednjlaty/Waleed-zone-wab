@@ -5,7 +5,7 @@ import { applications } from '@/lib/db/schema';
 import { getDb } from '@/lib/db';
 import { searchCatalog } from '@/lib/search/service';
 import { getCatalogDetails } from '@/lib/catalog/metadata';
-import { isGame, appName } from '@/components/catalog/presentation';
+import { isGame, appName, GAME_CATEGORY_PATTERN } from '@/components/catalog/presentation';
 import { normalizeSearch } from '@/lib/search/normalize';
 
 export type Application = typeof applications.$inferSelect;
@@ -154,6 +154,19 @@ export const getAllAppsSitemap = cache(async (): Promise<SitemapApp[]> => {
     .from(applications)
     .where(and(eq(applications.active, true), eq(applications.published, true)))
     .orderBy(desc(applications.id));
+});
+
+/** Same classification as presentation, with only one page hydrated from PostgreSQL. */
+export const getCatalogPage=cache(async (kind:'apps'|'games',page:number) => {
+  const db=getDb();
+  if(!db)return {items:[] as SitemapApp[],total:0,totalPages:1,currentPage:page};
+  const game=sql`coalesce(${applications.category},'') ~* ${GAME_CATEGORY_PATTERN}`;
+  const where=and(eq(applications.active,true),eq(applications.published,true),kind==='games'?game:sql`NOT (${game})`);
+  const [{value}]=await db.select({value:count()}).from(applications).where(where);
+  const total=Number(value),totalPages=Math.max(1,Math.ceil(total/24));
+  const items=page>totalPages?[]:await db.select({id:applications.id,name:applications.name,category:applications.category,createdAt:applications.createdAt})
+    .from(applications).where(where).orderBy(desc(applications.id)).limit(24).offset((page-1)*24);
+  return {items,total,totalPages,currentPage:page};
 });
 
 

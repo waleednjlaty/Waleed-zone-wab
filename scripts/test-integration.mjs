@@ -24,6 +24,7 @@ try {
   await sql.unsafe(`CREATE TABLE applications(id SERIAL PRIMARY KEY,name TEXT,description TEXT,version TEXT,size TEXT,category TEXT,platform TEXT,developer TEXT,shrankme_url TEXT,image_url TEXT,devupload_url TEXT,icon_file_id TEXT,search_text TEXT,downloads INTEGER,views INTEGER,active BOOLEAN,published BOOLEAN,created_at TIMESTAMPTZ);
     CREATE TABLE site_users(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE TABLE site_sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES site_users(id) ON DELETE CASCADE,expires_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`);
+  await sql.unsafe((await import('node:fs')).readFileSync('migrations/003_runtime_security.sql','utf8'));
   await sql.unsafe((await import('node:fs')).readFileSync('migrations/001_downloads.sql','utf8'));
   await sql.unsafe((await import('node:fs')).readFileSync('migrations/002_delivery_sources.sql','utf8'));
   for(const [index,name] of ['WhatsApp','Telegram','Instagram','Spotify','TikTok','Facebook','Clash of Clans','Grand Theft Auto','Call of Duty'].entries()) {
@@ -36,7 +37,8 @@ try {
     await sql`INSERT INTO applications(id,name,description,category,active,published,created_at)
       VALUES(${3000+i},${`QA Tool ${i+1}`},'Repeated fixture description','أدوات',true,true,NOW())`;
   }
-  const config={base,statsToken:randomBytes(32).toString('hex')};
+  const signingKey=randomBytes(32).toString('hex');
+  const config={base,statsToken:randomBytes(32).toString('hex'),secrets:[connection,signingKey,'owner-qa']};
   for(const [id,name,key] of [['owner-qa','QA owner','ownerCookie'],['visitor-qa','QA visitor','userCookie']]) {
     await sql`INSERT INTO site_users(id,name,email,password_hash) VALUES(${id},${name},${`${id}@example.test`},'intentionally-disabled-test-login')`;
     const token=randomBytes(32).toString('base64url');
@@ -49,7 +51,7 @@ try {
   const configPath=join(folder,'config.json');writeFileSync(configPath,JSON.stringify(config),{mode:0o600});
   await sql.end(); // Setup is complete; no seed connection is needed during HTTP tests.
   server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port+1)],{
-    env:{...process.env,DATABASE_URL:connection,NEXT_PUBLIC_SITE_URL:base,OWNER_USER_ID:'owner-qa',WEBSITE_STATS_TOKEN:config.statsToken},stdio:['ignore','inherit','inherit'],
+    env:{...process.env,DATABASE_URL:connection,NEXT_PUBLIC_SITE_URL:base,OWNER_USER_ID:'owner-qa',WEBSITE_STATS_TOKEN:config.statsToken,LEGACY_DOWNLOAD_SIGNING_KEY:signingKey,FILES_CHANNEL_USERNAME:'files_channel',DIRECT_DOWNLOADS_ENABLED:'false'},stdio:['ignore','inherit','inherit'],
   });
   execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-days','1','-keyout',join(folder,'key.pem'),'-out',join(folder,'cert.pem'),'-subj','/CN=127.0.0.1'],{stdio:'ignore'});
   proxy=httpsServer({key:(await import('node:fs')).readFileSync(join(folder,'key.pem')),cert:(await import('node:fs')).readFileSync(join(folder,'cert.pem'))},(req,res)=>{
@@ -67,7 +69,7 @@ try {
   }
   assert.ok(ready,'Production server did not become ready. Run npm run build first.');
   const code=await new Promise(resolve=>{
-    const tests=spawn(process.execPath,['--test','tests/integration.cjs','tests/seo-integration.cjs','tests/download-integration.cjs','tests/admin-regression.cjs','tests/admin-api.cjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
+    const tests=spawn(process.execPath,['--test','tests/integration.cjs','tests/seo-integration.cjs','tests/download-integration.cjs','tests/admin-regression.cjs','tests/admin-api.cjs','tests/phase8-integration.cjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
     tests.on('exit',(status)=>resolve(status??1));
   });
   process.exitCode=code;
@@ -75,7 +77,7 @@ try {
     process.exitCode=await new Promise(resolve=>{const child=spawn(process.execPath,['tests/cross-repo.mjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});child.on('exit',status=>resolve(status??1));});
   }
   if(code===0 && !process.exitCode && process.env.WZ_BROWSER_TESTS==='true') {
-    for(const file of ['tests/browser.mjs','tests/seo-browser.mjs','tests/telegram-browser.mjs']) {
+    for(const file of ['tests/browser.mjs','tests/seo-browser.mjs','tests/telegram-browser.mjs','tests/phase8-browser.mjs']) {
       process.exitCode=await new Promise(resolve=>{
         const browser=spawn(process.execPath,[file],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
         browser.on('exit',status=>resolve(status??1));
