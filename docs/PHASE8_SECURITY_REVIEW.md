@@ -130,3 +130,16 @@ pip-audit -r requirements.txt
 Before releasing, review schema/table privileges and optional index plans, current HTTPS/proxy assumptions, BZZHR proxy use, DB timeout suitability, stats token alignment and secret rotation runbook. Preserve direct=false. Confirm anonymous/non-owner admin denial, owner read/noindex/no-store, no provider details in public HTML/RSC/assets/errors, healthy auth logout, immediate bot catalog visibility and existing canary's exact destination. Any mutation, publishing, migration or deployment requires a later authorized operator action; none was performed here. Watch code-only errors, 429/503 rates and pool wait time. Roll back application commits if needed; additive schema can remain, and key rollback implications are documented separately.
 
 References: [Next CSP nonces](https://nextjs.org/docs/app/guides/content-security-policy), [PostgreSQL timeouts](https://www.postgresql.org/docs/current/runtime-config-client.html), [Telegram copyMessage](https://core.telegram.org/bots/api#copymessage), [Python IP classification](https://docs.python.org/3/library/ipaddress.html).
+
+
+## Release migration command
+
+The existing Railway pre-deploy command can remain:
+
+```bash
+npm run migrate:release
+```
+
+Phase 8 extends that command to apply `003_runtime_security.sql` after the already-established download and delivery migrations, under an advisory lock and checksum ledger. It is still an explicit pre-deploy/operator action; build/start/request paths never run DDL.
+
+`004_phase8_indexes.sql` remains optional and separate because its `CREATE INDEX CONCURRENTLY` statements must run outside a transaction and are performance-only, not a correctness prerequisite.
