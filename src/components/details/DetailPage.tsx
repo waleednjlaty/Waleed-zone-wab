@@ -1,3 +1,7 @@
+import { headers } from 'next/headers';
+import { manualAdConfig } from '@/lib/ads';
+import { applicationAdEligible } from '@/lib/monetization/eligibility';
+import ManualAd from '@/components/monetization/ManualAd';
 import JsonLd from '@/components/JsonLd';
 import Link from 'next/link';
 import AppGrid from '@/components/AppGrid';
@@ -22,6 +26,9 @@ const available=(value:string|null|undefined)=>value?.trim()&&!/^[-–—.]+$/.t
 export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'games'}) {
   const app=await resolveDetail(slug,kind),details=getCatalogDetails(app.id),name=appName(app);
   const [related,user,downloadAvailability,fallbackDelivery]=await Promise.all([getRelatedApps(app.id,app.category,4),getCurrentUser(),getDownloadAvailability(app.id),getFallbackDelivery(app.id)]);
+  const adConfig=manualAdConfig();
+  const adEligible=Boolean(adConfig && app.description && app.description.trim().length >= 200 && await applicationAdEligible(app.id));
+  const nonce=adEligible ? (await headers()).get('x-nonce') || undefined : undefined;
   let saved=false;
   if(user){await ensureAuthTables();const sql=authDb();const [row]=await sql`SELECT 1 FROM site_favorites WHERE user_id=${user.id} AND application_id=${app.id} LIMIT 1`;saved=Boolean(row);}
   const direct=safeExternalUrl(app.downloadUrl),download=direct||telegramDownloadUrl(app.id),url=SITE_URL+appHref(app);
@@ -41,7 +48,7 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
       <header className="detail-summary">
         <div className="detail-identity"><span className="detail-icon"><CoverImage priority src={app.imageUrl} alt={`أيقونة ${name}`} aspectClassName="aspect-square"/></span><div className="detail-name"><p className="eyebrow">{kind==='games'?'لعبة':'تطبيق'}{app.category?` · ${app.category}`:''}</p><h1 dir="auto">{name}</h1>{available(app.developer)&&<p className="detail-developer" dir="auto">{app.developer}</p>}</div></div>
         <div className="detail-primary-meta">{available(app.version)&&<span><small>الإصدار</small><strong dir="auto">{app.version}</strong></span>}{available(app.size)&&<span><small>حجم الملف</small><strong dir="auto">{app.size}</strong></span>}{available(details.android)&&<span><small>Android</small><strong dir="auto">{details.android}</strong></span>}{typeof app.downloads==='number'&&app.downloads>0&&<span><small>التحميلات</small><strong>{new Intl.NumberFormat('ar').format(app.downloads)}</strong></span>}</div>
-        <div className="detail-download-area"><DownloadActions name={name} appId={app.id} imageUrl={app.imageUrl} size={available(app.size)} href={download} external={Boolean(direct)} initialSaved={saved} signedIn={Boolean(user)} deliveryAvailable={Boolean(fallbackDelivery)} directFile={downloadAvailability.file} directConfigured={downloadAvailability.mode!=='legacy'}/>{direct&&!fallbackDelivery&&downloadAvailability.mode==='legacy'&&<a className="detail-alternate-download" href={telegramDownloadUrl(app.id)} target="_blank" rel="noopener noreferrer">التحميل عبر البوت ↗</a>}</div>
+        <div className="detail-download-area"><DownloadActions allowSticky={!adEligible} name={name} appId={app.id} imageUrl={app.imageUrl} size={available(app.size)} href={download} external={Boolean(direct)} initialSaved={saved} signedIn={Boolean(user)} deliveryAvailable={Boolean(fallbackDelivery)} directFile={downloadAvailability.file} directConfigured={downloadAvailability.mode!=='legacy'}/>{direct&&!fallbackDelivery&&downloadAvailability.mode==='legacy'&&<a className="detail-alternate-download" href={telegramDownloadUrl(app.id)} target="_blank" rel="noopener noreferrer">التحميل عبر البوت ↗</a>}</div>
       </header>
       <div className="detail-content-grid"><div className="detail-main">
         {Boolean(details.screenshots?.length)&&<Screenshots images={details.screenshots!} name={name}/>}
@@ -51,5 +58,6 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
       </div><aside className="detail-technical detail-section" aria-labelledby="technical-title"><h2 id="technical-title">المعلومات التقنية</h2><dl>{technical.map(([label,value])=><div key={label}><dt>{label}</dt><dd dir="auto">{value}</dd></div>)}</dl></aside><div className="detail-version-section"><Versions items={details.versions||[]}/></div></div>
     </article>
     {related.length>0&&<section className="catalog-section detail-related" aria-labelledby="related-title"><SectionHeading id="related-title" title={kind==='games'?'ألعاب ذات صلة':'تطبيقات ذات صلة'} subtitle="من التصنيف أو المطوّر نفسه" href={categoryPath||undefined} linkLabel="عرض التصنيف"/><AppGrid apps={related}/></section>}
+    {adEligible && adConfig && <ManualAd key={app.id} {...adConfig} nonce={nonce} path={appHref(app)} />}
   </div>;
 }

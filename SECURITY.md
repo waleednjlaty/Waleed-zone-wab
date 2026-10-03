@@ -14,6 +14,10 @@ Sources: [Railway DDoS](https://docs.railway.com/networking/ddos-protection), [R
 
 ## AdSense
 
-The code includes a validated publisher ID, conditional account metadata, conditional Auto Ads script, and `/ads.txt`. All remain disabled unless `ADSENSE_PUBLISHER_ID=ca-pub-<16 digits>`, `ADSENSE_CONTENT_REVIEWED=true`, and `ADSENSE_ENABLED=true` are configured. Do not enable these flags until the catalog and download destinations have been reviewed against Google Publisher Policies and the site has been approved. Some current app listings may involve unlicensed or modified software; no code change grants AdSense approval. Update the privacy notice and test the Content Security Policy against live ads before enabling. The canonical production domain must be added to the AdSense account.
+A valid publisher ID enables verification metadata and `ads.txt`, without loading Google's advertising SDK. Serving requires the five fail-closed gates described in [Phase 9](docs/PHASE9_MONETIZATION_READINESS.md), a manual slot, an owner-reviewed page, and a live consent decision from the configured certified CMP. No global SDK or Auto Ads activation code is installed. The owner must also leave Auto Ads **off in the AdSense account**.
+
+Owner-only review endpoints inherit session authorization, origin validation, CSRF binding, rate limits, bounded bodies, strict field validation, no-store responses, and catalog/review revision checks. The additive `005_monetization.sql` migration is operator-run only; no production migration was applied. Missing tables or DB outages deny advertising. Review notes are internal and never returned through public catalog APIs. Content/source changes withdraw prior eligibility; counters and review edits leave catalog revisions unchanged.
+
+A rights basis or owner attestation does not grant redistribution rights, verify identity, certify a CMP, or prove Google approval. Review linked destinations as well as the page. Existing Telegram delivery and the server countdown remain unchanged. No ad appears on countdown/download, admin, account, authentication, search, or listing pages.
 
 Sources: [AdSense site connection](https://support.google.com/adsense/answer/7584263), [Google Publisher Policies](https://support.google.com/adsense/answer/10502938), [Enabling dishonest behavior](https://support.google.com/adsense/answer/1348688).

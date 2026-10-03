@@ -5,16 +5,17 @@ import { downloadBody, downloadHeaders } from '@/lib/downloads/http';
 import { DownloadError } from '@/lib/downloads/rules';
 import { adminOrigin, adminSession, checkAdminCsrf, issueAdminCsrf } from './security';
 import { OwnerCatalogService } from './catalog';
+import { OwnerMonetizationService } from './monetization';
 import { OwnerAdminService, type AdminOperation } from './service';
 import { AdminError, pagination } from './validation';
 import { consumeWindow } from '@/lib/security/limits';
 import { logFailure } from '@/lib/security/logging';
 
-type Operation = AdminOperation | 'session' | 'catalog-record' | 'delivery-source';
+type Operation = AdminOperation | 'session' | 'catalog-record' | 'delivery-source' | 'monetization' | 'monetization-record';
 type Dependencies = { service: OwnerAdminService; env: NodeJS.ProcessEnv;
   authorize: typeof authorizeOwnerRequest; owner: typeof requireOwner };
 const methods: Record<Operation, string[]> = {
-  session: ['GET'], catalog: ['GET', 'POST'], 'catalog-record': ['GET','PATCH'], 'delivery-source': ['PUT'], versions: ['GET', 'POST'], version: ['GET', 'PATCH'],
+  monetization: ['GET'], 'monetization-record': ['GET', 'PUT'], session: ['GET'], catalog: ['GET', 'POST'], 'catalog-record': ['GET','PATCH'], 'delivery-source': ['PUT'], versions: ['GET', 'POST'], version: ['GET', 'PATCH'],
   files: ['GET', 'POST'], file: ['GET', 'PATCH'], config: ['GET', 'PUT'], status: ['GET'], control: ['GET', 'POST'],
 };
 export function adminErrorResponse(error: unknown) {
@@ -45,16 +46,16 @@ export function createAdminHandler(operation: Operation, dependencies?: Dependen
       const session = adminSession(request, env);
       if (write) checkAdminCsrf(request.headers.get('x-csrf-token'), session, owner.id, origin);
       const scoped = operation === 'versions' ? 'application_id' : operation === 'files' ? 'version_id' : undefined;
-      const page = !write && ['catalog', 'versions', 'files'].includes(operation) ? pagination(request, scoped) : undefined;
+      const page = !write && ['catalog', 'versions', 'files', 'monetization'].includes(operation) ? pagination(request, scoped) : undefined;
       if (!page && new URL(request.url).search) throw new AdminError(400, 'INVALID_REQUEST');
       if (operation === 'session') return Response.json(issueAdminCsrf(session, owner.id, origin), { headers: downloadHeaders });
       const sql = dependencies ? null : getSql();
       if (!dependencies && !sql) throw new AdminError(503, 'ADMIN_UNAVAILABLE');
       if(sql && !await consumeWindow(sql,`admin:${write?'write':'read'}:${owner.id}`,write?60:300,60))
         throw new AdminError(429,'RATE_LIMITED');
-      const service = dependencies?.service ?? (['catalog-record','delivery-source'].includes(operation) || operation === 'catalog' && write
+      const service = dependencies?.service ?? (operation.startsWith('monetization') ? new OwnerMonetizationService(sql!,env) : ['catalog-record','delivery-source'].includes(operation) || operation === 'catalog' && write
         ? new OwnerCatalogService(sql!,env) : new OwnerAdminService(sql!, env));
-      const data = write ? await service.write(operation as AdminOperation, await downloadBody(request,false,['catalog','catalog-record'].includes(operation)?8192:2048), owner.id, recordId)
+      const data = write ? await service.write(operation as AdminOperation, await downloadBody(request,false,['catalog','catalog-record'].includes(operation)?8192:operation.startsWith('monetization')?6144:2048), owner.id, recordId)
         : await service.read(operation as AdminOperation, recordId, page);
       return Response.json(data, { headers: downloadHeaders });
     } catch (error) { return adminErrorResponse(error); }

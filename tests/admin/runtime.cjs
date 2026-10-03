@@ -5,7 +5,8 @@ const {randomBytes,createHash}=require('node:crypto');
 const Module=require('node:module');
 require('../helpers/typescript.cjs');
 const routePaths={session:'session',catalog:'catalog',versions:'downloads/versions',version:'downloads/versions/[version_id]',files:'downloads/files',file:'downloads/files/[file_id]',config:'downloads/config/[application_id]',status:'downloads/status',control:'downloads/control'};
-async function createFixture(t) {
+async function createFixture(t, options={}) {
+  const selectedPaths={...routePaths,...(options.monetization?{monetization:"monetization",review:"monetization/[application_id]"}:{})};
   require('../downloads/harness.cjs').blockExternalIO();
   const db=await PGlite.create(),saved={...process.env},origin='https://admin.example.test';
   Object.assign(process.env,{NODE_ENV:'production',NEXT_PUBLIC_SITE_URL:origin,OWNER_USER_ID:'qa-owner',WEBSITE_STATS_TOKEN:'QA_STATS_SENTINEL',DIRECT_DOWNLOADS_ENABLED:'false'});
@@ -32,6 +33,10 @@ async function createFixture(t) {
     INSERT INTO site_users VALUES('qa-owner','QA owner','QA_OWNER_EMAIL@example.test','QA_PASSWORD_HASH',NOW()),('qa-visitor','QA visitor','visitor@example.test','QA_PASSWORD_HASH',NOW());`);
   await db.exec(readFileSync(require.resolve('../../migrations/003_runtime_security.sql'),'utf8'));
   await db.exec(readFileSync(require.resolve('../../migrations/001_downloads.sql'),'utf8'));
+  if(options.monetization){
+    await db.exec(readFileSync(require.resolve('../../migrations/002_delivery_sources.sql'),'utf8'));
+    await db.exec(readFileSync(require.resolve('../../migrations/005_monetization.sql'),'utf8'));
+  }
   for(const [key,secret] of Object.entries(sessions))await sql`INSERT INTO site_sessions VALUES(${createHash('sha256').update(secret).digest('hex')},${key==='visitor'?'qa-visitor':'qa-owner'},${new Date(Date.now()+(key==='expired'?-60000:86400000))},NOW())`;
   const original=Module._load;
   Module._load=function(name,...args) {
@@ -42,7 +47,7 @@ async function createFixture(t) {
     return original.call(this,name,...args);
   };
   let routes;
-  try {routes=Object.fromEntries(Object.entries(routePaths).map(([op,path])=>[op,require('../../src/app/api/admin/'+path+'/route.ts')]));}
+  try {routes=Object.fromEntries(Object.entries(selectedPaths).map(([op,path])=>[op,require('../../src/app/api/admin/'+path+'/route.ts')]));}
   finally {Module._load=original;}
   t.after(async()=>{await queue;await db.close();for(const key of Object.keys(process.env))if(!(key in saved))delete process.env[key];Object.assign(process.env,saved);});
   let csrf;
@@ -52,7 +57,7 @@ async function createFixture(t) {
     if(method!=='GET'){h.set('Origin',origin);h.set('Content-Type','application/json');if(csrf)h.set('X-CSRF-Token',csrf);}
     for(const [name,value] of Object.entries(headers)){if(value===null)h.delete(name);else h.set(name,value);}
     const scoped=query??(op==='versions'&&method==='GET'?'?application_id=201':'');
-    const route=routePaths[op].replace(/\[[^\]]+\]/,id??'201');
+    const route=selectedPaths[op].replace(/\[[^\]]+\]/,id??'201');
     context=new Request(origin+'/api/admin/'+route+scoped,{method,headers:h,...(method==='GET'?{}:{body:raw??JSON.stringify(body??{})})});
     const params={application_id:id??'201',version_id:id,file_id:id};
     return routes[op][method](context,{params:Promise.resolve(params)});
