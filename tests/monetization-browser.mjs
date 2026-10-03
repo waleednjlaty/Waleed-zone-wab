@@ -51,17 +51,20 @@ export async function verifyMonetizationUI({base,root}) {
       assert.ok(!(await page.locator('body').innerText()).includes('PRIVATE_ERROR_DO_NOT_RENDER'));assert.equal(await page.getByRole('button',{name:'تحديد كمؤهل'}).count(),0);
       assert.deepEqual(errors,[]);await context.close();
     }
-    const context=await browser.newContext(),page=await context.newPage();let requests=0;
+    const context=await browser.newContext(),page=await context.newPage();let requests=0;const sdkErrors=[];
+    page.on('pageerror',error=>sdkErrors.push(error.message));
+    page.on('requestfailed',request=>sdkErrors.push(request.failure()?.errorText||'REQUEST_FAILED'));
+    page.on('console',message=>{if(message.type()==='error')sdkErrors.push(message.text());});
     await page.route('**/*',route=>{
       const url=new URL(route.request().url());
-      if(url.hostname==='pagead2.googlesyndication.com') {requests++;return route.fulfill({contentType:'text/javascript',body:'window.adsbygoogle=[];window.adsbygoogle.push=function(){window.__fixtureAdPush=(window.__fixtureAdPush||0)+1};'});}
+      if(url.hostname==='pagead2.googlesyndication.com') {requests++;return route.fulfill({headers:{'Access-Control-Allow-Origin':base},contentType:'text/javascript',body:'window.adsbygoogle=[];window.adsbygoogle.push=function(){window.__fixtureAdPush=(window.__fixtureAdPush||0)+1};'});}
       return url.origin===base?route.continue():route.abort();
     });
     await page.addInitScript(()=>{window.__fixtureDecision={cmpId:300,cmpStatus:'loaded',eventStatus:'tcloaded',tcString:'fixture-only-base64url-consent',purpose:{consents:{1:false,3:false,4:false}},vendor:{consents:{755:false}}};window.__tcfapi=(command,_version,cb)=>{if(command==='addEventListener'){window.__fixtureCallback=cb;cb(window.__fixtureDecision,true);}};});
     await page.goto(base+'/apps/privacy-test-201');await page.getByRole('heading',{name:'Consent test fixture'}).waitFor();assert.equal(requests,0);assert.equal(await page.locator('ins.adsbygoogle').count(),0);
     await page.waitForFunction(()=>Boolean(window.__fixtureCallback));
     await page.evaluate(()=>window.__fixtureCallback({...window.__fixtureDecision,purpose:{consents:{1:true,3:true,4:true}},vendor:{consents:{755:true}}},true));
-    await page.waitForFunction(()=>window.__fixtureAdPush===1);assert.equal(requests,1);assert.equal(await page.locator('ins.adsbygoogle').count(),1);
+    await page.waitForFunction(()=>window.__fixtureAdPush===1).catch(error=>{throw new Error(`${error.message}; isolated SDK diagnostics: ${JSON.stringify(sdkErrors)}`);});assert.equal(requests,1);assert.deepEqual(sdkErrors,[]);assert.equal(await page.locator('ins.adsbygoogle').count(),1);
     await page.evaluate(()=>window.__fixtureCallback(window.__fixtureDecision,true));await page.waitForFunction(()=>!document.querySelector('ins.adsbygoogle'));
     await page.goto(base+'/download/201');await page.getByRole('heading',{name:'Excluded download fixture'}).waitFor();assert.equal(requests,1);assert.equal(await page.locator('ins.adsbygoogle').count(),0);
     await context.close();console.log('Monetization UI: owner transitions, errors, 360/768/1440 layout, consent grant/deny/revoke, excluded download route passed. No live Google traffic.');
