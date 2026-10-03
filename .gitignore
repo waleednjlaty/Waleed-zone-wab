@@ -27,3 +27,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 __pycache__
+# Local browser verification artifacts
+tests/screenshots/

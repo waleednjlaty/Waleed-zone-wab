@@ -9,7 +9,7 @@ const browser=await chromium.launch({headless:true,...(process.env.WZ_BROWSER_EX
 let checks=0;
 try {
  for(const width of [360,768,1440]) {
-  const page=await browser.newPage({viewport:{width,height:900}}),errors=[];
+  const page=await browser.newPage({viewport:{width,height:900},ignoreHTTPSErrors:true}),errors=[];
   if(process.env.WZ_BROWSER_SLOW_HYDRATION==='true') {
     const session=await page.context().newCDPSession(page);
     await session.send('Emulation.setCPUThrottlingRate', {rate:4});

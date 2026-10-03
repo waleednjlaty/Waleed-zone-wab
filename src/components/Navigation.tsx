@@ -15,6 +15,7 @@ const links = [
 ];
 
 export default function Navigation({ signedIn, categories }: { signedIn: boolean; categories: string[] }) {
+  const [hydrated, setHydrated] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeHash, setActiveHash] = useState('');
@@ -25,6 +26,8 @@ export default function Navigation({ signedIn, categories }: { signedIn: boolean
   const pathname = usePathname();
   const params = useSearchParams();
   const filtered = Boolean(params.get('q') || params.get('category') || params.get('page') || params.get('browse'));
+
+  useEffect(() => { setHydrated(true); }, []);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -96,9 +99,9 @@ export default function Navigation({ signedIn, categories }: { signedIn: boolean
       <Link href="/" className="brand-link" aria-label="Waleed Zone، الرئيسية" onClick={closeNavigation}><Brand /></Link>
       <div className="desktop-nav">{links.slice(0, 3).map(navLink)}{categoryMenu}{navLink(links[3])}</div>
       <div className="header-actions">
-        <button ref={searchButton} type="button" className="icon-button header-search" aria-label="فتح البحث" aria-haspopup="dialog" onClick={() => { setMenuOpen(false); setSearchOpen(true); }}><Icon name="search" /><span>بحث</span><kbd>/</kbd></button>
+        <button ref={searchButton} disabled={!hydrated} type="button" className="icon-button header-search" aria-label="فتح البحث" aria-haspopup="dialog" onClick={() => { setMenuOpen(false); setSearchOpen(true); }}><Icon name="search" /><span>بحث</span><kbd>/</kbd></button>
         <Link className="icon-button account-link" href={signedIn ? '/account' : '/login'} aria-label={signedIn ? 'حسابي ومكتبتي' : 'تسجيل الدخول'}><Icon name="account" /></Link>
-        <button ref={menuButton} type="button" className="icon-button mobile-menu-button" aria-label={menuOpen ? 'إغلاق القائمة' : 'فتح القائمة'} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen(!menuOpen)}><Icon name={menuOpen ? 'close' : 'menu'} /></button>
+        <button ref={menuButton} disabled={!hydrated} type="button" className="icon-button mobile-menu-button" aria-label={menuOpen ? 'إغلاق القائمة' : 'فتح القائمة'} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen(!menuOpen)}><Icon name={menuOpen ? 'close' : 'menu'} /></button>
       </div>
     </nav>
     <div id="mobile-navigation" className="mobile-navigation shell" hidden={!menuOpen}>

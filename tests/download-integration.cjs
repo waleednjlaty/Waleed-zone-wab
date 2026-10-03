@@ -4,13 +4,14 @@ const { readFileSync } = require('node:fs');
 const available = Boolean(process.env.WZ_TEST_CONFIG);
 const config = available ? JSON.parse(readFileSync(process.env.WZ_TEST_CONFIG, 'utf8')) : {};
 const options = { skip: !available };
-function privateHeaders(r) {
+function privateHeaders(r, referrer = 'no-referrer') {
   assert.match(r.headers.get('cache-control') || '', /no-store/);
   assert.match(r.headers.get('x-robots-tag') || '', /noindex/);
-  assert.equal(r.headers.get('referrer-policy'), 'no-referrer');
+  assert.equal(r.headers.get('referrer-policy'), referrer);
 }
 test('production download page is honest, private and has no legacy fallback or token form', options, async () => {
-  const r = await fetch(config.base + '/download/201'); assert.equal(r.status, 200); privateHeaders(r);
+  // Same-origin POST needs its Origin header; external redirect still receives no referrer.
+  const r = await fetch(config.base + '/download/201'); assert.equal(r.status, 200); privateHeaders(r, 'same-origin');
   const html = await r.text(); assert.match(html, /التحميل المباشر غير متاح حاليًا/);
   assert.ok(!html.includes('action="/api/downloads/redeem"')); assert.ok(!html.includes('wzdl1_'));
 });

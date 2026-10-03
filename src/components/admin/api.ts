@@ -77,7 +77,7 @@ function status(value: unknown): SystemStatus {
   return result;
 }
 const csrfPattern = /^[0-9]{10}\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{43}$/;
-async function request(path: string, options: { method?: 'GET' | 'POST' | 'PATCH' | 'PUT'; body?: unknown; csrf?: string; signal?: AbortSignal } = {}) {
+export async function request(path: string, options: { method?: 'GET' | 'POST' | 'PATCH' | 'PUT'; body?: unknown; csrf?: string; signal?: AbortSignal } = {}) {
   if (options.method && options.method !== 'GET' && !csrfPattern.test(options.csrf || '')) throw new AdminApiError(403, 'CSRF_REQUIRED');
   const controller = new AbortController();
   const abort = () => controller.abort();

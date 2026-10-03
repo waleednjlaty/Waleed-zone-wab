@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 const handler = createAdminHandler('catalog');
 export function GET(request: Request) { return handler(request); }
 const unsupported = () => adminMethodNotAllowed('catalog');
-export const POST = unsupported;
+export function POST(request: Request) { return handler(request); }
 export const PUT = unsupported;
 export const PATCH = unsupported;
 export const DELETE = unsupported;

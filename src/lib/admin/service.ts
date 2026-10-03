@@ -44,7 +44,7 @@ function verified(row: File) {
   return row.scan_status === 'verified' && Boolean(row.verified_at) && !row.retired_at && immutable(row);
 }
 
-/** Only additive download tables are writable; catalog rows remain bot-owned.
+/** Download metadata service. Catalog writes live in OwnerCatalogService.
  * No DDL, byte I/O, provider calls, signing or environment mutations. */
 export class OwnerAdminService {
   constructor(private sql: Sql, private env: NodeJS.ProcessEnv = process.env) {}

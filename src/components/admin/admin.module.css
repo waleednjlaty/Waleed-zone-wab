@@ -143,3 +143,13 @@ button.danger:hover { background: #f58b8b22; }
   .twoColumns .fieldGrid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .loading > div { animation: none; } }
+/* Catalog controls retain native labels and visible focus on small screens. */
+.form fieldset { border: 1px solid #33434c; border-radius: 12px; padding: 16px; min-width: 0; }
+.form legend { padding: 0 8px; }
+.form label { display: grid; gap: 8px; margin-block: 12px; min-width: 0; }
+.form input, .form textarea, .form select { width: 100%; max-width: 100%; box-sizing: border-box; }
+.formGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+@media(max-width:600px) { .formGrid { grid-template-columns: minmax(0,1fr); } }
+.form input, .form textarea, .form select { min-height: 44px; padding: 10px 12px; color: var(--text); background: var(--bg); border: 1px solid #3a4654; border-radius: 9px; font-size: .875rem; }
+.form textarea { min-height: 100px; resize: vertical; }
+.formActions select { max-width: 100%; min-width: 0; color: var(--text); background: var(--bg); padding: 8px; }

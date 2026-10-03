@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import CatalogEditor from './CatalogEditor';
 import CoverImage from '@/components/CoverImage';
 import Icon, { type IconName } from '@/components/Icon';
 import { adminApi, AdminApiError, apiErrorMessage } from './api';
@@ -170,7 +171,8 @@ export default function AdminDashboard() {
           {catalogError && <State title="تعذر قراءة الكتالوج" error>{catalogError}</State>}
         </>}
 
-        {section === 'applications' && <Panel title="كتالوج التطبيقات" description="الكتالوج للقراءة والاختيار. إعدادات التحميل تُدار في أقسام مستقلة.">
+        {section === 'applications' && <CatalogEditor onChange={() => setRevision(v=>v+1)} />}
+        {section === 'applications' && <Panel title="كتالوج التطبيقات" description="اختر تطبيقًا لإدارة إعدادات التحميل المتقدم.">
           {catalogError ? <State title="تعذر قراءة الكتالوج" error>{catalogError}</State> : !catalog ? <Loading label="جارٍ قراءة التطبيقات…" /> : catalog.items.length === 0 ? <State title="لا توجد تطبيقات في هذه الصفحة">أضف التطبيقات عبر مسار الكتالوج المعتمد.</State> : <>
             <div className={styles.appList}>{catalog.items.map(app => <button key={app.id} className={styles.appRow} onClick={() => selectApp(app.id)} disabled={busy} aria-label={`إدارة ${app.name}`}>
               <AppIdentity app={app} /><Badge tone={app.mode === 'disabled' ? 'danger' : app.mode === 'direct' ? 'cyan' : 'neutral'}>{app.mode ? modeLabels[app.mode] : 'افتح إعداد التحميل لقراءة الوضع'}</Badge><Icon name="chevron" /></button>)}</div>
