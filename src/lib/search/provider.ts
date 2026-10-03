@@ -1,5 +1,5 @@
 import 'server-only';
-import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 import { and, asc, eq, or, sql } from 'drizzle-orm';
 import { applications } from '@/lib/db/schema';
 import { getDb } from '@/lib/db';
@@ -21,10 +21,11 @@ function document(row:{id:number;name:string|null;developer:string|null;category
   const details=getCatalogDetails(row.id);
   return {...row,name:appName(row),...details};
 }
-const smallCatalog=unstable_cache(async()=>{
+// Per-request cache only: bot commits must be visible on the next request.
+const smallCatalog=cache(async()=>{
   const db=getDb(); if(!db)return [];
   return (await db.select(fields).from(applications).where(publicWhere).orderBy(asc(applications.id)).limit(INDEX_LIMIT+1)).map(document);
-},['catalog-search-v2'],{revalidate:30});
+});
 /** The current small catalog is indexed on the server, never shipped to the browser.
  * Above 2,000 items, bounded PostgreSQL candidates replace the in-memory scan.
  * A future indexed provider can implement this interface without changing UI/ranking.

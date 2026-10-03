@@ -5,7 +5,9 @@ import { randomBytes,createHash } from 'node:crypto';
 import { mkdtempSync,writeFileSync,rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
+import { createServer as httpsServer } from 'node:https';
+import { request as proxyRequest } from 'node:http';
 import postgres from 'postgres';
 const connection=process.env.WZ_TEST_DATABASE_URL;
 assert.ok(connection,'Set WZ_TEST_DATABASE_URL to an EMPTY local wz_phase2_test database.');
@@ -14,14 +16,16 @@ assert.ok(['localhost','127.0.0.1'].includes(url.hostname)&&/^\/wz_phase2_test(?
 const sql=postgres(connection,{prepare:false,max:1});
 const port=Number(process.env.WZ_TEST_PORT||3100);
 assert.ok(Number.isInteger(port)&&port>=1024&&port<=65535,'WZ_TEST_PORT must be an unprivileged TCP port.');
-const base=`http://127.0.0.1:${port}`,folder=mkdtempSync(join(tmpdir(),'wz-phase2-tests-'));
-let server;
+const base=`https://127.0.0.1:${port}`,folder=mkdtempSync(join(tmpdir(),'wz-phase2-tests-'));
+let server, proxy;
 try {
   const [existing]=await sql`SELECT to_regclass('public.applications') AS catalog, to_regclass('public.site_users') AS users`;
   assert.ok(!existing.catalog&&!existing.users,'Refusing to modify a non-empty test database. Create a new dedicated test database.');
-  await sql.unsafe(`CREATE TABLE applications(id SERIAL PRIMARY KEY,name TEXT,description TEXT,version TEXT,size TEXT,category TEXT,platform TEXT,developer TEXT,shrankme_url TEXT,image_url TEXT,devupload_url TEXT,downloads INTEGER,views INTEGER,active BOOLEAN,published BOOLEAN,created_at TIMESTAMP);
+  await sql.unsafe(`CREATE TABLE applications(id SERIAL PRIMARY KEY,name TEXT,description TEXT,version TEXT,size TEXT,category TEXT,platform TEXT,developer TEXT,shrankme_url TEXT,image_url TEXT,devupload_url TEXT,icon_file_id TEXT,search_text TEXT,downloads INTEGER,views INTEGER,active BOOLEAN,published BOOLEAN,created_at TIMESTAMPTZ);
     CREATE TABLE site_users(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE TABLE site_sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES site_users(id) ON DELETE CASCADE,expires_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`);
+  await sql.unsafe((await import('node:fs')).readFileSync('migrations/001_downloads.sql','utf8'));
+  await sql.unsafe((await import('node:fs')).readFileSync('migrations/002_delivery_sources.sql','utf8'));
   for(const [index,name] of ['WhatsApp','Telegram','Instagram','Spotify','TikTok','Facebook','Clash of Clans','Grand Theft Auto','Call of Duty'].entries()) {
     await sql`INSERT INTO applications(id,name,description,version,size,category,platform,developer,downloads,active,published,created_at)
       VALUES(${201+index},${name},${'Test fixture only. '.repeat(40)},'9.1','85 MB',${index>=6?'ألعاب':'تواصل'},'Android',${[0,2,5].includes(index)?'Meta':'Test Developer'},10,true,true,NOW())`;
@@ -44,9 +48,17 @@ try {
   config.expiredCookie=`__Host-wz_session=${expired}`;
   const configPath=join(folder,'config.json');writeFileSync(configPath,JSON.stringify(config),{mode:0o600});
   await sql.end(); // Setup is complete; no seed connection is needed during HTTP tests.
-  server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{
+  server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port+1)],{
     env:{...process.env,DATABASE_URL:connection,NEXT_PUBLIC_SITE_URL:base,OWNER_USER_ID:'owner-qa',WEBSITE_STATS_TOKEN:config.statsToken},stdio:['ignore','inherit','inherit'],
   });
+  execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-days','1','-keyout',join(folder,'key.pem'),'-out',join(folder,'cert.pem'),'-subj','/CN=127.0.0.1'],{stdio:'ignore'});
+  proxy=httpsServer({key:(await import('node:fs')).readFileSync(join(folder,'key.pem')),cert:(await import('node:fs')).readFileSync(join(folder,'cert.pem'))},(req,res)=>{
+    const upstream=proxyRequest({hostname:'127.0.0.1',port:port+1,path:req.url,method:req.method,headers:req.headers},answer=>{res.writeHead(answer.statusCode,answer.headers);answer.pipe(res);});
+    upstream.on('error',()=>{res.writeHead(502);res.end();});req.pipe(upstream);
+  });
+  await new Promise(resolve=>proxy.listen(port,'127.0.0.1',resolve));
+  // Only disposable loopback fixture TLS, never used in application runtime.
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED='0';
   let ready=false;
   for(let i=0;i<60;i++){
     assert.equal(server.exitCode,null,`Test server stopped; check that port ${port} is free.`);
@@ -59,8 +71,11 @@ try {
     tests.on('exit',(status)=>resolve(status??1));
   });
   process.exitCode=code;
-  if(code===0 && process.env.WZ_BROWSER_TESTS==='true') {
-    for(const file of ['tests/browser.mjs','tests/seo-browser.mjs']) {
+  if(code===0 && process.env.WZ_BOT_TEST_PYTHON) {
+    process.exitCode=await new Promise(resolve=>{const child=spawn(process.execPath,['tests/cross-repo.mjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});child.on('exit',status=>resolve(status??1));});
+  }
+  if(code===0 && !process.exitCode && process.env.WZ_BROWSER_TESTS==='true') {
+    for(const file of ['tests/browser.mjs','tests/seo-browser.mjs','tests/telegram-browser.mjs']) {
       process.exitCode=await new Promise(resolve=>{
         const browser=spawn(process.execPath,[file],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
         browser.on('exit',status=>resolve(status??1));
@@ -72,6 +87,7 @@ try {
   if(server&&server.exitCode===null&&server.signalCode===null){
     const stopped=new Promise(resolve=>server.once('exit',resolve));server.kill('SIGTERM');await stopped;
   }
+  if(proxy)await new Promise(resolve=>proxy.close(resolve));
   await sql.end();rmSync(folder,{recursive:true,force:true});
   // The explicitly dedicated database is retained for inspection; no DROP/reset.
 }

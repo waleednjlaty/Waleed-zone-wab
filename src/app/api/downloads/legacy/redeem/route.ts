@@ -1,0 +1,12 @@
+import { createLegacyHandler } from '@/lib/delivery/http';
+import { downloadMethodNotAllowed } from '@/lib/downloads/http';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const POST = createLegacyHandler('redeem');
+const unsupported = (request: Request) => downloadMethodNotAllowed(request);
+export const GET = unsupported;
+export const PUT = unsupported;
+export const PATCH = unsupported;
+export const DELETE = unsupported;
+export const HEAD = unsupported;
+export const OPTIONS = unsupported;

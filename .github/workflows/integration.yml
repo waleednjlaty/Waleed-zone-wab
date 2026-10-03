@@ -31,6 +31,8 @@ jobs:
       NEXT_TELEMETRY_DISABLED: '1'
       WZ_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:5432/wz_phase2_test
       WZ_SEO_FIXTURES: 'true'
+      FILES_CHANNEL_USERNAME: files_channel
+      LEGACY_DOWNLOAD_SIGNING_KEY: ci-fixture-signing-secret-only-never-deploy-0123456789
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

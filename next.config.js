@@ -17,6 +17,12 @@ const csp = [
   "upgrade-insecure-requests",
 ].join('; ');
 
+// Only exact configured hostnames can be used by native download form redirects.
+const downloadFormHosts = ['t.me', ...(process.env.LEGACY_DOWNLOAD_ALLOWED_HOSTS || 'devuploads.com,shrinkme.io,shrinkme.site').split(','),
+  ...(process.env.DOWNLOAD_ALLOWED_DELIVERY_HOSTS || '').split(',')]
+  .map(host => host.trim()).filter(host => /^[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]{2,}$/.test(host));
+const downloadCsp = csp.replace("form-action 'self'", `form-action 'self' ${[...new Set(downloadFormHosts)].map(host => 'https://' + host).join(' ')}`);
+
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -43,7 +49,7 @@ const nextConfig = {
       { source: '/:legal(privacy|terms)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, follow' }] },
       { source: '/:utility(login|register|download)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }] },
       { source: '/:private(account|users|admin|dashboard|settings|database|debug|logs|uploads|private|manage|management)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }, { key: 'Cache-Control', value: 'private, no-store' }] },
-      { source: '/download/:path*', headers: [{ key: 'Cache-Control', value: 'private, no-store' }, { key: 'Referrer-Policy', value: 'no-referrer' }] },
+      { source: '/download/:path*', headers: [{ key: 'Content-Security-Policy', value: downloadCsp }, { key: 'Cache-Control', value: 'private, no-store' }, { key: 'Referrer-Policy', value: 'same-origin' }] },
       {
         source: '/api/:path*',
         headers: [
@@ -52,6 +58,7 @@ const nextConfig = {
         ],
       },
       { source: '/api/downloads/:path*', headers: [{ key: 'Cache-Control', value: 'private, no-store' }, { key: 'Referrer-Policy', value: 'no-referrer' }] },
+      { source: '/api/downloads/legacy/redeem', headers: [{ key: 'Content-Security-Policy', value: downloadCsp }] },
     ];
   },
 };

@@ -17,7 +17,7 @@ async function until(check) {
 }
 try {
   for (const width of [360, 768, 1440]) {
-    const page = await browser.newPage({ viewport: { width, height: 900 } }), errors = [], network = [];
+    const page = await browser.newPage({ viewport: { width, height: 900 }, ignoreHTTPSErrors: true }), errors = [], network = [];
     page.on('request', request => network.push(`request ${request.method()} ${request.url()}`));
     page.on('response', response => network.push(`response ${response.status()} ${response.url()}`));
     page.on('requestfailed', request => network.push(`failed ${request.url()} ${request.failure()?.errorText}`));

@@ -16,3 +16,13 @@ export async function getDownloadAvailability(applicationId: number) {
 export async function getDownloadPresentation(applicationId: number) {
   return (await getDownloadAvailability(applicationId)).file;
 }
+
+/** Expose availability only; the destination never crosses the RSC boundary. */
+export async function getFallbackDelivery(applicationId: number): Promise<'telegram' | 'external' | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    const { legacyDelivery } = await import('@/lib/delivery/legacy');
+    return (await legacyDelivery(sql,applicationId,process.env)).provider;
+  } catch { return null; }
+}

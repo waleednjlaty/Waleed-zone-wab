@@ -30,17 +30,17 @@ function originGuard(request: Request, env: NodeJS.ProcessEnv, write: boolean) {
     || (!write && request.headers.has('origin') && request.headers.get('origin') !== origin))
     throw new DownloadError(403, write ? 'ORIGIN_REJECTED' : 'CSRF_REJECTED');
 }
-export async function downloadBody(request: Request, form = false): Promise<Record<string, unknown>> {
+export async function downloadBody(request: Request, form = false, maxBytes = 2048): Promise<Record<string, unknown>> {
   const type = (request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
   if (type !== (form ? 'application/x-www-form-urlencoded' : 'application/json')) throw new DownloadError(415, 'UNSUPPORTED_MEDIA_TYPE');
-  if (Number(request.headers.get('content-length') || 0) > 2048) throw new DownloadError(413, 'REQUEST_TOO_LARGE');
+  if (Number(request.headers.get('content-length') || 0) > maxBytes) throw new DownloadError(413, 'REQUEST_TOO_LARGE');
   if (!request.body) throw new DownloadError(400, 'INVALID_REQUEST');
   const reader = request.body.getReader(), chunks: Uint8Array[] = []; let length = 0;
   try {
     while (true) {
       const { done, value } = await reader.read(); if (done) break;
       length += value.byteLength;
-      if (length > 2048) { await reader.cancel(); throw new DownloadError(413, 'REQUEST_TOO_LARGE'); }
+      if (length > maxBytes) { await reader.cancel(); throw new DownloadError(413, 'REQUEST_TOO_LARGE'); }
       chunks.push(value);
     }
     const text = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks));
