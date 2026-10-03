@@ -61,12 +61,12 @@ export async function verifyMonetizationUI({base,root}) {
       return url.origin===base?route.continue():route.abort();
     });
     await page.addInitScript(()=>{window.__fixtureDecision={cmpId:300,cmpStatus:'loaded',eventStatus:'tcloaded',tcString:'fixture-only-base64url-consent',purpose:{consents:{1:false,3:false,4:false}},vendor:{consents:{755:false}}};window.__tcfapi=(command,_version,cb)=>{if(command==='addEventListener'){window.__fixtureCallback=cb;cb(window.__fixtureDecision,true);}};});
-    await page.goto(base+'/apps/privacy-test-201');await page.getByRole('heading',{name:'Consent test fixture'}).waitFor();assert.equal(requests,0);assert.equal(await page.locator('ins.adsbygoogle').count(),0);
+    const consentResponse=await page.goto(base+'/apps/privacy-test-201');const consentCsp=consentResponse.headers()['content-security-policy'];assert.match(consentCsp,/script-src [^;]*nonce-/);assert.match(consentCsp,/pagead2/);assert.ok(!/script-src [^;]*unsafe-inline/.test(consentCsp));await page.getByRole('heading',{name:'Consent test fixture'}).waitFor();assert.equal(requests,0);assert.equal(await page.locator('ins.adsbygoogle').count(),0);
     await page.waitForFunction(()=>Boolean(window.__fixtureCallback));
     await page.evaluate(()=>window.__fixtureCallback({...window.__fixtureDecision,purpose:{consents:{1:true,3:true,4:true}},vendor:{consents:{755:true}}},true));
     await page.waitForFunction(()=>window.__fixtureAdPush===1).catch(error=>{throw new Error(`${error.message}; isolated SDK diagnostics: ${JSON.stringify(sdkErrors)}`);});assert.equal(requests,1);assert.deepEqual(sdkErrors,[]);assert.equal(await page.locator('ins.adsbygoogle').count(),1);
     await page.evaluate(()=>window.__fixtureCallback(window.__fixtureDecision,true));await page.waitForFunction(()=>!document.querySelector('ins.adsbygoogle'));
-    await page.goto(base+'/download/201');await page.getByRole('heading',{name:'Excluded download fixture'}).waitFor();assert.equal(requests,1);assert.equal(await page.locator('ins.adsbygoogle').count(),0);
+    const downloadResponse=await page.goto(base+'/download/201');assert.ok(!downloadResponse.headers()['content-security-policy'].includes('googlesyndication'));await page.getByRole('heading',{name:'Excluded download fixture'}).waitFor();assert.equal(requests,1);assert.equal(await page.locator('ins.adsbygoogle').count(),0);
     await context.close();console.log('Monetization UI: owner transitions, errors, 360/768/1440 layout, consent grant/deny/revoke, excluded download route passed. No live Google traffic.');
   } finally {await browser.close();}
 }
