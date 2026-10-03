@@ -55,3 +55,18 @@ No merge, manual deployment, production migration, storage activation, infrastru
 - Telegram copyMessage: https://core.telegram.org/bots/api#copymessage
 - Telegram public message links: https://core.telegram.org/api/links#message-links
 - SQLAlchemy optimistic version counters: https://docs.sqlalchemy.org/en/20/orm/versioning.html
+
+
+## Production migration order
+
+The website and bot share one PostgreSQL database, so apply the additive schema exactly once **before deploying the bot integration**.
+
+From the website service/repository with its production `DATABASE_URL` explicitly available to the operator:
+
+```bash
+npm run migrate:release
+```
+
+This runs `001_downloads.sql` first, then `002_delivery_sources.sql`, under explicit operator commands. Neither command is wired to build, startup, or request handling. Re-running with the same checksums is safe; a checksum mismatch stops instead of silently applying different SQL.
+
+After the migration, keep `DIRECT_DOWNLOADS_ENABLED=false` for the zero-cost Telegram stage.
