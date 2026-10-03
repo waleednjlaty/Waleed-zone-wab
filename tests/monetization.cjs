@@ -35,12 +35,15 @@ test('SDK CSP restricted to canonical detail pages, never download/admin/account
 test('CMP missing/failed/wrong/stub/denied/restricted cannot authorize; revocation immediately denies',()=>{
   const data={cmpId:300,cmpStatus:'loaded',eventStatus:'tcloaded',tcString:'fixture-only-not-a-real-tc-string',purpose:{consents:{1:true,3:true,4:true}},vendor:{consents:{755:true}}};
   assert.equal(adConsentGranted(data,true,300),true);
-  for(const value of [null,{}, {...data,cmpId:42},{...data,cmpStatus:'stub'},{...data,eventStatus:'cmpuishown'},{...data,tcString:''},{...data,vendor:{consents:{755:false}}},{...data,publisher:{restrictions:{1:{755:0}}}}])assert.equal(adConsentGranted(value,true,300),false);
-  assert.equal(adConsentGranted(data,false,300),false);
+  for(const value of [null,{}, {...data,cmpId:42},{...data,cmpStatus:'stub'},{...data,eventStatus:'cmpuishown'},{...data,tcString:''},{...data,tcString:' '},{...data,tcString:{}},{...data,tcString:'invalid string'},{...data,vendor:{consents:{755:false}}},{...data,publisher:{restrictions:{1:{755:0}}}}])assert.equal(adConsentGranted(value,true,300),false);
+  for(const success of [false,1,'true',undefined])assert.equal(adConsentGranted(data,success,300),false);
   for(const key of [1,3,4])assert.equal(adConsentGranted({...data,purpose:{consents:{...data.purpose.consents,[key]:false}}},true,300),false);
 });
 test('owner review routes: security, strict validation, CAS, privacy, invalidation, missing schema and outage', {timeout:60000}, async t=>{
   const h=await require('./admin/runtime.cjs').createFixture(t,{monetization:true});
+  await h.db.exec('UPDATE applications SET name=NULL WHERE id=202');
+  const legacy=await (await h.call('monetization')).json();
+  assert.match(legacy.items.find(row=>row.application_id===202).name,/202/,'Unnamed legacy listings remain reviewable');
   const Module=require('node:module'),original=Module._load;
   let applicationAdEligible;
   try { Module._load=function(name,...args){if(name==='server-only')return {};if(name==='@/lib/db')return {getSql:()=>h.sql};return original.call(this,name,...args);};

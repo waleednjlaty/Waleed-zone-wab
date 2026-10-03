@@ -4,8 +4,9 @@ export type TcfData = {cmpId?: number;cmpStatus?: string;eventStatus?: string;tc
   publisher?: {restrictions?: Record<string, Record<string, number>>}};
 export function adConsentGranted(data: TcfData | null | undefined, success: boolean, expectedCmpId: number): boolean {
   // Conservatively require explicit consent globally, even when gdprApplies=false.
-  if (!success || !data || data.cmpId !== expectedCmpId || data.cmpStatus !== 'loaded'
-    || !['tcloaded','useractioncomplete'].includes(data.eventStatus || '') || !data.tcString
+  if (success !== true || !data || data.cmpId !== expectedCmpId || data.cmpStatus !== 'loaded'
+    || !['tcloaded','useractioncomplete'].includes(data.eventStatus || '') || typeof data.tcString !== 'string'
+    || !/^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$/.test(data.tcString)
     || data.vendor?.consents?.['755'] !== true) return false;
   return ['1','3','4'].every(purpose => data.purpose?.consents?.[purpose] === true
     && data.publisher?.restrictions?.[purpose]?.['755'] === undefined);

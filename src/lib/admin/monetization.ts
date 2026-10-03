@@ -12,7 +12,7 @@ function revisionToken(app: Row, review?: Row) {
 }
 function view(app: Row, review?: Row) {
   const stale = review?.status === 'eligible' && String(review.reviewed_catalog_revision) !== String(app.revision);
-  return { application_id: app.id, name: app.name, icon: app.image_url ?? null, category: app.category ?? null,
+  return { application_id: app.id, name: typeof app.name === 'string' && app.name.trim() ? app.name : `تطبيق بدون اسم (${app.id})`, icon: app.image_url ?? null, category: app.category ?? null,
     version: app.version ?? null, active: app.active === true, published: app.published === true,
     status: stale ? 'unreviewed' : review?.status ?? 'unreviewed', rights_basis: review?.rights_basis ?? 'unknown',
     review_notes: review?.review_notes ?? '', reviewed_at: stale ? null : review?.reviewed_at ?? null,
