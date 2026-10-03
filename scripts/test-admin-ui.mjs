@@ -21,6 +21,11 @@ try {
   cpSync(join(root, 'tests/fixtures/admin-ui/page.tsx'), join(folder, 'src/app/admin/page.tsx'));
   writeFileSync(join(folder, 'src/app/page.tsx'), 'export default function Page(){return <a href="/admin">Admin UI fixture</a>}');
   writeFileSync(join(folder, 'src/app/layout.tsx'), `import './globals.css';import Brand from '@/components/Brand';import Footer from '@/components/Footer';export default function Layout({children}:{children:React.ReactNode}){return <html lang="ar" dir="rtl"><body><header className="site-header"><div className="shell header-inner"><a href="/" className="brand-link"><Brand/></a></div></header><main id="main-content">{children}</main><Footer/></body></html>}`);
+  mkdirSync(join(folder, 'src/app/apps/privacy-test-201'), { recursive: true });
+  mkdirSync(join(folder, 'src/app/download/201'), { recursive: true });
+  const manualFixture = `import ManualAd from '@/components/monetization/ManualAd';export default function Page(){return <><h1>Consent test fixture</h1><ManualAd publisherId="ca-pub-0000000000000000" slotId="0000000000" cmpId={300} path="/apps/privacy-test-201"/></>}`;
+  writeFileSync(join(folder,'src/app/apps/privacy-test-201/page.tsx'),manualFixture);
+  writeFileSync(join(folder,'src/app/download/201/page.tsx'),manualFixture.replace('Consent test fixture','Excluded download fixture'));
   server = spawn(process.execPath, [join(root, 'node_modules/next/dist/bin/next'), 'dev', '--hostname', '127.0.0.1', '--port', String(port)], { cwd: folder, env: { ...process.env, DATABASE_URL: '', NEXT_PUBLIC_SITE_URL: base, NEXT_TELEMETRY_DISABLED: '1' }, stdio: ['ignore', 'inherit', 'inherit'] });
   let ready = false;
   for (let attempt = 0; attempt < 60; attempt++) {
@@ -37,6 +42,8 @@ try {
   }
   const { verifyAdminUI } = await import(pathToFileURL(join(root, 'tests/admin-browser.mjs')).href);
   await verifyAdminUI({ base, root });
+  const {verifyMonetizationUI}=await import(pathToFileURL(join(root,'tests/monetization-browser.mjs')).href);
+  await verifyMonetizationUI({base,root});
 } finally {
   if (server && server.exitCode === null && server.signalCode === null) {
     const ended = new Promise(resolve => server.once('exit', resolve)); server.kill('SIGTERM'); await ended;

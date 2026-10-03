@@ -35,7 +35,7 @@ For production, set the Railway service to build from this repository, configure
 
 ## Advertising
 
-AdSense is disabled until you have a publisher ID, have reviewed every catalog item and destination against Google policies, and the site has been approved. Then set `ADSENSE_PUBLISHER_ID`, `ADSENSE_CONTENT_REVIEWED=true`, and `ADSENSE_ENABLED=true`, test the script/CSP and privacy notice, and verify `/ads.txt`. Current catalog content may be ineligible; **do not flip these flags solely to display ads**.
+AdSense verification and serving are separate. A valid `ADSENSE_PUBLISHER_ID` publishes account metadata and `/ads.txt` while advertising stays off. Serving requires **all five** gates: valid publisher ID and exact `true` values for `ADSENSE_CONTENT_REVIEWED`, `ADSENSE_SITE_APPROVED`, `ADSENSE_PRIVACY_READY`, and `ADSENSE_ENABLED`. Manual placement and a live certified CMP consent decision are additional requirements. See [Phase 9 readiness and owner checklist](docs/PHASE9_MONETIZATION_READINESS.md). Leave all switches false during preparation; no code change grants Google approval.
 
 ## Related project
 

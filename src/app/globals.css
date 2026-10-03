@@ -347,3 +347,7 @@ svg { flex-shrink: 0; }
 .detail-download { width:100%; min-height:48px; }
 .detail-actions > .secondary-action { width:100%; }
 @media(min-width:1024px) { .detail-version-section { grid-column:1; } }
+
+/* Manual advertising below editorial content, isolated from download controls. */
+.manual-ad-placement { margin-block: 6rem 3rem; padding: 1.5rem; border: 1px solid #27343a; min-height: 300px; overflow: hidden; }
+.manual-ad-label { color: #a6b5b8; font-size: .75rem; margin-bottom: 1rem; text-align: center; }

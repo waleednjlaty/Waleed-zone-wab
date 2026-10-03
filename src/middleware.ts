@@ -13,7 +13,7 @@ export function middleware(request:NextRequest) {
   // Overwrite incoming values; clients cannot spoof the route guard context.
   requestHeaders.set('x-wz-route',encodeURIComponent(path));
   const nonce=btoa(crypto.randomUUID());
-  const csp=contentSecurityPolicy(nonce,process.env,path.startsWith('/download/')||path==='/api/downloads/legacy/redeem');
+  const csp=contentSecurityPolicy(nonce,process.env,path.startsWith('/download/')||path==='/api/downloads/legacy/redeem',path);
   requestHeaders.set('x-nonce',nonce);
   requestHeaders.set('Content-Security-Policy',csp);
   const response=NextResponse.next({request:{headers:requestHeaders}});
