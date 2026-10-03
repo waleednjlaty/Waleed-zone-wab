@@ -31,6 +31,13 @@ async def run():
         await repo.bind_telegram_source(session,bot.id,source)
         bot.published=True
         await session.commit()
+        # SQLAlchemy adds updated_at to counter writes; traffic must not stale forms.
+        traffic_revision=bot.revision
+        await repo.increment_views(session,bot.id)
+        await repo.increment_downloads(session,bot.id)
+        await session.commit()
+        await session.refresh(bot)
+        assert bot.revision == traffic_revision
         # Two native pools capture the same revision; second ORM flush must fail.
         async with db.session() as rival:
             other=await repo.get_application(rival,bot.id)

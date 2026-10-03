@@ -28,7 +28,7 @@ test('shared catalog CRUD and real Telegram metadata routes',async t=>{
  let app;
  await t.test('traffic counters preserve catalog revision',async()=>{
   const item=await service.write('catalog',{metadata},'owner');
-  await sql`UPDATE applications SET views=views+1,downloads=downloads+1 WHERE id=${item.id}`;
+  await sql`UPDATE applications SET views=views+1,downloads=downloads+1,updated_at=clock_timestamp() WHERE id=${item.id}`;
   assert.equal((await service.read('catalog-record',String(item.id))).revision,item.revision);
  });
  await t.test('owner creates draft without external URL columns',async()=>{const response=await call('catalog','POST',{metadata});assert.equal(response.status,200);app=await response.json();assert.equal(app.published,false);const [row]=await sql`SELECT * FROM applications WHERE id=${app.id}`;assert.equal(row.shrankme_url,null);assert.equal(row.devupload_url,null);});
