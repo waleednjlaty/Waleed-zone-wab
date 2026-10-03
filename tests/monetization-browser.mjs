@@ -20,7 +20,7 @@ export async function verifyMonetizationUI({base,root}) {
         const respond=(body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
         const path=url.pathname;
         if(path.includes('/monetization')){
-          if(failure)return respond({error:{message:'PRIVATE_ERROR_DO_NOT_RENDER'}},failure);
+          if(failure&&(failure!==409||route.request().method()!=='GET'))return respond({error:{message:'PRIVATE_ERROR_DO_NOT_RENDER'}},failure);
           if(route.request().method()==='PUT'){
             assert.equal(route.request().headers()['x-csrf-token'],token);const input=route.request().postDataJSON();
             assert.deepEqual(Object.keys(input).sort(),['expected_revision','status','rights_basis','review_notes'].sort());

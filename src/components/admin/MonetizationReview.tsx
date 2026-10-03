@@ -62,8 +62,8 @@ export default function MonetizationReview() {
   const gateLabels:Record<string,string>={publisherConfigured:'معرّف الحساب',contentReviewed:'إقرار مراجعة المحتوى',siteApproved:'إقرار موافقة Google',privacyReady:'إقرار تجهيز CMP والخصوصية',enabled:'مفتاح العرض النهائي',serving:'اكتمال بوابات العرض',manualPlacementConfigured:'إعداد الموضع اليدوي وCMP'};
   return <section className={styles.panel} aria-labelledby="monetization-title">
     <div className={styles.panelHead}><h3 id="monetization-title">مراجعة أهلية الإعلانات</h3><p>المراجعة داخلية للمالك. مجاني أو رسمي لا يعني وجود حق إعادة توزيع؛ وثّق المصدر والترخيص. تغيير المحتوى يلغي أهليته السابقة.</p></div>
-    <p ref={feedback} tabIndex={-1} role={error?'alert':'status'} aria-live="polite">{error||notice}</p>
-    <button className={styles.secondary} disabled={busy} onClick={()=>setEpoch(v=>v+1)}>تحديث مراجعات الربح</button>
+    <p ref={feedback} tabIndex={-1} role={error?'alert':'status'} aria-live="polite">{notice}{notice&&error?' ':''}{error}</p>
+    <button className={styles.secondary} disabled={busy} onClick={()=>{setNotice('');setEpoch(v=>v+1);}}>تحديث مراجعات الربح</button>
     {loading&&<p role="status" aria-busy="true">جارٍ قراءة المراجعات…</p>}
     {page&&<><div className={styles.stats}>{Object.entries(statuses).map(([key,label])=><div key={key}><span>{label}</span><strong>{page.counts[key as Status]}</strong><small>الكتالوج كاملًا</small></div>)}</div>
       <div className={styles.gates}>{Object.entries(gateLabels).map(([key,label])=><div className={styles.gate} key={key}><span>{label}</span><span className={`${styles.badge} ${page.gates[key]?styles.success:styles.warning}`}>{page.gates[key]?'مُقرّ / مُعدّ':'غير جاهز'}</span></div>)}</div>
