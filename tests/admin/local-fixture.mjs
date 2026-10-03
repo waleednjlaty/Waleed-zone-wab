@@ -23,6 +23,7 @@ try {
   for (const [i,name] of ['WhatsApp','Telegram','Instagram','Spotify','TikTok','Facebook','Clash of Clans','Grand Theft Auto','Call of Duty'].entries())
     await db.query(`INSERT INTO applications(id,name,description,version,size,category,platform,developer,downloads,views,active,published,created_at) VALUES($1,$2,$3,'9.1','85 MB',$4,'Android',$5,10,0,true,true,NOW())`, [201+i,name,'Local QA catalog. '.repeat(40),i>=6?'ألعاب':'تواصل',[0,2,5].includes(i)?'Meta':'Test Developer']);
   await db.exec(`INSERT INTO applications(id,name,category,active,published) VALUES(999,'PRIVATE DRAFT SECRET','تواصل',true,false),(1000,'INACTIVE PRIVATE','تواصل',false,true)`);
+  await db.exec(readFileSync(new URL('../../migrations/003_runtime_security.sql', import.meta.url),'utf8'));
   await db.exec(readFileSync(new URL('../../migrations/001_downloads.sql', import.meta.url),'utf8'));
   await db.exec(`INSERT INTO site_download_versions(id,application_id,version_label,release_key) VALUES('11111111-1111-4111-8111-111111111111',201,'QA pending','qa-pending'),('44444444-4444-4444-8444-444444444444',202,'QA other','qa-other');
     INSERT INTO site_download_files(id,version_id,variant_key,size_bytes,mime_type,download_filename,sha256,storage_backend,storage_key,storage_object_version) VALUES('22222222-2222-4222-8222-222222222222','11111111-1111-4111-8111-111111111111','universal',24,'application/vnd.android.package-archive','qa.apk',repeat('a',64),'fixture','QA_PRIVATE_STORAGE_KEY_SENTINEL','fixture-v1')`);

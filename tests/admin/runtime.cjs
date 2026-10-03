@@ -23,11 +23,14 @@ async function createFixture(t) {
     return sql;
   }
   const sql=sqlFor(db);
+  // Independent state/security subtests must not inherit another subtest's limiter traffic.
+  t.beforeEach(async()=>{await sql`DELETE FROM site_rate_limits`;});
   await db.exec(`CREATE TABLE applications(id INTEGER PRIMARY KEY,name TEXT,description TEXT,version TEXT,size TEXT,category TEXT,platform TEXT,developer TEXT,shrankme_url TEXT,image_url TEXT,devupload_url TEXT,downloads INTEGER,views INTEGER,active BOOLEAN,published BOOLEAN,created_at TIMESTAMPTZ);
     CREATE TABLE site_users(id TEXT PRIMARY KEY,name TEXT,email TEXT,password_hash TEXT,created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE site_sessions(token_hash TEXT PRIMARY KEY,user_id TEXT REFERENCES site_users(id),expires_at TIMESTAMPTZ,created_at TIMESTAMPTZ DEFAULT NOW());
     INSERT INTO applications(id,name,shrankme_url,devupload_url,active,published) VALUES(201,'Public QA','QA_PRIVATE_BOT_URL','QA_PRIVATE_BOT_FIELD',true,true),(202,'Other QA',NULL,NULL,true,true),(999,'PRIVATE DRAFT SECRET',NULL,NULL,false,false);
     INSERT INTO site_users VALUES('qa-owner','QA owner','QA_OWNER_EMAIL@example.test','QA_PASSWORD_HASH',NOW()),('qa-visitor','QA visitor','visitor@example.test','QA_PASSWORD_HASH',NOW());`);
+  await db.exec(readFileSync(require.resolve('../../migrations/003_runtime_security.sql'),'utf8'));
   await db.exec(readFileSync(require.resolve('../../migrations/001_downloads.sql'),'utf8'));
   for(const [key,secret] of Object.entries(sessions))await sql`INSERT INTO site_sessions VALUES(${createHash('sha256').update(secret).digest('hex')},${key==='visitor'?'qa-visitor':'qa-owner'},${new Date(Date.now()+(key==='expired'?-60000:86400000))},NOW())`;
   const original=Module._load;

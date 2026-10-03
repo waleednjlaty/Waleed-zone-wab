@@ -30,6 +30,7 @@ test('owner admin: actual routes, authorization, CSRF and PostgreSQL service in 
     return sql;
   }
   const sql = sqlFor(db), previousEnv = { ...process.env };
+  t.beforeEach(async()=>{await sql`DELETE FROM site_rate_limits`;});
   process.env.NODE_ENV = 'production'; process.env.NEXT_PUBLIC_SITE_URL = origin;
   process.env.OWNER_USER_ID = 'fixture-owner'; process.env.WEBSITE_STATS_TOKEN = 'fixture-stats';
   process.env.DIRECT_DOWNLOADS_ENABLED = 'false';
@@ -38,6 +39,7 @@ test('owner admin: actual routes, authorization, CSRF and PostgreSQL service in 
     downloads INTEGER,views INTEGER,active BOOLEAN,published BOOLEAN,created_at TIMESTAMPTZ);
     CREATE TABLE site_users(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE site_sessions(token_hash TEXT PRIMARY KEY,user_id TEXT REFERENCES site_users(id),expires_at TIMESTAMPTZ,created_at TIMESTAMPTZ DEFAULT NOW());`);
+  await db.exec(readFileSync(require.resolve('../migrations/003_runtime_security.sql'), 'utf8'));
   await db.exec(readFileSync(require.resolve('../migrations/001_downloads.sql'), 'utf8'));
   await db.exec(`INSERT INTO applications(id,name,description,version,shrankme_url,devupload_url,active,published)
     VALUES(1,'Fixture','Bot owned','legacy','https://bot.example/secret','private-bot-field',true,true),(2,'Draft','Keep','1',NULL,NULL,false,false);

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 import { ensureVisitsTable } from '@/lib/visit-store';
 import { SITE_URL } from '@/lib/site';
+import { consumeWindow, requestNetwork } from '@/lib/security/limits';
 
 export async function POST(request: Request) {
   const origin=request.headers.get('origin');
@@ -19,11 +20,13 @@ export async function POST(request: Request) {
   const sql=getSql();
   if (!salt || !sql) return NextResponse.json({ok:false},{status:503});
   // IP headers are supplied by the deployment proxy; never store their raw values.
-  const ip=(request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown').trim().slice(0,64);
+  let ip: string;
+  try { ip=requestNetwork(request,process.env); } catch { return NextResponse.json({ok:false},{status:503}); }
   const agent=(request.headers.get('user-agent') || 'unknown').slice(0,300);
   const day=new Date().toISOString().slice(0,10);
   const key=createHmac('sha256',salt).update(`${day}:${ip}:${agent}`).digest('hex');
   try {
+    if(!await consumeWindow(sql,'visit:network:'+ip,600,60)) return NextResponse.json({ok:false},{status:429,headers:{'Retry-After':'60'}});
     await ensureVisitsTable();
     await sql`INSERT INTO site_visits (visitor_key,visit_day) VALUES (${key},${day}) ON CONFLICT (visitor_key,visit_day) DO NOTHING`;
     return NextResponse.json({ok:true},{headers:{'Cache-Control':'no-store'}});

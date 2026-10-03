@@ -1,6 +1,7 @@
 export function sanitizeSearch(input: string): string {
   return input
-    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .slice(0, 1000)
+    .replace(/[\p{Cc}\p{Cf}]/gu, '')
     .trim()
     .slice(0, 100);
 }
@@ -17,10 +18,12 @@ export function parsePage(input?: string | string[] | number): number {
 }
 
 export function safeExternalUrl(value?: string | null): string | null {
-  if (!value) return null;
+  if (!value || value.length>2000 || /[\p{Cc}\p{Cf}]/u.test(value)) return null;
   try {
     const url = new URL(value.trim());
-    return url.protocol === 'https:' ? url.toString() : null;
+    return url.protocol === 'https:' && !url.username && !url.password && !url.port
+      && !/(^|\.)telegram\.org$/i.test(url.hostname)
+      && !/^(?:localhost|.*\.(?:localhost|local|internal)|[\d.]+|\[.*\])$/i.test(url.hostname) ? url.toString() : null;
   } catch { return null; }
 }
 

@@ -12,7 +12,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/*.cjs",
+    "test": "node --test --test-concurrency=2 tests/*.cjs",
     "test:integration": "node scripts/test-integration.mjs",
     "test:downloads": "node --test tests/downloads.cjs",
     "test:downloads:strict": "WZ_DOWNLOAD_CONTRACT_STRICT=1 node --test tests/download-contract.cjs",
@@ -21,7 +21,8 @@
     "metadata:downloads": "node scripts/download-metadata.mjs",
     "test:metadata": "node --test tests/file-metadata.cjs",
     "migrate:delivery": "node scripts/migrate-delivery.mjs",
-    "migrate:release": "npm run migrate:downloads && npm run migrate:delivery"
+    "migrate:release": "npm run migrate:downloads && npm run migrate:delivery && npm run migrate:runtime-security",
+    "migrate:runtime-security": "node scripts/migrate-runtime-security.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1145.0",

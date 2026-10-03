@@ -10,7 +10,7 @@ const request = path => fetch(base + path, { redirect: 'manual', headers: { 'Use
 const decode = text => text.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 function tags(html, tag) { return [...html.matchAll(new RegExp(`<${tag}\\b[^>]*>`, 'g'))].map(match => Object.fromEntries([...match[0].matchAll(/([\w:-]+)="([^"]*)"/g)].map(([, key, value]) => [key, decode(value)]))); }
 function meta(html, name) { return tags(html, 'meta').filter(item => item.name === name || item.property === name).map(item => item.content); }
-function structured(html) { return [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].flatMap(([, json]) => JSON.parse(json)); }
+function structured(html) { return [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)].flatMap(([, json]) => JSON.parse(json)); }
 async function page(path) { const response = await request(path); assert.equal(response.status, 200, path); return { response, html: await response.text() }; }
 function canonical(html) { const values = tags(html, 'link').filter(item => item.rel === 'canonical'); assert.equal(values.length, 1); return values[0].href; }
 function title(html) { const values = [...html.matchAll(/<title>([\s\S]*?)<\/title>/g)]; assert.equal(values.length, 1); return decode(values[0][1]); }

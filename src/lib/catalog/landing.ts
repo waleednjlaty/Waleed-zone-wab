@@ -1,8 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { notFound } from 'next/navigation';
-import { getAllAppsSitemap } from '@/lib/queries';
-import { isGame } from '@/components/catalog/presentation';
+import { getCatalogPage } from '@/lib/queries';
 import { pageMetadata } from '@/lib/seo';
 
 export type CatalogKind = 'apps' | 'games';
@@ -11,10 +10,9 @@ export const landingPath = (kind: CatalogKind, page: number) => `/${kind}${page 
 
 /** Read existing public catalog summaries; preserve the existing app/game classification. */
 export const getLanding = cache(async (kind: CatalogKind, page: number) => {
-  const all = (await getAllAppsSitemap()).filter(app => isGame(app) === (kind === 'games'));
-  const totalPages = Math.max(1, Math.ceil(all.length / 24));
-  if (page > totalPages) notFound();
-  return { items: all.slice((page - 1) * 24, page * 24), total: all.length, totalPages, currentPage: page };
+  const result=await getCatalogPage(kind,page);
+  if (page > result.totalPages) notFound();
+  return result;
 });
 
 export async function landingMetadata(kind: CatalogKind, page: number) {

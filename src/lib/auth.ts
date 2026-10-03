@@ -1,39 +1,23 @@
 import 'server-only';
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { getSql } from '@/lib/db';
 import { SITE_URL } from '@/lib/site';
+import { downloadBody } from '@/lib/downloads/http';
+import { consumeWindow, requestNetwork } from '@/lib/security/limits';
 
 const scrypt=promisify(scryptCallback);
 const COOKIE=process.env.NODE_ENV==='production'?'__Host-wz_session':'wz_session';
 const SESSION_SECONDS=7*24*60*60;
-let ready:Promise<void>|undefined;
 export type SiteUser={id:string;name:string;email:string};
 
 export function authDb() { const sql=getSql(); if(!sql) throw new Error('Database unavailable'); return sql; }
 export function ensureAuthTables() {
   const sql=authDb();
-  ready ??= (async()=>{
-    await sql`CREATE TABLE IF NOT EXISTS site_users (
-      id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`;
-    await sql`CREATE TABLE IF NOT EXISTS site_sessions (
-      token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES site_users(id) ON DELETE CASCADE,
-      expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`;
-    await sql`CREATE INDEX IF NOT EXISTS site_sessions_user_id_idx ON site_sessions(user_id)`;
-    await sql`CREATE TABLE IF NOT EXISTS site_favorites (
-      user_id TEXT NOT NULL REFERENCES site_users(id) ON DELETE CASCADE,
-      application_id INTEGER NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (user_id,application_id)
-    )`;
-    await sql`CREATE TABLE IF NOT EXISTS site_rate_limits (
-      key TEXT PRIMARY KEY, hits INTEGER NOT NULL, reset_at TIMESTAMPTZ NOT NULL
-    )`;
-  })().catch(e=>{ready=undefined;throw e;});
-  return ready;
+  // Operator-owned migration. Read-only checks cannot silently create schema.
+  return sql`SELECT token_hash,user_id,expires_at FROM site_sessions LIMIT 0`;
 }
 export function hashToken(token:string) { return createHash('sha256').update(token).digest('hex'); }
 export async function hashPassword(password:string) {
@@ -57,49 +41,35 @@ export function sameOrigin(request:Request) {
   return origin===allowed && (!site||site==='same-origin');
 }
 export async function readJson(request:Request):Promise<Record<string,unknown>|null> {
-  if(!request.headers.get('content-type')?.startsWith('application/json')) return null;
-  if(Number(request.headers.get('content-length')||0)>4096) return null;
-  try {
-    if(!request.body)return null;
-    const reader=request.body.getReader(),chunks:Uint8Array[]=[];let bytes=0;
-    while(true){const {done,value}=await reader.read();if(done)break;bytes+=value.byteLength;
-      if(bytes>4096){await reader.cancel();return null;}chunks.push(value);}
-    const data=JSON.parse(Buffer.concat(chunks).toString('utf8'));
-    return data&&typeof data==='object'&&!Array.isArray(data)?data:null;
-  } catch { return null; }
+  try { return await downloadBody(request,false,4096); } catch { return null; }
 }
 export async function allowAttempt(request:Request,scope:string,identity:string,limit:number,seconds:number) {
-  await ensureAuthTables(); const sql=authDb();
-  const ip=(request.headers.get('x-real-ip')||request.headers.get('x-forwarded-for')?.split(',')[0]||'unknown').slice(0,64);
-  // Apply both per-identity and per-IP limits so rotating email addresses alone does not bypass throttling.
-  async function increment(value:string) {
-    const key=createHash('sha256').update(`${scope}:${value}`).digest('hex');
-    const [row]=await sql`INSERT INTO site_rate_limits (key,hits,reset_at) VALUES (${key},1,NOW()+${seconds} * INTERVAL '1 second')
-      ON CONFLICT (key) DO UPDATE SET hits=CASE WHEN site_rate_limits.reset_at<=NOW() THEN 1 ELSE site_rate_limits.hits+1 END,
-      reset_at=CASE WHEN site_rate_limits.reset_at<=NOW() THEN NOW()+${seconds} * INTERVAL '1 second' ELSE site_rate_limits.reset_at END
-      RETURNING hits`;
-    return Number(row?.hits);
-  }
-  const identityHits=await increment(`identity:${identity}`);
-  const ipHits=await increment(`ip:${ip}`);
-  if(Math.random()<0.01) await sql`DELETE FROM site_rate_limits WHERE reset_at<NOW()-INTERVAL '1 day'`;
-  return identityHits<=limit && ipHits<=limit*4;
+  const sql=authDb(), network=requestNetwork(request,process.env);
+  // The fallback is a shared bucket, never a caller-forged forwarding address.
+  const networkLimit=network==='shared' ? (scope==='register'?60:Math.max(240,limit*4)) : limit*4;
+  if(!await consumeWindow(sql,`${scope}:network:${network}`,networkLimit,seconds)) return false;
+  return consumeWindow(sql,`${scope}:identity:${identity}`,limit,seconds);
 }
 export async function createSession(userId:string) {
-  const sql=authDb(), token=randomBytes(32).toString('base64url');
-  await sql`INSERT INTO site_sessions (token_hash,user_id,expires_at) VALUES (${hashToken(token)},${userId},NOW()+${SESSION_SECONDS} * INTERVAL '1 second')`;
-  (await cookies()).set(COOKIE,token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:SESSION_SECONDS});
+  const sql=authDb(), token=randomBytes(32).toString('base64url'),jar=await cookies();
+  const previous=jar.get(COOKIE)?.value;
+  await sql.begin(async tx=>{
+    if(previous && /^[A-Za-z0-9_-]{43}$/.test(previous)) await tx`DELETE FROM site_sessions WHERE token_hash=${hashToken(previous)}`;
+    await tx`INSERT INTO site_sessions (token_hash,user_id,expires_at) VALUES (${hashToken(token)},${userId},NOW()+${SESSION_SECONDS} * INTERVAL '1 second')`;
+  });
+  jar.set(COOKIE,token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:SESSION_SECONDS});
 }
-export async function getCurrentUser():Promise<SiteUser|null> {
+export const getCurrentUser = cache(async ():Promise<SiteUser|null> => {
   const token=(await cookies()).get(COOKIE)?.value;
-  if(!token||token.length>128||!getSql()) return null;
-  try { await ensureAuthTables(); const sql=authDb();
+  if(!token||!/^[A-Za-z0-9_-]{43}$/.test(token)||!getSql()) return null;
+  try { const sql=authDb();
     const [row]=await sql`SELECT u.id,u.name,u.email FROM site_sessions s JOIN site_users u ON u.id=s.user_id WHERE s.token_hash=${hashToken(token)} AND s.expires_at>NOW() LIMIT 1`;
     return row?{id:String(row.id),name:String(row.name),email:String(row.email)}:null;
   } catch { return null; }
-}
+});
 export async function destroySession() {
   const jar=await cookies(),token=jar.get(COOKIE)?.value;
   if(token&&getSql()) { await ensureAuthTables(); const sql=authDb(); await sql`DELETE FROM site_sessions WHERE token_hash=${hashToken(token)}`; }
-  jar.delete(COOKIE);
+  // __Host- deletion must satisfy the same Secure/Path constraints as creation.
+  jar.set(COOKIE,'',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:0});
 }

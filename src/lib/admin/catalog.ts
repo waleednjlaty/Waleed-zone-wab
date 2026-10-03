@@ -2,6 +2,7 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import type { Sql, TransactionSql } from 'postgres';
 import { telegramReference } from '@/lib/delivery/telegram';
+import { safeExternalUrl } from '@/lib/utils';
 import { AdminError, fields, id, invalid, object, revision, text, choice } from './validation';
 
 const columns = ['name','description','version','size','category','platform','developer','image_url'];
@@ -20,8 +21,7 @@ function metadata(value: unknown) {
     result[name] = name !== 'name' && (value === null || value === '') ? null : text(value,limits[i]);
   });
   if (result.image_url) {
-    let url: URL; try { url = new URL(result.image_url); } catch { throw invalid(); }
-    if (url.protocol !== 'https:' || url.username || url.password || /(?:api\.telegram\.org|telegram\.org)$/i.test(url.hostname)) throw invalid();
+    if (!safeExternalUrl(result.image_url)) throw invalid();
   }
   return result;
 }

@@ -29,7 +29,7 @@ const owner = require('../src/lib/authorization.ts');
 Module._load = original;
 after(() => { for (const key of Object.keys(process.env)) if (!(key in env)) delete process.env[key]; Object.assign(process.env, env); });
 function session(user = null, options = {}) {
-  token = options.token === undefined ? (user ? 'test-session-only' : undefined) : options.token;
+  token = options.token === undefined ? (user ? 'a'.repeat(43) : undefined) : options.token;
   row = user; fault = options.fault; available = options.available !== false; queries = [];
 }
 const identity = id => ({ id, name: 'QA identity', email: 'qa@example.test' });

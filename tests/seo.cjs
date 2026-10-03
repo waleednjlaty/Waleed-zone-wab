@@ -11,7 +11,7 @@ Module._load = function(request, ...rest) {
   // Next supplies React.cache in the server runtime; unit tests have no RSC request.
   if (request === 'react') return { ...load.call(this, request, ...rest), cache: fn => fn };
   if (request === 'server-only') return {};
-  if (request === '@/lib/queries') return { getAllAppsSitemap: async () => entries, getCategories: async () => [...new Set(entries.map(app => app.category))] };
+  if (request === '@/lib/queries') return { getAllAppsSitemap: async () => entries, getCatalogPage: async (kind,page) => { const all=entries.filter(app=>require('../src/components/catalog/presentation.ts').isGame(app)===(kind==='games')); return {items:all.slice((page-1)*24,page*24),total:all.length,totalPages:Math.max(1,Math.ceil(all.length/24)),currentPage:page}; }, getCategories: async () => [...new Set(entries.map(app => app.category))] };
   if (request === './resolve' && rest[0]?.filename.endsWith('/src/lib/catalog/seo.ts')) return { resolveDetail: async slug => ({ id: slug.endsWith('-90') ? 90 : 1, name: slug.endsWith('-90') ? 'Game 90' : 'Tool 1', category: slug.endsWith('-90') ? 'ألعاب' : 'أدوات', description: 'Shared description', version: '1.2', size: '20 MB', imageUrl: 'https://example.test/icon.png' }) };
   return load.call(this, request, ...rest);
 };

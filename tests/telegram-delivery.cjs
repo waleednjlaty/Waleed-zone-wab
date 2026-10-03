@@ -16,7 +16,7 @@ const metadata={name:'QA App',description:'QA',version:'1',size:'42 MB',category
 test('shared catalog CRUD and real Telegram metadata routes',async t=>{
  const db=await PGlite.create();t.after(()=>db.close());
  await db.exec(`CREATE TABLE applications(id SERIAL PRIMARY KEY,name TEXT,description TEXT,version TEXT,size TEXT,category TEXT,platform TEXT,developer TEXT,image_url TEXT,search_text TEXT,icon_file_id TEXT,active BOOLEAN,published BOOLEAN,downloads INT,views INT,shrankme_url TEXT,devupload_url TEXT,created_at TIMESTAMPTZ);`);
- await db.exec('CREATE TABLE site_users(id TEXT PRIMARY KEY)');
+ await db.exec(readFileSync('migrations/003_runtime_security.sql','utf8'));
  await db.exec(readFileSync('migrations/001_downloads.sql','utf8'));await db.exec(readFileSync('migrations/002_delivery_sources.sql','utf8'));
  await db.exec(readFileSync('migrations/002_delivery_sources.sql','utf8')); // additive/repeatable, preserves rows
  let queue=Promise.resolve();function tag(executor){const sql=(parts,...values)=>executor.query(parts.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values).then(r=>r.rows);
@@ -51,6 +51,21 @@ test('shared catalog CRUD and real Telegram metadata routes',async t=>{
  await t.test('wrong browser/client denied',async()=>{assert.equal((await legacy('redeem',{application_id:app.id,token:prepared.token},'__Host-wz_legacy_client='+randomBytes(32).toString('base64url'))).status,400);});
  await t.test('expired token denied',async()=>{now=Date.parse(prepared.expires_at);assert.equal((await legacy('redeem',{application_id:app.id,token:prepared.token},client)).status,410);});
  for(const field of ['published','active'])await t.test(field+' off denies prepare/redeem',async()=>{await sql`UPDATE applications SET active=${field!=='active'},published=${field!=='published'} WHERE id=${app.id}`;assert.equal((await legacy('prepare',{application_id:app.id},client)).status,404);assert.equal((await legacy('redeem',{application_id:app.id,token:prepared.token},client)).status,404);await sql`UPDATE applications SET active=true,published=true WHERE id=${app.id}`;});
+ for(const change of ['source','app','removed'])await t.test(change+' changed during countdown rejects original grant',async()=>{
+  const r=await legacy('prepare',{application_id:app.id},client),g=await r.json();
+  if(change==='source')await sql`UPDATE site_delivery_sources SET telegram_message_id=456 WHERE application_id=${app.id}`;
+  else if(change==='app')await sql`UPDATE applications SET version='during countdown' WHERE id=${app.id}`;
+  else await sql`DELETE FROM site_delivery_sources WHERE application_id=${app.id}`;
+  now=Date.parse(g.ready_at);
+  assert.equal((await legacy('redeem',{application_id:app.id,token:g.token},client)).status,change==='removed'?404:400);
+  await sql`INSERT INTO site_delivery_sources(application_id,provider,telegram_channel_username,telegram_message_id) VALUES(${app.id},'telegram','files_channel',123) ON CONFLICT(application_id,provider) DO UPDATE SET telegram_message_id=123`;
+ });
+ await t.test('parallel multi-tab grants bound to one browser support retry without new countdown bypass',async()=>{
+  const grants=await Promise.all([legacy('prepare',{application_id:app.id},client),legacy('prepare',{application_id:app.id},client)]).then(rs=>Promise.all(rs.map(r=>r.json())));
+  assert.notEqual(grants[0].token,grants[1].token);now=Math.max(...grants.map(g=>Date.parse(g.ready_at)));
+  const rs=await Promise.all(grants.map(g=>legacy('redeem',{application_id:app.id,token:g.token},client)));
+  assert.deepEqual(rs.map(r=>r.status),[303,303]);assert.ok(rs.every(r=>r.headers.get('location')==='https://t.me/files_channel/123'));
+ });
  await t.test('wrong configured channel rejected at redemption',async()=>{await sql`UPDATE site_delivery_sources SET telegram_channel_username='other_channel' WHERE application_id=${app.id}`;await assert.rejects(legacyDelivery(sql,app.id,env),e=>e.status===404);});
  await t.test('source absent rejected for new app',async()=>{await sql`DELETE FROM site_delivery_sources WHERE application_id=${app.id}`;await assert.rejects(legacyDelivery(sql,app.id,env),e=>e.status===404);});
  await t.test('no external open redirect; existing approved legacy URL works',async()=>{await sql`UPDATE applications SET shrankme_url='https://evil.test/file' WHERE id=${app.id}`;await assert.rejects(legacyDelivery(sql,app.id,env));await sql`UPDATE applications SET shrankme_url='https://shrinkme.io/old' WHERE id=${app.id}`;assert.equal((await legacyDelivery(sql,app.id,env)).destination,'https://shrinkme.io/old');});

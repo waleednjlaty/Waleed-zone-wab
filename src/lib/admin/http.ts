@@ -7,6 +7,8 @@ import { adminOrigin, adminSession, checkAdminCsrf, issueAdminCsrf } from './sec
 import { OwnerCatalogService } from './catalog';
 import { OwnerAdminService, type AdminOperation } from './service';
 import { AdminError, pagination } from './validation';
+import { consumeWindow } from '@/lib/security/limits';
+import { logFailure } from '@/lib/security/logging';
 
 type Operation = AdminOperation | 'session' | 'catalog-record' | 'delivery-source';
 type Dependencies = { service: OwnerAdminService; env: NodeJS.ProcessEnv;
@@ -17,12 +19,13 @@ const methods: Record<Operation, string[]> = {
 };
 export function adminErrorResponse(error: unknown) {
   const pgCode = (error && typeof error === 'object' && 'code' in error) ? error.code : null;
-  const e = error instanceof AdminError ? error : error instanceof DownloadError && [400, 413, 415].includes(error.status)
+  const e = error instanceof AdminError ? error : error instanceof DownloadError && [400, 408, 413, 415].includes(error.status)
     ? new AdminError(error.status, error.code) : ['23505', '23503', '40001', '40P01'].includes(String(pgCode))
       ? new AdminError(409, 'STATE_CONFLICT') : ['42P01', '42703'].includes(String(pgCode))
         ? new AdminError(503, 'ADMIN_SCHEMA_UNAVAILABLE') : new AdminError(503, 'ADMIN_UNAVAILABLE');
+  if (e.status === 503) logFailure('admin', e.code);
   return Response.json({ error: { code: e.code } }, { status: e.status,
-    headers: { ...downloadHeaders, ...(e.status === 503 ? { 'Retry-After': '10' } : {}) } });
+    headers: { ...downloadHeaders, ...(e.status === 503 ? { 'Retry-After': '10' } : e.status===429 ? {'Retry-After':'60'} : {}) } });
 }
 export function adminMethodNotAllowed(operation: Operation) {
   const response = adminErrorResponse(new AdminError(405, 'METHOD_NOT_ALLOWED'));
@@ -47,6 +50,8 @@ export function createAdminHandler(operation: Operation, dependencies?: Dependen
       if (operation === 'session') return Response.json(issueAdminCsrf(session, owner.id, origin), { headers: downloadHeaders });
       const sql = dependencies ? null : getSql();
       if (!dependencies && !sql) throw new AdminError(503, 'ADMIN_UNAVAILABLE');
+      if(sql && !await consumeWindow(sql,`admin:${write?'write':'read'}:${owner.id}`,write?60:300,60))
+        throw new AdminError(429,'RATE_LIMITED');
       const service = dependencies?.service ?? (['catalog-record','delivery-source'].includes(operation) || operation === 'catalog' && write
         ? new OwnerCatalogService(sql!,env) : new OwnerAdminService(sql!, env));
       const data = write ? await service.write(operation as AdminOperation, await downloadBody(request,false,['catalog','catalog-record'].includes(operation)?8192:2048), owner.id, recordId)

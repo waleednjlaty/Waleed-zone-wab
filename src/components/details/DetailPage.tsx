@@ -1,3 +1,4 @@
+import JsonLd from '@/components/JsonLd';
 import Link from 'next/link';
 import AppGrid from '@/components/AppGrid';
 import CoverImage from '@/components/CoverImage';
@@ -15,7 +16,7 @@ import { appHref } from '@/lib/catalog/routes';
 import { resolveDetail } from '@/lib/catalog/resolve';
 import { SITE_URL, telegramDownloadUrl } from '@/lib/site';
 import { breadcrumbStructuredData } from '@/lib/seo';
-import { formatDate, safeExternalUrl, safeJsonLd } from '@/lib/utils';
+import { formatDate, safeExternalUrl } from '@/lib/utils';
 
 const available=(value:string|null|undefined)=>value?.trim()&&!/^[-–—.]+$/.test(value.trim())?value.trim():null;
 export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'games'}) {
@@ -34,11 +35,11 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
     ...(details.updatedAt&&formatDate(details.updatedAt)?{dateModified:details.updatedAt}:{}),
   },breadcrumbStructuredData(breadcrumbs)];
   return <div className="shell detail-page">
-    <script type="application/ld+json" dangerouslySetInnerHTML={{__html:safeJsonLd(structured)}}/>
+    <JsonLd data={structured} />
     <nav className="detail-breadcrumbs" aria-label="مسار التنقل"><ol>{breadcrumbs.map((crumb,index)=><li key={index}>{index===breadcrumbs.length-1?<span aria-current="page" dir="auto">{name}</span>:(crumb.item===`${SITE_URL}/apps`||crumb.item===`${SITE_URL}/games`)?<a href={crumb.item.replace(SITE_URL,'')}>{crumb.name}</a>:<Link href={crumb.item.replace(SITE_URL,'')||'/'}>{crumb.name}</Link>}</li>)}</ol></nav>
     <article>
       <header className="detail-summary">
-        <div className="detail-identity"><span className="detail-icon"><CoverImage src={app.imageUrl} alt={`أيقونة ${name}`} aspectClassName="aspect-square"/></span><div className="detail-name"><p className="eyebrow">{kind==='games'?'لعبة':'تطبيق'}{app.category?` · ${app.category}`:''}</p><h1 dir="auto">{name}</h1>{available(app.developer)&&<p className="detail-developer" dir="auto">{app.developer}</p>}</div></div>
+        <div className="detail-identity"><span className="detail-icon"><CoverImage priority src={app.imageUrl} alt={`أيقونة ${name}`} aspectClassName="aspect-square"/></span><div className="detail-name"><p className="eyebrow">{kind==='games'?'لعبة':'تطبيق'}{app.category?` · ${app.category}`:''}</p><h1 dir="auto">{name}</h1>{available(app.developer)&&<p className="detail-developer" dir="auto">{app.developer}</p>}</div></div>
         <div className="detail-primary-meta">{available(app.version)&&<span><small>الإصدار</small><strong dir="auto">{app.version}</strong></span>}{available(app.size)&&<span><small>حجم الملف</small><strong dir="auto">{app.size}</strong></span>}{available(details.android)&&<span><small>Android</small><strong dir="auto">{details.android}</strong></span>}{typeof app.downloads==='number'&&app.downloads>0&&<span><small>التحميلات</small><strong>{new Intl.NumberFormat('ar').format(app.downloads)}</strong></span>}</div>
         <div className="detail-download-area"><DownloadActions name={name} appId={app.id} imageUrl={app.imageUrl} size={available(app.size)} href={download} external={Boolean(direct)} initialSaved={saved} signedIn={Boolean(user)} deliveryAvailable={Boolean(fallbackDelivery)} directFile={downloadAvailability.file} directConfigured={downloadAvailability.mode!=='legacy'}/>{direct&&!fallbackDelivery&&downloadAvailability.mode==='legacy'&&<a className="detail-alternate-download" href={telegramDownloadUrl(app.id)} target="_blank" rel="noopener noreferrer">التحميل عبر البوت ↗</a>}</div>
       </header>
