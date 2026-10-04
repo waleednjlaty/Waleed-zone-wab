@@ -14,3 +14,11 @@ test('catalog audit phrases are manual review hints, never block or grant eligib
  assert.deepEqual(summary.summary,{total_published:3,eligible:1,blocked:1,unreviewed:1,flagged:0});
  const serialized=JSON.stringify(summarizeAudit([{...normal,devupload_url:'https://unknown.test/path?secret=sentinel'}]));assert.ok(!serialized.includes('sentinel')&&!serialized.includes('unknown.test'));
 });
+
+test('operator scripts redact malformed DATABASE_URL errors without any DB execution',()=>{
+ const {spawnSync}=require('node:child_process');
+ for(const file of ['scripts/migrate-monetization.mjs','scripts/monetization-audit.mjs']){
+  const result=spawnSync(process.execPath,[file],{env:{...process.env,DATABASE_URL:'invalid URL PRIVATE_DATABASE_SECRET'},encoding:'utf8'});
+  assert.notEqual(result.status,0);assert.ok(!(result.stdout+result.stderr).includes('PRIVATE_DATABASE_SECRET'));assert.ok(!(result.stdout+result.stderr).includes('TypeError'));
+ }
+});

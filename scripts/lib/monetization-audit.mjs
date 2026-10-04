@@ -15,7 +15,7 @@ export function auditRecord(record,{developerFieldPresent=true,allowedHosts=['t.
   for(const key of ['version','platform','category'])if(empty(record[key]))flags.add('MISSING_'+key.toUpperCase());
   if(developerFieldPresent&&empty(record.developer)&&empty(record.publisher))flags.add('MISSING_DEVELOPER');
   if(!rights.has(record.rights_basis))flags.add('MISSING_RIGHTS_BASIS');
-  for(const key of ['shrankme_url','devupload_url']){
+  for(const key of ['shrankme_url','devupload_url','image_url']){
     const raw=record[key];if(raw===null||raw===undefined||raw==='')continue;
     if(typeof raw!=='string'||raw.length>2048){flags.add('SUSPICIOUS_EXTERNAL_URL');continue;}
     if(controls.test(raw)||/\s/.test(raw))flags.add('CONTROL_OR_WHITESPACE_IN_URL');
