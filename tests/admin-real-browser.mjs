@@ -84,6 +84,8 @@ try{
   await nav('الإيقاف العام');
   if(width===360){assert.equal(await page.getByRole('button',{name:'إيقاف التحميل المباشر',exact:true}).isDisabled(),true);await page.getByLabel('أؤكد إيقاف التحميل المباشر لجميع التطبيقات.',{exact:true}).check();await page.getByRole('button',{name:'إيقاف التحميل المباشر',exact:true}).click();await confirmed();}
   await page.getByText('مفتاح الإيقاف مفعّل',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'إيقاف التحميل المباشر',exact:true}).isDisabled(),true);await inspect();
+  // Let the prior action's announced-feedback focus settle before keyboard navigation.
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await page.getByRole('navigation',{name:'أقسام لوحة المالك'}).getByRole('link',{name:/نظرة عامة/}).focus();await page.keyboard.press('Enter');await waitUntil(()=>page.getByRole('heading',{name:'نظرة عامة',exact:true}).evaluate(node=>node===document.activeElement));
   assert.deepEqual(external,[]);await context.close();
  }
