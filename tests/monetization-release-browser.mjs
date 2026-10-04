@@ -45,6 +45,7 @@ try{
   // A real server-render failure in this explicitly disposable DB must not mount ads.
   const errorContext=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width,height:960}});let errorAds=0;
   await errorContext.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin===base)return route.continue();if(u.hostname.includes('googlesyndication'))errorAds++;return route.fulfill({body:''});});
+  await errorContext.addInitScript(()=>{window.__tcfapi=(command,_version,cb)=>{if(command==='addEventListener')cb({cmpId:300,cmpStatus:'loaded',eventStatus:'tcloaded',tcString:'isolated-fixture-consent',purpose:{consents:{1:true,3:true,4:true}},vendor:{consents:{755:true}}},true);};});
   const errorPage=await errorContext.newPage();
   await fixtureSql.unsafe('ALTER TABLE applications RENAME TO qa_error_catalog');
   try{await errorPage.goto(base+'/apps/monetization-eligible-501');await errorPage.getByRole('heading',{name:'صار خطأ غير متوقع',exact:true}).waitFor();assert.equal(await errorPage.locator('ins.adsbygoogle,script[src*="adsbygoogle.js"]').count(),0);assert.equal(errorAds,0);assert.ok(await errorPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));checks++;}
