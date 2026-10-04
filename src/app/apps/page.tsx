@@ -1,3 +1,4 @@
+import {schedulePageMetric} from '@/lib/analytics/schedule';
 import CatalogLanding from '@/components/catalog/CatalogLanding';
 import { getLanding, landingMetadata } from '@/lib/catalog/landing';
 import { parsePage } from '@/lib/utils';
@@ -10,5 +11,6 @@ export async function generateMetadata({ searchParams }: Props) {
 export default async function AppsPage({ searchParams }: Props) {
   const page = parsePage((await searchParams).page);
   await getLanding('apps', page);
+  await schedulePageMetric('catalog_view',null,'/apps');
   return <CatalogLanding kind="apps" page={page} />;
 }

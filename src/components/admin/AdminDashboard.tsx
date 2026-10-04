@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import CatalogEditor from './CatalogEditor';
+import Analytics from './Analytics';
+import MonetizationReview from './MonetizationReview';
 import CoverImage from '@/components/CoverImage';
 import Icon, { type IconName } from '@/components/Icon';
 import { adminApi, AdminApiError, apiErrorMessage } from './api';
@@ -16,6 +18,8 @@ const sections: { id: Section; label: string; english: string; icon: IconName }[
   { id: 'configuration', label: 'إعداد التحميل', english: 'Download configuration', icon: 'menu' },
   { id: 'versions', label: 'الإصدارات', english: 'Versions', icon: 'refresh' },
   { id: 'files', label: 'الملفات', english: 'Files', icon: 'arrow' },
+  {id:'analytics',label:'التحليلات',english:'Analytics',icon:'trend'},
+  { id: 'monetization', label: 'الربح والإعلانات', english: 'Monetization', icon: 'trend' },
   { id: 'system', label: 'حالة النظام', english: 'System status', icon: 'trend' },
   { id: 'kill-switch', label: 'الإيقاف العام', english: 'Kill switch', icon: 'close' },
 ];
@@ -213,6 +217,8 @@ export default function AdminDashboard() {
           </Panel>
         </>}
 
+        {section === 'analytics' && <Analytics />}
+        {section === 'monetization' && <MonetizationReview />}
         {section === 'system' && <>
           <Panel title="شروط النظام"><SystemGates system={system} error={systemError} /></Panel>
           <Panel title="الميزانية والحجز" description="عرض للقراءة فقط. لا تعديل للفوترة أو الميزانية من هذه اللوحة.">

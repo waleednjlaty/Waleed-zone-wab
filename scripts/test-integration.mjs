@@ -27,6 +27,7 @@ try {
   await sql.unsafe((await import('node:fs')).readFileSync('migrations/003_runtime_security.sql','utf8'));
   await sql.unsafe((await import('node:fs')).readFileSync('migrations/001_downloads.sql','utf8'));
   await sql.unsafe((await import('node:fs')).readFileSync('migrations/002_delivery_sources.sql','utf8'));
+  await sql.unsafe((await import('node:fs')).readFileSync('migrations/005_monetization.sql','utf8'));
   for(const [index,name] of ['WhatsApp','Telegram','Instagram','Spotify','TikTok','Facebook','Clash of Clans','Grand Theft Auto','Call of Duty'].entries()) {
     await sql`INSERT INTO applications(id,name,description,version,size,category,platform,developer,downloads,active,published,created_at)
       VALUES(${201+index},${name},${'Test fixture only. '.repeat(40)},'9.1','85 MB',${index>=6?'ألعاب':'تواصل'},'Android',${[0,2,5].includes(index)?'Meta':'Test Developer'},10,true,true,NOW())`;
@@ -37,6 +38,10 @@ try {
     await sql`INSERT INTO applications(id,name,description,category,active,published,created_at)
       VALUES(${3000+i},${`QA Tool ${i+1}`},'Repeated fixture description','أدوات',true,true,NOW())`;
   }
+  for(const [id,name] of [[501,'Monetization Eligible'],[502,'Monetization Blocked'],[503,'Monetization Unreviewed']])await sql`INSERT INTO applications(id,name,description,version,size,category,platform,developer,active,published,created_at) VALUES(${id},${name},${'Meaningful isolated review fixture. '.repeat(30)},'1','1 MB','أدوات','Android','Fixture owner',true,true,NOW())`;
+  await sql`INSERT INTO site_delivery_sources(application_id,provider,telegram_channel_username,telegram_message_id) VALUES(501,'telegram','files_channel',123)`;
+  await sql`INSERT INTO site_ad_eligibility(application_id,status,rights_basis,review_notes,reviewed_at,reviewed_by,reviewed_catalog_revision) SELECT id,'eligible','owner_created','Network-isolated fixture evidence',NOW(),'owner-qa',revision FROM applications WHERE id=501`;
+  await sql`INSERT INTO site_ad_eligibility(application_id,status) VALUES(502,'blocked')`;
   const signingKey=randomBytes(32).toString('hex');
   const config={base,statsToken:randomBytes(32).toString('hex'),secrets:[connection,signingKey,'owner-qa']};
   for(const [id,name,key] of [['owner-qa','QA owner','ownerCookie'],['visitor-qa','QA visitor','userCookie']]) {
@@ -51,7 +56,7 @@ try {
   const configPath=join(folder,'config.json');writeFileSync(configPath,JSON.stringify(config),{mode:0o600});
   await sql.end(); // Setup is complete; no seed connection is needed during HTTP tests.
   server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port+1)],{
-    env:{...process.env,DATABASE_URL:connection,NEXT_PUBLIC_SITE_URL:base,OWNER_USER_ID:'owner-qa',WEBSITE_STATS_TOKEN:config.statsToken,LEGACY_DOWNLOAD_SIGNING_KEY:signingKey,FILES_CHANNEL_USERNAME:'files_channel',DIRECT_DOWNLOADS_ENABLED:'false'},stdio:['ignore','inherit','inherit'],
+    env:{...process.env,DATABASE_URL:connection,NEXT_PUBLIC_SITE_URL:base,OWNER_USER_ID:'owner-qa',WEBSITE_STATS_TOKEN:config.statsToken,LEGACY_DOWNLOAD_SIGNING_KEY:signingKey,FILES_CHANNEL_USERNAME:'files_channel',DIRECT_DOWNLOADS_ENABLED:'false',ADSENSE_PUBLISHER_ID:'ca-pub-0000000000000000',ADSENSE_CONTENT_REVIEWED:'true',ADSENSE_SITE_APPROVED:'true',ADSENSE_PRIVACY_READY:'true',ADSENSE_ENABLED:'true',ADSENSE_DETAIL_SLOT_ID:'0000000000',ADSENSE_CMP_ID:'300',PUBLIC_CONTACT_EMAIL:'contact@example.test'},stdio:['ignore','inherit','inherit'],
   });
   execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-days','1','-keyout',join(folder,'key.pem'),'-out',join(folder,'cert.pem'),'-subj','/CN=127.0.0.1'],{stdio:'ignore'});
   proxy=httpsServer({key:(await import('node:fs')).readFileSync(join(folder,'key.pem')),cert:(await import('node:fs')).readFileSync(join(folder,'cert.pem'))},(req,res)=>{
@@ -69,7 +74,7 @@ try {
   }
   assert.ok(ready,'Production server did not become ready. Run npm run build first.');
   const code=await new Promise(resolve=>{
-    const tests=spawn(process.execPath,['--test','tests/integration.cjs','tests/seo-integration.cjs','tests/download-integration.cjs','tests/admin-regression.cjs','tests/admin-api.cjs','tests/phase8-integration.cjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
+    const tests=spawn(process.execPath,['--test','tests/integration.cjs','tests/seo-integration.cjs','tests/download-integration.cjs','tests/admin-regression.cjs','tests/admin-api.cjs','tests/phase8-integration.cjs','tests/monetization-integration.cjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
     tests.on('exit',(status)=>resolve(status??1));
   });
   process.exitCode=code;
@@ -77,7 +82,7 @@ try {
     process.exitCode=await new Promise(resolve=>{const child=spawn(process.execPath,['tests/cross-repo.mjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});child.on('exit',status=>resolve(status??1));});
   }
   if(code===0 && !process.exitCode && process.env.WZ_BROWSER_TESTS==='true') {
-    for(const file of ['tests/browser.mjs','tests/seo-browser.mjs','tests/telegram-browser.mjs','tests/phase8-browser.mjs']) {
+    for(const file of ['tests/monetization-release-browser.mjs','tests/browser.mjs','tests/seo-browser.mjs','tests/telegram-browser.mjs','tests/phase8-browser.mjs']) {
       process.exitCode=await new Promise(resolve=>{
         const browser=spawn(process.execPath,[file],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
         browser.on('exit',status=>resolve(status??1));

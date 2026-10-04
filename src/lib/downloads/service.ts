@@ -41,7 +41,7 @@ const snapshot = (f: FileRow) => hashSecret(JSON.stringify([f.id, f.storage_back
 
 export class DownloadService {
   constructor(private sql: Sql, private options: { enabled: boolean; hosts: readonly string[];
-    adapters?: Readonly<Record<string, DownloadStorage>> }) {}
+    adapters?: Readonly<Record<string, DownloadStorage>>; onRedeemed?:(applicationId:number)=>void }) {}
   private async transaction<T>(fn: (tx: Tx) => Promise<T | DownloadError>): Promise<T> {
     const result = await this.sql.begin(async tx => {
       await tx`SET LOCAL lock_timeout = '1s'`;
@@ -332,7 +332,7 @@ export class DownloadService {
       }
       throw e;
     }
-    return this.transaction(async tx => {
+    const destination = await this.transaction(async tx => {
       await this.principal(tx, identity);
       const current = await this.request(tx, id, identity, 'DOWNLOAD_NOT_FOUND');
       await this.checkClient(tx, identity);
@@ -348,6 +348,8 @@ export class DownloadService {
       await tx`UPDATE site_download_principals SET active_request_id=NULL WHERE key=${identity.principal} AND active_request_id=${id}`;
       return grant.url; // transaction wrapper awaits COMMIT before the HTTP handler can disclose this.
     });
+    try{this.options.onRedeemed?.(r.application_id);}catch{/* Observability cannot change a committed download. */}
+    return destination;
   }
   async disable(userId: string) {
     const result = await this.sql`UPDATE site_download_settings SET enabled=false,updated_at=clock_timestamp(),updated_by=${userId} WHERE id=1 RETURNING id`;

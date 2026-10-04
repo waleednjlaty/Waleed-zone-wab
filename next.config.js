@@ -1,19 +1,18 @@
 const isDev = process.env.NODE_ENV === 'development';
-const adsReady = /^ca-pub-\d{16}$/.test(process.env.ADSENSE_PUBLISHER_ID || '') && process.env.ADSENSE_CONTENT_REVIEWED === 'true' && process.env.ADSENSE_ENABLED === 'true';
+// Static fallback never permits ads. Route-specific nonce CSP is owned by middleware.
 
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  ...(!adsReady ? ["frame-src 'none'"] : []),
+  "frame-src 'none'",
   "script-src-attr 'none'",
   "frame-ancestors 'none'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${adsReady ? ' https://pagead2.googlesyndication.com https://www.googletagservices.com https://googleads.g.doubleclick.net' : ''}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self'${adsReady ? ' https:' : ''}${isDev ? ' ws: wss:' : ''}`,
-  ...(adsReady ? ["frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com", "child-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com"] : []),
+  `connect-src 'self'${isDev ? ' ws: wss:' : ''}`,
   "form-action 'self'",
   "worker-src 'self' blob:",
   "upgrade-insecure-requests",
@@ -49,7 +48,7 @@ const nextConfig = {
   async headers() {
     return [
       { source: '/(.*)', headers: securityHeaders },
-      { source: '/:legal(privacy|terms)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, follow' }] },
+      { source: '/:legal(privacy|terms|copyright|contact)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, follow' }] },
       { source: '/:utility(login|register|download)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }] },
       { source: '/:private(account|users|admin|dashboard|settings|database|debug|logs|uploads|private|manage|management)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }, { key: 'Cache-Control', value: 'private, no-store' }] },
       { source: '/download/:path*', headers: [{ key: 'Content-Security-Policy', value: downloadCsp }, { key: 'Cache-Control', value: 'private, no-store' }, { key: 'Referrer-Policy', value: 'same-origin' }] },

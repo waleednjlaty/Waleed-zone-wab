@@ -35,8 +35,10 @@ For production, set the Railway service to build from this repository, configure
 
 ## Advertising
 
-AdSense is disabled until you have a publisher ID, have reviewed every catalog item and destination against Google policies, and the site has been approved. Then set `ADSENSE_PUBLISHER_ID`, `ADSENSE_CONTENT_REVIEWED=true`, and `ADSENSE_ENABLED=true`, test the script/CSP and privacy notice, and verify `/ads.txt`. Current catalog content may be ineligible; **do not flip these flags solely to display ads**.
+AdSense verification and serving are separate. A valid `ADSENSE_PUBLISHER_ID` publishes account metadata and `/ads.txt` while advertising stays off. Serving requires **all five** gates: valid publisher ID and exact `true` values for `ADSENSE_CONTENT_REVIEWED`, `ADSENSE_SITE_APPROVED`, `ADSENSE_PRIVACY_READY`, and `ADSENSE_ENABLED`. Manual placement and a live certified CMP consent decision are additional requirements. See [Phase 9 readiness and owner checklist](docs/PHASE9_MONETIZATION_READINESS.md). Leave all switches false during preparation; no code change grants Google approval.
 
 ## Related project
 
 [Waleed Zone Telegram Bot](https://github.com/waleednjlaty/MyTelegramBot)
+
+Operator pre-deploy remains `npm run migrate:release` (001 → 002 → 003 → 005; optional 004 excluded). The new checksum-locked migration and read-only `npm run monetization:audit` require an explicitly configured DATABASE_URL. No production execution is part of this PR. See [content guide](docs/MONETIZATION_CONTENT_GUIDE.md), [activation checklist](docs/ADSENSE_ACTIVATION_CHECKLIST.md), and [CMP setup](docs/ADSENSE_CMP_SETUP.md). First-party metrics contain aggregate daily counters only; the owner can inspect Today/7/30-day reports in Admin Analytics. PUBLIC_CONTACT_EMAIL is optional and must be a real intended public address.

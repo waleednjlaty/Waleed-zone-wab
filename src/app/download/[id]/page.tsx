@@ -1,3 +1,4 @@
+import {schedulePageMetric} from '@/lib/analytics/schedule';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import DownloadExperience from '@/components/download/DownloadExperience';
@@ -17,6 +18,7 @@ export default async function DownloadPage({ params }: { params: Promise<{ id: s
   if (!app) notFound();
   const file = await getDownloadPresentation(app.id);
   const fallback = file ? null : await getFallbackDelivery(app.id);
+  await schedulePageMetric('download_page_view',app.id,`/download/${app.id}`);
   const summary = { id: app.id, name: appName(app), imageUrl: app.imageUrl, detailHref: appHref(app), version: app.version, size: app.size };
   if (fallback) return <LegacyDownloadExperience app={summary} provider={fallback} />;
   return <DownloadExperience app={{ id: app.id, name: appName(app), imageUrl: app.imageUrl,

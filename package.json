@@ -21,8 +21,10 @@
     "metadata:downloads": "node scripts/download-metadata.mjs",
     "test:metadata": "node --test tests/file-metadata.cjs",
     "migrate:delivery": "node scripts/migrate-delivery.mjs",
-    "migrate:release": "npm run migrate:downloads && npm run migrate:delivery && npm run migrate:runtime-security",
-    "migrate:runtime-security": "node scripts/migrate-runtime-security.mjs"
+    "migrate:release": "npm run migrate:downloads && npm run migrate:delivery && npm run migrate:runtime-security && npm run migrate:monetization",
+    "migrate:runtime-security": "node scripts/migrate-runtime-security.mjs",
+    "migrate:monetization": "node scripts/migrate-monetization.mjs",
+    "monetization:audit": "node scripts/monetization-audit.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1145.0",

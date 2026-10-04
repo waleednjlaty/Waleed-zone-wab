@@ -1,4 +1,5 @@
 import 'server-only';
+import {scheduleMetrics} from '@/lib/analytics/schedule';
 import { randomBytes } from 'node:crypto';
 import { getSql } from '@/lib/db';
 import type { Sql } from 'postgres';
@@ -39,9 +40,14 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
         || !await consumeWindow(sql,`legacy:${operation}:client:${client}`,operation==='prepare'?30:60,60))
         throw new DownloadError(429,'RATE_LIMITED',new Date(Date.now()+60000));
       const source = await legacyDelivery(sql,Number(appId),env);
-      if (!form) return Response.json(countdown.prepare(Number(appId),source.revision,client),{ headers:{ ...downloadHeaders,
+      if (!form) {
+        const prepared=countdown.prepare(Number(appId),source.revision,client);
+        scheduleMetrics([{metric:'download_prepare',id:Number(appId)}],request.headers);
+        return Response.json(prepared,{ headers:{ ...downloadHeaders,
         'Set-Cookie': `${name}=${client}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${env.NODE_ENV==='production'?'; Secure':''}` } });
+      }
       countdown.redeem(body.token,Number(appId),source.revision,client);
+      scheduleMetrics([{metric:'download_redeem',id:Number(appId)},...(source.provider==='telegram'?[{metric:'telegram_redirect' as const,id:Number(appId)}]:[])],request.headers);
       return new Response(null,{ status:303,headers:{ ...downloadHeaders,Location:source.destination } });
     } catch (error) { return downloadErrorResponse(error,request,operation==='redeem'); }
   };

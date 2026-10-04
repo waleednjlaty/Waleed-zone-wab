@@ -8,7 +8,7 @@ export default function Footer() {
     <div className="footer-brand"><Link href="/" aria-label="Waleed Zone، الرئيسية"><Brand /></Link><p>تطبيقات وألعاب، وتفاصيل الإصدارات في مكان واحد.</p></div>
     <nav className="footer-links" aria-label="روابط الموقع">
       <Link href="/">وليد زون — الرئيسية</Link><a href="/apps">التطبيقات</a><a href="/games">الألعاب</a><Link href="/about">عن الموقع</Link><Link href="/privacy">الخصوصية</Link>
-      <span title="صفحة الشروط لم تُنشر بعد">الشروط — قريبًا</span><a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer">تواصل وطلبات</a><a href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noopener noreferrer">Telegram</a>
+      <Link href="/terms">الشروط</Link><Link href="/copyright">حقوق النشر</Link><Link href="/contact">التواصل</Link><a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer">البوت</a><a href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noopener noreferrer">Telegram</a>
     </nav>
   </div><div className="shell footer-bottom"><span dir="ltr">© {new Date().getFullYear()} Waleed Zone</span><span>تابع التحديثات عبر مجتمعنا على تيليجرام.</span></div></footer>;
 }

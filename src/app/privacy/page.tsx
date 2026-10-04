@@ -1,19 +1,21 @@
 import Link from 'next/link';
 import { TELEGRAM_CHANNEL_URL } from '@/lib/site';
+import { adsenseState } from '@/lib/ads';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata('سياسة الخصوصية', 'كيف يتعامل موقع وليد زون مع بيانات الحساب والجلسة والمفضلة وإحصاءات الزيارة.', '/privacy', { noindex: true });
 
 export default function PrivacyPage() {
+  const ads=adsenseState();
   return <article className="shell max-w-4xl py-14 sm:py-20">
     <Link className="view-all mb-6 inline-flex" href="/">وليد زون — الرئيسية ←</Link>
     <p className="eyebrow">YOUR DATA</p><h1 className="mt-3 text-4xl font-black">سياسة الخصوصية</h1>
-    <p className="mt-5 leading-8 text-[#a6b5b8]">آخر تحديث: 29 سبتمبر 2026. نوضح هنا البيانات التي يعالجها موقع وليد زون عندما تتصفح أو تنشئ حسابًا.</p>
+    <p className="mt-5 leading-8 text-[#a6b5b8]">آخر تحديث: 4 أكتوبر 2026. نوضح هنا البيانات التي يعالجها موقع وليد زون عندما تتصفح أو تنشئ حسابًا.</p>
     <div className="mt-10 space-y-7 leading-8 text-[#a6b5b8]">
       <section><h2 className="text-xl font-black text-white">حسابك</h2><p className="mt-2">عند التسجيل نحفظ اسم العرض والبريد الإلكتروني وكلمة المرور بصيغة تجزئة آمنة، إضافة إلى تاريخ إنشاء الحساب. لا نعرض بريدك للزوار. نحفظ العناصر التي تضيفها إلى المفضلة.</p></section>
       <section><h2 className="text-xl font-black text-white">الجلسة والحماية</h2><p className="mt-2">نضع ملف تعريف ارتباط ضروريًا للدخول، صالحًا لمدة تصل إلى سبعة أيام. نخزن تجزئة رمز الجلسة على الخادم، ونستخدم بيانات الطلب مثل عنوان الشبكة مؤقتًا للحد من محاولات الدخول المسيئة.</p></section>
-      <section><h2 className="text-xl font-black text-white">إحصاءات الزيارة</h2><p className="mt-2">نسجل عدد الزيارات باستخدام معرّف مشتق من بيانات الطلب ومفتاح خاص يتغير يوميًا، من دون تخزين عنوان الشبكة الخام في سجل الزيارات. قد تحتفظ البنية المستضيفة بسجلات تشغيل منفصلة.</p></section>
-      <section><h2 className="text-xl font-black text-white">الروابط والإعلانات</h2><p className="mt-2">قد تفتح روابط التحميل وتيليجرام مواقع خارجية لها سياساتها الخاصة. إعلانات Google غير مفعلة حاليًا؛ في حال تفعيلها بعد مراجعة المحتوى، قد تستخدم Google ملفات تعريف ارتباط وتقنيات قياس حسب إعداداتها وسياساتها، وسنحدّث هذه الصفحة قبل التفعيل.</p></section>
+      <section><h2 className="text-xl font-black text-white">إحصاءات الزيارة</h2><p className="mt-2">نسجل عدد الزيارات باستخدام معرّف مشتق من بيانات الطلب ومفتاح خاص يتغير يوميًا، من دون تخزين عنوان الشبكة الخام في سجل الزيارات. هذا المعرّف اليومي مجزّأ وليس ضمانًا لإخفاء الهوية الكامل. نحفظ أيضًا عدادات يومية مجمّعة لمشاهدات التفاصيل وصفحة التحميل والتجهيز والاسترداد والتحويل إلى Telegram. جدول العدادات لا يخزن عنوان الشبكة الخام أو وكيل المستخدم الكامل أو وجهة التحميل أو رقم رسالة الملف، ولا نضع ملف ارتباط خاصًا بهذه العدادات. قد تتكرر الأحداث للشخص نفسه، وقد تُفقد بعض العدادات عند الانقطاع أو الضغط. قد تحتفظ البنية المستضيفة بسجلات تشغيل منفصلة.</p></section>
+      <section><h2 className="text-xl font-black text-white">الروابط والإعلانات</h2><p className="mt-2">قد تفتح روابط التحميل وتيليجرام مواقع خارجية لها سياساتها الخاصة. {ads.serving?'إعداد عرض الإعلانات مفعّل، لكن كل موضع يتطلب مراجعة الصفحة وموافقة الخصوصية.':'إعلانات Google مغلقة من إعدادات العرض حاليًا.'} عند إتاحتها قد تستخدم Google وشركاؤها ملفات تعريف ارتباط ومعرّفات وتقنيات قياس لتقديم الإعلانات وتخصيصها. الإعلان المخصّص يعتمد على إشارات الاهتمام والموافقة؛ غير المخصّص لا يعتمد على ملف تخصيص مماثل لكنه قد يستخدم تقنيات عرض وقياس. التنفيذ الحالي لا يقدم إعلانًا بديلًا عند الرفض. لا نحمّل كود الإعلان قبل قرار موافقة صالح من منصة إدارة موافقة (CMP) معدّة لهذا الغرض. رفض الإعلانات لا يمنع تصفح المحتوى أو التحميل. لا نسجّل نقرات AdSense بأنفسنا. تعرف على <a className="font-bold hover:underline" href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">استخدام Google للبيانات</a>. عند إتاحة الإعلانات، ستعرض منصة الموافقة خياراتك للموافقة وتغييرها وسحبها.</p></section>
       <section><h2 className="text-xl font-black text-white">التحكم ببياناتك</h2><p className="mt-2">يمكنك إزالة العناصر المحفوظة وتسجيل الخروج من حسابك. للاستفسار عن بيانات حسابك أو طلب حذفها، تواصل معنا عبر <a className="font-bold text-[#d9f578] hover:underline" href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noopener noreferrer">القناة الرسمية</a>. لا تشارك كلمة مرورك في الرسائل.</p></section>
     </div>
   </article>;
