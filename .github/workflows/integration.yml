@@ -57,6 +57,10 @@ jobs:
           WZ_DOWNLOAD_CONTRACT_STRICT: '1'
           WZ_ADMIN_CONTRACT_STRICT: '1'
           WZ_METADATA_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:5432/wz_metadata_test_integrated
+      - name: Read-only monetization audit on disposable fixture
+        run: npm run monetization:audit
+        env:
+          DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:5432/wz_monetization_test
       - name: Strict owner Admin API and real interoperability gates
         run: |
           WZ_ADMIN_CONTRACT_STRICT=1 node --test tests/admin-api.cjs

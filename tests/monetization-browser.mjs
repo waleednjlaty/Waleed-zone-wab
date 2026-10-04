@@ -59,7 +59,7 @@ export async function verifyMonetizationUI({base,root}) {
       for(const days of ['1','7','30']){await page.getByLabel('الفترة (UTC)').selectOption(days);await page.getByText('الزوار (مجموع يومي)',{exact:true}).waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
       if(process.env.WZ_AXE_MODULE){await page.addScriptTag({path:process.env.WZ_AXE_MODULE});assert.deepEqual(await page.evaluate(async()=> (await window.axe.run('#main-content',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>v.id)),[]);}
       await page.screenshot({path:join(output,`analytics-fixture-${width}.png`),fullPage:true});
-      analyticsFailure=true;await page.getByRole('button',{name:'تحديث التحليلات'}).click();await page.getByRole('alert').waitFor();assert.ok(!(await page.locator('body').innerText()).includes('PRIVATE_ANALYTICS_ERROR'));assert.equal(await page.getByText('الزوار (مجموع يومي)',{exact:true}).count(),0);
+      analyticsFailure=true;await page.getByRole('button',{name:'تحديث التحليلات'}).click();await page.locator('section[aria-labelledby="analytics-title"]').getByRole('alert').waitFor();assert.ok(!(await page.locator('body').innerText()).includes('PRIVATE_ANALYTICS_ERROR'));assert.equal(await page.getByText('الزوار (مجموع يومي)',{exact:true}).count(),0);
       assert.deepEqual(errors,[]);await context.close();
     }
     const context=await browser.newContext(),page=await context.newPage();let requests=0;const sdkErrors=[];

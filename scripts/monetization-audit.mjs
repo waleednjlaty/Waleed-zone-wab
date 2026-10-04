@@ -14,9 +14,15 @@ else {
       const optional=['name','description','version','platform','category','developer','publisher','shrankme_url','devupload_url','image_url'].map(key=>available.has(key)?`a.${key}`:`NULL::text AS ${key}`).join(',');
       const review=schema.eligibility?'e.status,e.rights_basis,e.reviewed_catalog_revision':'NULL::text AS status,NULL::text AS rights_basis,NULL::bigint AS reviewed_catalog_revision';
       const join=schema.eligibility?'LEFT JOIN site_ad_eligibility e ON e.application_id=a.id':'';
-      const rows=[];
-      for await(const batch of tx.unsafe(`SELECT a.id,a.published,a.revision,${optional},${review} FROM applications a ${join} WHERE a.published=true ORDER BY a.id`).cursor(100))rows.push(...batch);
-      return summarizeAudit(rows,{developerFieldPresent:available.has('developer')||available.has('publisher')});
+      const options={developerFieldPresent:available.has('developer')||available.has('publisher')};
+      const result=summarizeAudit([],options);
+      // Keep only IDs/flag codes, never the entire catalog's descriptions in memory.
+      for await(const batch of tx.unsafe(`SELECT a.id,a.published,a.revision,${optional},${review} FROM applications a ${join} WHERE a.published=true ORDER BY a.id`).cursor(100)){
+        const report=summarizeAudit(batch,options);
+        for(const key of Object.keys(result.summary))result.summary[key]+=report.summary[key];
+        result.items.push(...report.items);
+      }
+      return result;
     });
     console.log(JSON.stringify(result,null,2));
   }catch{console.error('Monetization audit: UNAVAILABLE (no records changed)');process.exitCode=1;}
