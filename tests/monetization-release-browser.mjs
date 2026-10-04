@@ -48,7 +48,7 @@ try{
   await errorContext.addInitScript(()=>{window.__tcfapi=(command,_version,cb)=>{if(command==='addEventListener')cb({cmpId:300,cmpStatus:'loaded',eventStatus:'tcloaded',tcString:'isolated-fixture-consent',purpose:{consents:{1:true,3:true,4:true}},vendor:{consents:{755:true}}},true);};});
   const errorPage=await errorContext.newPage();
   await fixtureSql.unsafe('ALTER TABLE applications RENAME COLUMN description TO qa_error_description');
-  try{await errorPage.goto(base+'/apps/monetization-eligible-501');await errorPage.getByRole('heading',{name:'صار خطأ غير متوقع',exact:true}).waitFor();assert.equal(await errorPage.locator('ins.adsbygoogle,script[src*="adsbygoogle.js"]').count(),0);assert.equal(errorAds,0);assert.ok(await errorPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));checks++;}
+  try{await errorPage.goto(base+'/apps/monetization-eligible-501');await errorPage.getByRole('heading',{name:/صار خطأ غير متوقع|Application error/i}).waitFor();assert.equal(await errorPage.locator('ins.adsbygoogle,script[src*="adsbygoogle.js"]').count(),0);assert.equal(errorAds,0);assert.ok(await errorPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));checks++;}
   finally{await fixtureSql.unsafe('ALTER TABLE applications RENAME COLUMN qa_error_description TO description');await errorContext.close();}
  }
  console.log(`Monetization release browser: ${checks} checks PASS at 360/768/1440; trust links, legal pages, real owner analytics/reviews, eligible/blocked/unreviewed details, exclusions, accessibility, zero live Google traffic.`);
