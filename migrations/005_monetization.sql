@@ -1,4 +1,4 @@
--- Additive/operator-run ONLY; not included in startup/release migration commands.
+-- Additive/operator/pre-deploy ONLY; runner owns the checksum ledger. Never startup/request DDL.
 -- Requires 002_delivery_sources.sql (catalog revision). No catalog backfill writes.
 BEGIN;
 SET LOCAL lock_timeout='2s';
@@ -32,4 +32,15 @@ BEGIN
 END $$;
 CREATE OR REPLACE TRIGGER wz_invalidate_ad_review AFTER UPDATE ON applications
   FOR EACH ROW EXECUTE FUNCTION wz_invalidate_ad_review();
+-- PostgreSQL 15+ NULLS NOT DISTINCT aggregates a site's NULL application key correctly.
+CREATE TABLE IF NOT EXISTS site_daily_metrics (
+  metric_date DATE NOT NULL,
+  metric TEXT NOT NULL CHECK (metric IN ('detail_view','download_page_view','download_prepare','download_redeem','telegram_redirect','catalog_view')),
+  application_id INTEGER REFERENCES applications(id) ON DELETE CASCADE,
+  value BIGINT NOT NULL DEFAULT 1 CHECK (value BETWEEN 1 AND 9007199254740991),
+  CONSTRAINT site_daily_metrics_scope CHECK ((metric='catalog_view' AND application_id IS NULL) OR (metric<>'catalog_view' AND application_id IS NOT NULL)),
+  CONSTRAINT site_daily_metrics_daily_key UNIQUE NULLS NOT DISTINCT (metric_date,metric,application_id)
+);
+CREATE INDEX IF NOT EXISTS site_daily_metrics_app_date_idx ON site_daily_metrics(application_id,metric_date);
+CREATE INDEX IF NOT EXISTS site_visits_day_idx ON site_visits(visit_day);
 COMMIT;

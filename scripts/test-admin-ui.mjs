@@ -18,6 +18,7 @@ try {
   for (const path of ['src/components', 'src/lib', 'src/data', 'public']) cpSync(join(root, path), join(folder, path), { recursive: true });
   for (const name of ['tsconfig.json', 'next.config.js', 'postcss.config.js', 'tailwind.config.ts', 'package.json']) cpSync(join(root, name), join(folder, name));
   cpSync(join(root, 'src/app/globals.css'), join(folder, 'src/app/globals.css'));
+  for(const path of ['terms','copyright','contact','privacy','about'])cpSync(join(root,'src/app',path),join(folder,'src/app',path),{recursive:true});
   cpSync(join(root, 'tests/fixtures/admin-ui/page.tsx'), join(folder, 'src/app/admin/page.tsx'));
   writeFileSync(join(folder, 'src/app/page.tsx'), 'export default function Page(){return <a href="/admin">Admin UI fixture</a>}');
   writeFileSync(join(folder, 'src/app/layout.tsx'), `import './globals.css';import Brand from '@/components/Brand';import Footer from '@/components/Footer';export default function Layout({children}:{children:React.ReactNode}){return <html lang="ar" dir="rtl"><body><header className="site-header"><div className="shell header-inner"><a href="/" className="brand-link"><Brand/></a></div></header><main id="main-content">{children}</main><Footer/></body></html>}`);

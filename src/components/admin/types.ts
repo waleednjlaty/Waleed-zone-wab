@@ -1,7 +1,7 @@
 /** Deliberately limited presentation model. No signed URLs or provider credentials. */
 export type Mode = 'legacy' | 'direct' | 'disabled';
 export type ScanStatus = 'pending' | 'verified' | 'quarantined' | 'failed';
-export type Section = 'overview' | 'applications' | 'configuration' | 'versions' | 'files' | 'system' | 'kill-switch' | 'monetization';
+export type Section = 'overview' | 'applications' | 'configuration' | 'versions' | 'files' | 'system' | 'kill-switch' | 'monetization' | 'analytics';
 export interface AdminApp {
   id: number; name: string; icon: string | null;
   mode: Mode | null; currentVersionId: string | null;

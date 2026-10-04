@@ -6,7 +6,7 @@ const Module=require('node:module');
 require('../helpers/typescript.cjs');
 const routePaths={session:'session',catalog:'catalog',versions:'downloads/versions',version:'downloads/versions/[version_id]',files:'downloads/files',file:'downloads/files/[file_id]',config:'downloads/config/[application_id]',status:'downloads/status',control:'downloads/control'};
 async function createFixture(t, options={}) {
-  const selectedPaths={...routePaths,...(options.monetization?{monetization:"monetization",review:"monetization/[application_id]"}:{})};
+  const selectedPaths={...routePaths,...(options.monetization?{analytics:"analytics",monetization:"monetization",review:"monetization/[application_id]"}:{})};
   require('../downloads/harness.cjs').blockExternalIO();
   const db=await PGlite.create(),saved={...process.env},origin='https://admin.example.test';
   Object.assign(process.env,{NODE_ENV:'production',NEXT_PUBLIC_SITE_URL:origin,OWNER_USER_ID:'qa-owner',WEBSITE_STATS_TOKEN:'QA_STATS_SENTINEL',DIRECT_DOWNLOADS_ENABLED:'false'});

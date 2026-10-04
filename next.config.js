@@ -48,7 +48,7 @@ const nextConfig = {
   async headers() {
     return [
       { source: '/(.*)', headers: securityHeaders },
-      { source: '/:legal(privacy|terms)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, follow' }] },
+      { source: '/:legal(privacy|terms|copyright|contact)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, follow' }] },
       { source: '/:utility(login|register|download)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }] },
       { source: '/:private(account|users|admin|dashboard|settings|database|debug|logs|uploads|private|manage|management)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }, { key: 'Cache-Control', value: 'private, no-store' }] },
       { source: '/download/:path*', headers: [{ key: 'Content-Security-Policy', value: downloadCsp }, { key: 'Cache-Control', value: 'private, no-store' }, { key: 'Referrer-Policy', value: 'same-origin' }] },

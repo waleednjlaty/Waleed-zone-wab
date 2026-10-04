@@ -12,6 +12,7 @@ export async function verifyMonetizationUI({base,root}) {
     for(const width of [360,768,1440]) {
       const context=await browser.newContext({viewport:{width,height:960},reducedMotion:'reduce'}),page=await context.newPage(),state=fixture(),errors=[];
       page.on('pageerror',e=>errors.push(e.message));
+      let analyticsFailure=false;
       let row={application_id:201,name:'تطبيق مراجعة طويل للاختبار',icon:null,category:'تطبيقات',version:'1.0',active:true,published:true,status:'unreviewed',rights_basis:'unknown',review_notes:'',reviewed_at:null,revision:'a'.repeat(64)},failure=0,writes=0;
       await page.route('**/*',async route=>{
         const url=new URL(route.request().url());
@@ -19,6 +20,10 @@ export async function verifyMonetizationUI({base,root}) {
         if(!url.pathname.startsWith('/api/admin/'))return route.continue();
         const respond=(body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
         const path=url.pathname;
+        if(path.endsWith('/analytics')){
+          if(analyticsFailure)return respond({error:{code:'ANALYTICS_UNAVAILABLE',message:'PRIVATE_ANALYTICS_ERROR'}},503);
+          return respond({days:Number(url.searchParams.get('days')),from:'2026-10-01',to:'2026-10-04',visitors:10,metrics:{detail_view:20,download_page_view:10,download_prepare:8,download_redeem:5,telegram_redirect:5},conversions:{detail_to_download:50,download_to_redeem:50,redeem_to_redirect:100},top:[{application_id:201,name:'تطبيق التحليل',views:20,redeems:5,conversion:25}]});
+        }
         if(path.includes('/monetization')){
           if(failure&&(failure!==409||route.request().method()!=='GET'))return respond({error:{message:'PRIVATE_ERROR_DO_NOT_RENDER'}},failure);
           if(route.request().method()==='PUT'){
@@ -49,6 +54,12 @@ export async function verifyMonetizationUI({base,root}) {
       await page.getByRole('button',{name:'تحديث مراجعات الربح'}).click();await page.getByRole('button',{name:/تطبيق مراجعة طويل/}).waitFor();
       failure=503;await page.getByRole('button',{name:'تحديث مراجعات الربح'}).click();await page.locator('#monetization-title').waitFor();await page.getByRole('alert').filter({hasText:/الخدمة/}).waitFor();
       assert.ok(!(await page.locator('body').innerText()).includes('PRIVATE_ERROR_DO_NOT_RENDER'));assert.equal(await page.getByRole('button',{name:'تحديد كمؤهل'}).count(),0);
+      await page.getByRole('navigation',{name:'أقسام لوحة المالك'}).getByRole('link',{name:'التحليلات',exact:true}).click();
+      await page.getByRole('heading',{name:'تحليلات الموقع',exact:true}).waitFor();
+      for(const days of ['1','7','30']){await page.getByLabel('الفترة (UTC)').selectOption(days);await page.getByText('الزوار (مجموع يومي)',{exact:true}).waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+      if(process.env.WZ_AXE_MODULE){await page.addScriptTag({path:process.env.WZ_AXE_MODULE});assert.deepEqual(await page.evaluate(async()=> (await window.axe.run('#main-content',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>v.id)),[]);}
+      await page.screenshot({path:join(output,`analytics-fixture-${width}.png`),fullPage:true});
+      analyticsFailure=true;await page.getByRole('button',{name:'تحديث التحليلات'}).click();await page.getByRole('alert').waitFor();assert.ok(!(await page.locator('body').innerText()).includes('PRIVATE_ANALYTICS_ERROR'));assert.equal(await page.getByText('الزوار (مجموع يومي)',{exact:true}).count(),0);
       assert.deepEqual(errors,[]);await context.close();
     }
     const context=await browser.newContext(),page=await context.newPage();let requests=0;const sdkErrors=[];

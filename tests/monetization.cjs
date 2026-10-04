@@ -22,7 +22,7 @@ test('verification is independent; all 32 gate combinations fail closed except a
   assert.equal(manualAdConfig({...enabled,ADSENSE_CMP_ID:''}),null);assert.equal(manualAdConfig({...enabled,ADSENSE_DETAIL_SLOT_ID:''}),null);
 });
 test('SDK CSP restricted to canonical detail pages, never download/admin/account/search even with all gates',()=>{
-  for(const path of ['/download/201','/admin','/account','/search','/','/apps','/games','/apps/test/201','/apps/test-0','/apps/test-201?ads=1']){
+  for(const path of ['/download/201','/download/201/anything','/admin','/admin/anything','/account','/account/settings','/login','/register','/search','/privacy','/terms','/copyright','/contact','/api/admin/analytics','/404','/error','/','/apps','/games','/apps/test/201','/apps/test-0','/apps/test-201?ads=1']){
     assert.equal(adRouteAllowed(path),false);
     const csp=contentSecurityPolicy('test',enabled,false,path);assert.ok(!csp.includes('googlesyndication'));assert.ok(!csp.includes('connect-src \'self\' https:'));
   }

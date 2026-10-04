@@ -1,3 +1,4 @@
+import {schedulePageMetric} from '@/lib/analytics/schedule';
 import { headers } from 'next/headers';
 import { manualAdConfig } from '@/lib/ads';
 import { applicationAdEligible } from '@/lib/monetization/eligibility';
@@ -41,6 +42,7 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
     softwareVersion:available(app.version)||undefined,fileSize:available(app.size)||undefined,
     ...(details.updatedAt&&formatDate(details.updatedAt)?{dateModified:details.updatedAt}:{}),
   },breadcrumbStructuredData(breadcrumbs)];
+  await schedulePageMetric('detail_view',app.id,appHref(app));
   return <div className="shell detail-page">
     <JsonLd data={structured} />
     <nav className="detail-breadcrumbs" aria-label="مسار التنقل"><ol>{breadcrumbs.map((crumb,index)=><li key={index}>{index===breadcrumbs.length-1?<span aria-current="page" dir="auto">{name}</span>:(crumb.item===`${SITE_URL}/apps`||crumb.item===`${SITE_URL}/games`)?<a href={crumb.item.replace(SITE_URL,'')}>{crumb.name}</a>:<Link href={crumb.item.replace(SITE_URL,'')||'/'}>{crumb.name}</Link>}</li>)}</ol></nav>

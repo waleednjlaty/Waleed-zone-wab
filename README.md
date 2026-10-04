@@ -40,3 +40,5 @@ AdSense verification and serving are separate. A valid `ADSENSE_PUBLISHER_ID` pu
 ## Related project
 
 [Waleed Zone Telegram Bot](https://github.com/waleednjlaty/MyTelegramBot)
+
+Operator pre-deploy remains `npm run migrate:release` (001 → 002 → 003 → 005; optional 004 excluded). The new checksum-locked migration and read-only `npm run monetization:audit` require an explicitly configured DATABASE_URL. No production execution is part of this PR. See [content guide](docs/MONETIZATION_CONTENT_GUIDE.md), [activation checklist](docs/ADSENSE_ACTIVATION_CHECKLIST.md), and [CMP setup](docs/ADSENSE_CMP_SETUP.md). First-party metrics contain aggregate daily counters only; the owner can inspect Today/7/30-day reports in Admin Analytics. PUBLIC_CONTACT_EMAIL is optional and must be a real intended public address.

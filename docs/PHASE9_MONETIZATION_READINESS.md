@@ -22,7 +22,7 @@ A valid publisher ID independently produces `google-adsense-account` metadata an
 
 ## Owner review authority
 
-Explicitly apply `migrations/005_monetization.sql` only after separately authorized rollout review. It requires migration 002's catalog revision. This migration is **not** wired into startup, runtime requests, or `migrate:release`.
+The existing Railway Pre-deploy Command remains `npm run migrate:release`: it explicitly runs 001 downloads → 002 delivery sources → 003 runtime security → 005 monetization. Optional 004 indexes are excluded. `npm run migrate:monetization` requires DATABASE_URL and PostgreSQL 15+; it owns an atomic transaction/advisory lock and the site_schema_migrations SHA-256 ledger. Matching checksums are idempotent; mismatches hard-fail and require operator investigation, never silently rewriting the ledger. Migration 005 adds eligibility, aggregate metrics and a visit-date index without catalog backfill writes or destructive DDL. Apply only in an authorized release after staging validation. There is no startup or request-path DDL. No production migration was run in this PR.
 
 `site_ad_eligibility` stores status (`unreviewed`, `eligible`, `blocked`), rights basis, internal notes, review time/owner, reviewed catalog revision and an independent review revision. Missing rows mean unreviewed; there is no default safe backfill. Monetization writes do not update `applications` or its revision.
 
@@ -46,7 +46,7 @@ The owner must also turn **Auto Ads off in the AdSense account**. Merely using m
 
 ## Privacy and analytics
 
-The Arabic privacy page reflects the current environment's serving gates, describes Google advertising data use conditionally, links Google's partner-data explanation, and states that denying ads does not block downloads. Update controller/contact details and actual CMP controls before launch. Existing first-party daily pseudonymous visitor counting is unchanged; no GA4, Google Tag Manager, extra cookies, user-level marketing IDs or AdSense click tracking were added. Review existing visit retention and hosting logs against actual jurisdictions separately; hashing an IP-derived value does not establish anonymity or exempt it from privacy requirements.
+The Arabic privacy page reflects the current environment's serving gates, describes Google advertising data use conditionally, links Google's partner-data explanation, and states that denying ads does not block downloads. Update controller/contact details and actual CMP controls before launch. First-party daily pseudonymous visitor counting remains separate from the new aggregate site_daily_metrics table. Server hooks count canonical detail renders, reached download pages, successful prepare/redeem, validated Telegram 303 handoffs and catalog renders. The metrics table stores only UTC date, bounded metric, validated application ID or NULL site scope, and atomic counts; never raw IP, user-agent, destinations or Telegram IDs. Writes run after responses using an isolated one-connection pool, short timeouts, no unbounded queue and load shedding (1200 attempts/minute/process); failures or overload drop events. Counters measure events, not a user-attributed funnel; repeated renders can count and no new fragile robot heuristics are used. Prefetch/draft requests are skipped. Owner-only /api/admin/analytics accepts bounded 1–90 day windows and at most 50 top apps, while the UI shows Today/7/30 days. Visitors over multiple days are the sum of daily pseudonymous visitors, not unique people over the entire period. No GA4, Google Tag Manager, extra analytics cookies, marketing IDs, revenue estimates or AdSense click tracking were added. Review existing visit retention and hosting logs against actual jurisdictions separately; hashing an IP-derived value does not establish anonymity or exempt it from privacy requirements.
 
 ## Owner launch sequence (future, not performed)
 
@@ -78,3 +78,12 @@ Rollback: set `ADSENSE_ENABLED=false` to stop new serving immediately after conf
 4. [Google AdSense — ad placement policies](https://support.google.com/adsense/answer/1346295?hl=en)
 5. [Google — partner sites and data use](https://policies.google.com/technologies/partner-sites)
 6. [Google — TCF publisher integration and v2.3 transition](https://support.google.com/adsense/answer/9804260?hl=en)
+
+## Supporting operations
+
+- [Content quality guide](MONETIZATION_CONTENT_GUIDE.md)
+- [Activation checklist](ADSENSE_ACTIVATION_CHECKLIST.md)
+- [Certified CMP setup](ADSENSE_CMP_SETUP.md)
+- `/terms`, `/copyright`, `/contact` and `/privacy` are intentionally noindex/follow with self-canonicals, consistent with existing privacy SEO. They are linked in the footer and omitted from the catalog sitemap. Canonical application URLs are unchanged.
+- Only explicitly configured, validated PUBLIC_CONTACT_EMAIL is public. Private account/owner emails are never used as fallback; existing public Telegram bot/channel remain available.
+- `npm run monetization:audit` is an explicit read-only transaction with a bounded cursor and fixed error codes. Reports contain IDs and manual-review flags, not secrets or raw URLs. It never changes eligibility or judges legality. Full scanning remains CLI-only; the admin Flagged card points to this report instead of scanning the catalog per request or showing a fabricated count.

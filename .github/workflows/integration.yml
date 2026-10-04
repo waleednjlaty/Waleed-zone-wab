@@ -12,7 +12,7 @@ concurrency:
 jobs:
   integration:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
@@ -46,10 +46,14 @@ jobs:
         run: node -e 'const sql=require("postgres")(process.env.WZ_TEST_DATABASE_URL); (async()=>{try{await sql.unsafe("CREATE DATABASE wz_phase3_test");}finally{await sql.end();}})().catch(()=>process.exitCode=1)'
       - name: Create disposable metadata test database
         run: node -e 'const sql=require("postgres")(process.env.WZ_TEST_DATABASE_URL); (async()=>{try{await sql.unsafe("CREATE DATABASE wz_metadata_test_integrated");}finally{await sql.end();}})().catch(()=>process.exitCode=1)'
+      - name: Create disposable monetization migration database
+        run: node -e 'const sql=require("postgres")(process.env.WZ_TEST_DATABASE_URL); (async()=>{try{await sql.unsafe("CREATE DATABASE wz_monetization_test");}finally{await sql.end();}})().catch(()=>process.exitCode=1)'
       - name: Unit and strict download contract tests
         run: npm test
         env:
           WZ_DOWNLOAD_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:5432/wz_phase3_test
+          WZ_MONETIZATION_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:5432/wz_monetization_test
+          WZ_MONETIZATION_CONTRACT_STRICT: '1'
           WZ_DOWNLOAD_CONTRACT_STRICT: '1'
           WZ_ADMIN_CONTRACT_STRICT: '1'
           WZ_METADATA_TEST_DATABASE_URL: postgres://postgres:local-test-only@127.0.0.1:5432/wz_metadata_test_integrated
@@ -91,3 +95,4 @@ jobs:
         run: npm run test:integration
         env:
           WZ_BROWSER_TESTS: 'true'
+          WZ_AXE_MODULE: ${{ runner.temp }}/wz-browser/node_modules/axe-core/axe.min.js

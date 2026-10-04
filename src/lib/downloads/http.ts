@@ -1,4 +1,5 @@
 import 'server-only';
+import {scheduleMetric} from '@/lib/analytics/schedule';
 import { randomUUID } from 'node:crypto';
 import { getSql } from '@/lib/db';
 import { CLIENT_SECONDS, DownloadError, UUID, exactFields, matchesSecret, unavailable, validSecret, validToken } from './rules';
@@ -96,6 +97,7 @@ export function createDownloadHandler(operation: Operation, dependencies?: { ser
       const sql = dependencies ? null : getSql();
       if (!dependencies && !sql) throw unavailable();
       const service = dependencies?.service ?? new DownloadService(sql!, {
+        onRedeemed:(applicationId)=>scheduleMetric('download_redeem',applicationId,request.headers),
         enabled: env.DIRECT_DOWNLOADS_ENABLED === 'true',
         hosts: (env.DOWNLOAD_ALLOWED_DELIVERY_HOSTS || '').split(',').map(x => x.trim()).filter(Boolean),
       });
@@ -136,6 +138,7 @@ export function createDownloadHandler(operation: Operation, dependencies?: { ser
           || typeof body.version_id !== 'string' || !UUID.test(body.version_id)
           || typeof body.file_id !== 'string' || !UUID.test(body.file_id) || !key || !UUID.test(key)) throw new DownloadError(400, 'INVALID_REQUEST');
         const admitted = await service.admit(identity, { ...body, version_id: body.version_id.toLowerCase(), file_id: body.file_id.toLowerCase() } as Selection, key.toLowerCase());
+        if(admitted.created)scheduleMetric('download_prepare',Number(body.application_id),request.headers);
         return Response.json(admitted.data, { status: admitted.created ? 201 : 200,
           headers: { ...downloadHeaders, Location: admitted.data.status_url } });
       }
