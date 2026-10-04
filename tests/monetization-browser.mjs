@@ -54,7 +54,7 @@ export async function verifyMonetizationUI({base,root}) {
       await page.getByRole('button',{name:'تحديث مراجعات الربح'}).click();await page.getByRole('button',{name:/تطبيق مراجعة طويل/}).waitFor();
       failure=503;await page.getByRole('button',{name:'تحديث مراجعات الربح'}).click();await page.locator('#monetization-title').waitFor();await page.getByRole('alert').filter({hasText:/الخدمة/}).waitFor();
       assert.ok(!(await page.locator('body').innerText()).includes('PRIVATE_ERROR_DO_NOT_RENDER'));assert.equal(await page.getByRole('button',{name:'تحديد كمؤهل'}).count(),0);
-      await page.getByRole('navigation',{name:'أقسام لوحة المالك'}).getByRole('link',{name:'التحليلات',exact:true}).click();
+      await page.getByRole('navigation',{name:'أقسام لوحة المالك'}).getByRole('link',{name:/التحليلات/}).click();
       await page.getByRole('heading',{name:'تحليلات الموقع',exact:true}).waitFor();
       for(const days of ['1','7','30']){await page.getByLabel('الفترة (UTC)').selectOption(days);await page.getByText('الزوار (مجموع يومي)',{exact:true}).waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
       if(process.env.WZ_AXE_MODULE){await page.addScriptTag({path:process.env.WZ_AXE_MODULE});assert.deepEqual(await page.evaluate(async()=> (await window.axe.run('#main-content',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>v.id)),[]);}

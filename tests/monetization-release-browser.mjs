@@ -33,7 +33,7 @@ try{
   await page.goto(base+'/admin#analytics');await page.getByRole('heading',{name:'تحليلات الموقع',exact:true}).waitFor();
   for(const days of ['1','7','30']){await page.getByLabel('الفترة (UTC)').selectOption(days);await page.getByText('الزوار (مجموع يومي)',{exact:true}).waitFor();await layout();}
   await axe();await page.screenshot({path:`docs/screenshots/monetization/analytics-${width}.png`,fullPage:true});
-  await page.getByRole('navigation',{name:'أقسام لوحة المالك'}).getByRole('link',{name:'الربح والإعلانات',exact:true}).click();
+  await page.getByRole('navigation',{name:'أقسام لوحة المالك'}).getByRole('link',{name:/الربح والإعلانات/}).click();
   await page.getByRole('heading',{name:'مراجعة أهلية الإعلانات'}).waitFor();await page.getByRole('button',{name:/Monetization Eligible/}).waitFor();await layout();await axe();
   const excluded=['/apps/monetization-blocked-502','/apps/monetization-unreviewed-503','/download/501','/admin','/account','/login','/register','/search','/api/search?q=Telegram','/missing-page','/apps/not-found-2147483647'];
   for(const path of excluded){const before=ads;await page.goto(base+path);assert.equal(await page.locator('ins.adsbygoogle').count(),0,path);assert.equal(ads,before,path);if(!path.startsWith('/api/'))await layout();}
