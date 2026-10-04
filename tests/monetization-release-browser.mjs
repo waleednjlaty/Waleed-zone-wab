@@ -38,7 +38,7 @@ try{
   const excluded=['/apps/monetization-blocked-502','/apps/monetization-unreviewed-503','/download/501','/admin','/account','/login','/register','/search','/api/search?q=Telegram','/missing-page','/apps/not-found-2147483647'];
   for(const path of excluded){const before=ads;await page.goto(base+path);assert.equal(await page.locator('ins.adsbygoogle').count(),0,path);assert.equal(ads,before,path);if(!path.startsWith('/api/'))await layout();}
   await page.goto(base+'/apps/monetization-eligible-501');await page.getByRole('heading',{name:'Monetization Eligible',exact:true}).waitFor();
-  await page.waitForFunction(()=>window.__fixtureAdPush===1);assert.equal(ads,1);assert.equal(await page.locator('script[src*="adsbygoogle.js"]').count(),1);assert.equal(await page.locator('ins.adsbygoogle').count(),1);
+  for(let attempt=0;attempt<100;attempt++){if(await page.evaluate(()=>window.__fixtureAdPush===1))break;await new Promise(resolve=>setTimeout(resolve,50));}assert.equal(await page.evaluate(()=>window.__fixtureAdPush),1);assert.equal(ads,1);assert.equal(await page.locator('script[src*="adsbygoogle.js"]').count(),1);assert.equal(await page.locator('ins.adsbygoogle').count(),1);
   assert.equal(await page.locator('.mobile-download-bar').count(),0);assert.equal(await page.locator('.detail-download-area .adsbygoogle').count(),0);
   const spacing=await page.evaluate(()=>{const ad=document.querySelector('.manual-ad-placement').getBoundingClientRect(),cta=document.querySelector('.detail-download-area').getBoundingClientRect();return ad.top-cta.bottom;});assert.ok(spacing>100,`Ad too close to CTA: ${spacing}`);await layout();await axe();
   await page.screenshot({path:`docs/screenshots/monetization/eligible-${width}.png`,fullPage:true});await context.close();
