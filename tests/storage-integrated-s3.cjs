@@ -15,7 +15,8 @@ const F = require('./downloads/fixtures.cjs');
 const config = { backend: 'railway-s3', endpoint: 'https://delivery.example.test', region: 'auto', bucket: 'wz-fixture',
   accessKeyId: 'INTEGRATION_ONLY_ACCESS', secretAccessKey: 'integration-only-secret',
   allowedHosts: ['delivery.example.test'], forcePathStyle: true, versioningEnabled: false,
-  checksumSource: 'metadata', timeoutMs: 100 };
+  // Cold SDK signing can exceed 100ms on loaded CI; deadline-specific tests use their own budgets.
+  checksumSource: 'metadata', timeoutMs: 1000 };
 async function setup(t, patch = {}) {
   const calls = [], data = F.fixtureData();
   data.files[0].storage_backend = 'railway-s3'; data.files[0].storage_object_version = null;

@@ -11,7 +11,9 @@ export function signedEndpoint(html: string, page: string) {
   for(const tag of html.matchAll(/<[a-z][^>]{0,8192}>/gi)) {
     const attr=tag[0].match(/\bhx-get\s*=\s*(?:"([^"]*)"|'([^']*)')/i);if(!attr)continue;
     try {
-      const url=publicUrl(new URL(htmlAttribute(attr[1]??attr[2]),base).href,BZZHR_HOSTS);
+      const value=htmlAttribute(attr[1]??attr[2]);
+      if(/[\s\p{Cc}\p{Cf}\\]/u.test(value))continue;
+      const url=publicUrl(new URL(value,base).href,BZZHR_HOSTS);
       if(url.hostname===base.hostname && url.pathname===base.pathname.replace(/\/$/,'')+'/download' && url.searchParams.get('t'))return url.href;
     }catch{/* malformed endpoints fail closed */}
   }
@@ -21,15 +23,18 @@ export function signedDestination(raw: string, base: string) {
   // Validate raw headers before URL normalization can discard CR/LF or whitespace.
   if(/[\s\p{Cc}\p{Cf}\\]/u.test(raw)||raw.includes('#'))throw providerError('INVALID_PROVIDER_RESPONSE');
   const url=publicUrl(new URL(raw,base).href,BZZHR_FILE_HOSTS);
+  let decoded: string;try{decoded=decodeURIComponent(url.pathname+url.search);}catch{throw providerError('INVALID_PROVIDER_RESPONSE');}
   if(!/^\/d\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.%()-]+)*$/.test(url.pathname) || !url.searchParams.get('v')
-    || url.searchParams.getAll('v').length!==1 || /[\r\n\x00]/.test(decodeURIComponent(url.search))) throw providerError('INVALID_PROVIDER_RESPONSE');
+    || url.searchParams.getAll('v').length!==1 || /[\p{Cc}\p{Cf}\\]/u.test(decoded)) throw providerError('INVALID_PROVIDER_RESPONSE');
   return url.href;
 }
 export async function resolveBzzhr(page: string, signal: AbortSignal, http: PublicHttp=publicHttp) {
   publicUrl(page,BZZHR_HOSTS);
   const result=await http(page,BZZHR_HOSTS,signal);requireProviderSuccess(result);
   const endpoint=signedEndpoint(result.body,result.url);
-  const response=await http(endpoint,BZZHR_HOSTS,signal,{'HX-Request':'true','HX-Current-URL':result.url,Referer:result.url},false);
+  const cookie=result.headers['set-cookie'];
+  if(cookie && (cookie.length>2048 || /[\r\n\x00]/.test(cookie)))throw providerError('INVALID_PROVIDER_RESPONSE');
+  const response=await http(endpoint,BZZHR_HOSTS,signal,{'HX-Request':'true','HX-Current-URL':result.url,Referer:result.url,...(cookie?{Cookie:cookie}: {})},false);
   if(![200,204,302,303].includes(response.status))requireProviderSuccess(response);
   const raw=response.headers['hx-redirect']||response.headers.location;if(!raw)throw providerError('INVALID_PROVIDER_RESPONSE');
   return signedDestination(raw,endpoint);

@@ -42,7 +42,8 @@ export async function vettedAddresses(host: string, signal: AbortSignal, lookup:
     })]);
     if (!rows.length || rows.some(row=>!globalAddress(row.address) || row.family!==isIP(row.address))) throw providerError('INVALID_SOURCE');
     return rows;
-  } finally { clearTimeout(timer); if(abort)signal.removeEventListener('abort',abort); }
+  } catch(error) { throw error instanceof DownloadError?error:providerError(); }
+  finally { clearTimeout(timer); if(abort)signal.removeEventListener('abort',abort); }
 }
 export type PublicResponse = { status: number; headers: Record<string,string>; body: string; url: string };
 export type PublicHttp = (url: string, hosts: readonly string[], signal: AbortSignal, headers?: Record<string,string>, follow?: boolean) => Promise<PublicResponse>;
@@ -58,7 +59,7 @@ export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=
       const req=httpsRequest(url,{agent:false,family:pin.family,signal:scope,headers:{'Accept-Encoding':'identity','User-Agent':'WaleedZone/1.0',...headers},
         lookup:((_host: unknown,_options: unknown,callback: (error: null,address: string,family: number)=>void)=>callback(null,pin.address,pin.family)) as never}, res=>{
         clearTimeout(headerTimer);
-        const h:Record<string,string>={};for(const [k,v] of Object.entries(res.headers))if(v!==undefined)h[k]=Array.isArray(v)?v.join('; '):v;
+        const h:Record<string,string>={};for(const [k,v] of Object.entries(res.headers))if(v!==undefined)h[k]=Array.isArray(v)?v.map(value=>k==='set-cookie'?value.split(';')[0]:value).join('; '):v;
         const status=res.statusCode||0;
         // Redirect/header-only HTMX responses never read a file body.
         if (h['hx-redirect'] || [301,302,303,307,308].includes(status)) {res.destroy();resolve({status,headers:h,body:'',url:current});return;}
@@ -67,7 +68,7 @@ export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=
         res.setTimeout(4000,()=>res.destroy(providerError('PROVIDER_TIMEOUT')));
         res.on('data',(chunk:Buffer)=>{bytes+=chunk.length;if(bytes>1048576)res.destroy(providerError('INVALID_PROVIDER_RESPONSE'));else chunks.push(chunk);});
         res.on('end',()=>resolve({status,headers:h,body:Buffer.concat(chunks).toString('utf8'),url:current}));
-        res.on('error',()=>reject(providerError('PROVIDER_UNAVAILABLE')));
+        res.on('error',error=>reject(error instanceof DownloadError?error:providerError('PROVIDER_UNAVAILABLE')));
       });
       const connectTimer=setTimeout(()=>{if(!connected)req.destroy(providerError('PROVIDER_TIMEOUT'));},4000);
       const headerTimer=setTimeout(()=>req.destroy(providerError('PROVIDER_TIMEOUT')),6000);
@@ -76,7 +77,7 @@ export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=
       req.on('close',()=>{clearTimeout(connectTimer);clearTimeout(headerTimer);});req.end();
     });
     if(follow && [301,302,303,307,308].includes(result.status)) {
-      if(!result.headers.location || redirects===3)throw providerError('INVALID_PROVIDER_RESPONSE');
+      if(!result.headers.location || /[\s\p{Cc}\p{Cf}\\]/u.test(result.headers.location) || redirects===3)throw providerError('INVALID_PROVIDER_RESPONSE');
       url=publicUrl(new URL(result.headers.location,current).href,hosts);continue;
     }
     return result;

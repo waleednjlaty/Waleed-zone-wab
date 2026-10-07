@@ -7,7 +7,8 @@ export function steamripBzzhr(html: string, base: string) {
   publicUrl(base,STEAMRIP_HOSTS);
   for(const tag of html.matchAll(/<a\b[^>]{0,8192}>/gi)) {
     const attr=tag[0].match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/i);if(!attr)continue;
-    try {const url=publicUrl(new URL(htmlAttribute(attr[1]??attr[2]),base).href,BZZHR_HOSTS);
+    try {const value=htmlAttribute(attr[1]??attr[2]);if(/[\s\p{Cc}\p{Cf}\\]/u.test(value))continue;
+      const url=publicUrl(new URL(value,base).href,BZZHR_HOSTS);
       if(/^\/[A-Za-z0-9_-]+\/?$/.test(url.pathname))return url.href;
     }catch{/* Other hosting providers remain unsupported by this resolver. */}
   }

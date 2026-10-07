@@ -55,12 +55,12 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
       }
       countdown.redeem(body.token,Number(appId),source.revision,client);
       const hash=createHash('sha256').update(body.token as string).digest('hex');
-      const now=new Date((dependencies?.now??Date.now)());
+      const now=new Date((dependencies?.now??Date.now)()).toISOString();
       // Each failed provider attempt remains retryable, but only three attempts per grant.
       // This statement completes before any external request; no DB lease/lock spans network I/O.
       const attempts=await sql`UPDATE site_legacy_download_grants SET attempts=attempts+1
         WHERE token_hash=${hash} AND application_id=${Number(appId)} AND source_revision=${source.revision}
-        AND consumed_at IS NULL AND attempts<3 AND ready_at<=${now} AND expires_at>${now} RETURNING token_hash`;
+        AND consumed_at IS NULL AND attempts<3 AND ready_at<=${now}::timestamptz AND expires_at>${now}::timestamptz RETURNING token_hash`;
       if(!attempts.length)throw new DownloadError(410,'TOKEN_USED');
       retry={id:Number(appId),token:body.token};
       const destination=source.provider==='steamrip'
@@ -68,13 +68,15 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
       await sql.begin('isolation level read committed',async tx=>{
         await tx`SET LOCAL lock_timeout='2s'`;
         await tx`SET LOCAL statement_timeout='3s'`;
-        await tx`SELECT id FROM applications WHERE id=${Number(appId)} FOR SHARE`;
+        // Also blocks FK-backed insertion of a previously absent config/source.
+        // This short lock begins only after all external resolution has completed.
+        await tx`SELECT id FROM applications WHERE id=${Number(appId)} FOR UPDATE`;
         await tx`SELECT application_id FROM site_download_app_config WHERE application_id=${Number(appId)} FOR SHARE`;
         await tx`SELECT application_id FROM site_delivery_sources WHERE application_id=${Number(appId)} FOR SHARE`;
         const current=await legacyDelivery(tx as unknown as Sql,Number(appId),env);
         if(current.revision!==source.revision)throw new DownloadError(409,'SOURCE_CHANGED');
         countdown.redeem(body.token,Number(appId),current.revision,client);
-        const consumed=await tx`UPDATE site_legacy_download_grants SET consumed_at=${new Date((dependencies?.now??Date.now)())}
+        const consumed=await tx`UPDATE site_legacy_download_grants SET consumed_at=${new Date((dependencies?.now??Date.now)()).toISOString()}::timestamptz
           WHERE token_hash=${hash} AND consumed_at IS NULL RETURNING token_hash`;
         if(!consumed.length)throw new DownloadError(410,'TOKEN_USED');
       });
@@ -82,6 +84,10 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
         {metric:source.provider==='telegram'?'telegram_redirect':'external_download_redirect',id:Number(appId)}],request.headers);
       return new Response(null,{ status:303,headers:{ ...downloadHeaders,Location:destination } });
     } catch (error) {
+      // Provider/driver error messages can contain signatures or connection strings.
+      // Log only bounded categories, never the error object, query or destination.
+      const driverCode=error && typeof error==='object' && 'code' in error ? String(error.code) : '';
+      console.warn(JSON.stringify({area:'delivery',application_id:retry?.id,category:error instanceof DownloadError?error.code:/^[0-9A-Z]{5}$/.test(driverCode)?'DB_'+driverCode:error instanceof TypeError?'INTERNAL_TYPE_ERROR':'DELIVERY_UNAVAILABLE'}));
       if(retry && !request.headers.get('accept')?.includes('application/json')) {const response=providerRetry(error,retry.id,retry.token);if(response)return response;}
       return downloadErrorResponse(error,request,operation==='redeem');
     }

@@ -70,3 +70,9 @@ test('failed provider opens bounded backoff then permits recovery',async()=>{
  let clock=1000,calls=0;const resolver=steam.createSteamripResolver(async()=>{calls++;throw http.providerError();},async()=>{},()=>clock);
  await assert.rejects(resolver(1,'r',source));await assert.rejects(resolver(1,'r',source),error('PROVIDER_BUSY'));assert.equal(calls,1);clock+=10001;await assert.rejects(resolver(1,'r',source));assert.equal(calls,2);
 });
+
+test('provider session cookie is scoped to same-host HTMX endpoint only',async()=>{const f=fixture();const wrapped=async(...args)=>{const result=await f.fn(...args);if(args[0]===page)result.headers['set-cookie']='session=fixture-cookie';return result;};assert.equal(await steam.steamripDestination(source,signal(),wrapped),destination);assert.equal(f.calls[2].headers.Cookie,'session=fixture-cookie');assert.equal(f.calls[0].headers,undefined);});
+
+test('raw redirect whitespace rejected before URL normalization',async t=>{const h=await transport(t,[{status:302,headers:{location:'https://bzzhr.co/file\n-xyz'}}]);await assert.rejects(http.publicHttp(page,bzzhr.BZZHR_HOSTS,signal()),error('INVALID_PROVIDER_RESPONSE'));assert.equal(h.calls.length,1);});
+
+for(const raw of ['https://fafda.to/d/file/a%0A?v=x','https://fafda.to/d/file/%zz?v=x'])test('encoded malformed destination rejected '+raw,()=>assert.throws(()=>bzzhr.signedDestination(raw,endpoint),error('INVALID_PROVIDER_RESPONSE')));

@@ -7,6 +7,7 @@ const {createLegacyHandler}=require('../src/lib/delivery/http.ts'),{DownloadErro
 Module._load=load;
 const destination='https://fafda.to/d/file-xyz?v=QA_SECRET_SIGNED_DESTINATION';
 test('SteamRIP route contract: countdown → fresh mocked provider → atomic 303, replay/stale/retry guards',async t=>{
+ const logs=[];t.mock.method(console,'warn',(...values)=>logs.push(values.join(' ')));
  const h=await require('./admin/runtime.cjs').createFixture(t,{monetization:true});let now=Date.now(),resolutions=0,fail=false,change;
  const env={NODE_ENV:'production',NEXT_PUBLIC_SITE_URL:h.origin,FILES_CHANNEL_USERNAME:'files_channel',LEGACY_DOWNLOAD_SIGNING_KEY:'a'.repeat(64)};
  await h.sql`UPDATE applications SET shrankme_url=NULL,devupload_url='https://steamrip.com/qa-game/' WHERE id=201`;
@@ -50,6 +51,13 @@ test('SteamRIP route contract: countdown → fresh mocked provider → atomic 30
     if(field==='version')await h.sql`UPDATE applications SET version='changed' WHERE id=201`;};
   const r=await redeem(p);assert.ok([404,409].includes(r.status));assert.equal(r.headers.get('location'),null);
  });
+ await t.test('Telegram source added during resolution invalidates old SteamRIP destination',async()=>{
+  await h.sql`UPDATE applications SET active=true,published=true,devupload_url='https://steamrip.com/qa-game/' WHERE id=201`;
+  const p=await prepare();now=Date.parse(p.grant.ready_at);
+  change=async()=>{await h.sql`INSERT INTO site_delivery_sources(application_id,provider,telegram_channel_username,telegram_message_id) VALUES(201,'telegram','files_channel',42)`;};
+  assert.equal((await redeem(p)).status,409);
+  await h.sql`DELETE FROM site_delivery_sources WHERE application_id=201`;
+ });
  await t.test('concurrent redemption of the same grant has one winner',async()=>{
   await h.sql`UPDATE applications SET active=true,published=true,devupload_url='https://steamrip.com/qa-game/' WHERE id=201`;
   const p=await prepare();now=Date.parse(p.grant.ready_at);const rs=await Promise.all([redeem(p),redeem(p)]);assert.deepEqual(rs.map(r=>r.status).sort(),[303,410]);
@@ -60,4 +68,5 @@ test('SteamRIP route contract: countdown → fresh mocked provider → atomic 30
   await h.sql`DELETE FROM site_delivery_sources WHERE application_id=201`;
   await h.sql`UPDATE applications SET shrankme_url='https://evil.test/file' WHERE id=201`;assert.equal((await call('prepare',{application_id:201})).status,404);
  });
+ assert.ok(!logs.join('\n').includes('QA_SECRET')&&!logs.join('\n').includes('SteamRIP stack'));
 });

@@ -43,6 +43,7 @@ try {
   await sql`INSERT INTO site_delivery_sources(application_id,provider,telegram_channel_username,telegram_message_id) VALUES(501,'telegram','files_channel',123)`;
   await sql`INSERT INTO site_ad_eligibility(application_id,status,rights_basis,review_notes,reviewed_at,reviewed_by,reviewed_catalog_revision) SELECT id,'eligible','owner_created','Network-isolated fixture evidence',NOW(),'owner-qa',revision FROM applications WHERE id=501`;
   await sql`INSERT INTO site_ad_eligibility(application_id,status) VALUES(502,'blocked')`;
+  if(process.env.WZ_FINAL_PROVIDER_FIXTURES==='true')await sql`INSERT INTO applications(id,name,description,category,platform,active,published,downloads,devupload_url) VALUES(210,'SteamRIP QA','Local provider fixture only','ألعاب كمبيوتر','Windows',true,true,0,'https://steamrip.com/qa-game/')`;
   const signingKey=randomBytes(32).toString('hex');
   const config={base,statsToken:randomBytes(32).toString('hex'),secrets:[connection,signingKey,'owner-qa']};
   for(const [id,name,key] of [['owner-qa','QA owner','ownerCookie'],['visitor-qa','QA visitor','userCookie']]) {
@@ -83,7 +84,7 @@ try {
     process.exitCode=await new Promise(resolve=>{const child=spawn(process.execPath,['tests/cross-repo.mjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});child.on('exit',status=>resolve(status??1));});
   }
   if(code===0 && !process.exitCode && process.env.WZ_BROWSER_TESTS==='true') {
-    for(const file of ['tests/monetization-release-browser.mjs','tests/browser.mjs','tests/seo-browser.mjs','tests/telegram-browser.mjs','tests/phase8-browser.mjs']) {
+    for(const file of ['tests/monetization-release-browser.mjs','tests/browser.mjs','tests/seo-browser.mjs','tests/telegram-browser.mjs','tests/phase8-browser.mjs',...(process.env.WZ_FINAL_PROVIDER_FIXTURES==='true'?['tests/download-processing-browser.mjs']:[])].filter(file=>!process.env.WZ_BROWSER_TEST_FILTER||process.env.WZ_BROWSER_TEST_FILTER.split(',').some(name=>file.includes(name)))) {
       process.exitCode=await new Promise(resolve=>{
         const browser=spawn(process.execPath,[file],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
         browser.on('exit',status=>resolve(status??1));
