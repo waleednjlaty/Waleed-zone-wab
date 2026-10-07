@@ -56,7 +56,7 @@ export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=
     const current=url.href;
     const result=await new Promise<PublicResponse>((resolve,reject)=>{
       let connected=false;
-      const req=httpsRequest(url,{agent:false,family:pin.family,signal:scope,headers:{'Accept-Encoding':'identity','User-Agent':'WaleedZone/1.0',...headers},
+      const req=httpsRequest(url,{agent:false,rejectUnauthorized:true,family:pin.family,signal:scope,headers:{'Accept-Encoding':'identity','User-Agent':'WaleedZone/1.0',...headers},
         lookup:((_host: unknown,_options: unknown,callback: (error: null,address: string,family: number)=>void)=>callback(null,pin.address,pin.family)) as never}, res=>{
         clearTimeout(headerTimer);
         const h:Record<string,string>={};for(const [k,v] of Object.entries(res.headers))if(v!==undefined)h[k]=Array.isArray(v)?v.map(value=>k==='set-cookie'?value.split(';')[0]:value).join('; '):v;

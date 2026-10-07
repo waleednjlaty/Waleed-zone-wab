@@ -1,17 +1,19 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
+import { firstHtmlAttribute } from './html';
 import { publicHttp,publicUrl,providerError,requireProviderSuccess,type PublicHttp } from './public-http';
-import { BZZHR_HOSTS, htmlAttribute, resolveBzzhr, validateBzzhrDns } from './bzzhr';
+import { BZZHR_HOSTS, resolveBzzhr, validateBzzhrDns } from './bzzhr';
 export const STEAMRIP_HOSTS=['steamrip.com','www.steamrip.com'] as const;
 export function steamripBzzhr(html: string, base: string) {
   publicUrl(base,STEAMRIP_HOSTS);
-  for(const tag of html.matchAll(/<a\b[^>]{0,8192}>/gi)) {
-    const attr=tag[0].match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/i);if(!attr)continue;
-    try {const value=htmlAttribute(attr[1]??attr[2]);if(/[\s\p{Cc}\p{Cf}\\]/u.test(value))continue;
+  const found=firstHtmlAttribute(html,'href',(value,tag)=>{
+    if(tag!=='a')return;
+    try {if(/[\s\p{Cc}\p{Cf}\\]/u.test(value))return;
       const url=publicUrl(new URL(value,base).href,BZZHR_HOSTS);
       if(/^\/[A-Za-z0-9_-]+\/?$/.test(url.pathname))return url.href;
     }catch{/* Other hosting providers remain unsupported by this resolver. */}
-  }
+  });
+  if(found)return found;
   throw providerError('BZZHR_NOT_FOUND');
 }
 export async function steamripDestination(source: string, signal: AbortSignal, http: PublicHttp=publicHttp) {

@@ -41,7 +41,7 @@ async function transport(t,responses,dnsRows=[{address:'8.8.8.8',family:4}]) {
  const calls=[];let lookups=0;
  t.mock.method(dns,'lookup',async()=>{lookups++;return dnsRows;});
  t.mock.method(https,'request',(url,options,callback)=>{
-  calls.push(url.href);assert.equal(options.agent,false);assert.equal(options.family,4);
+  calls.push(url.href);assert.equal(options.agent,false);assert.equal(options.rejectUnauthorized,true);assert.equal(options.family,4);
   options.lookup(url.hostname,{},(err,address,family)=>{assert.equal(address,'8.8.8.8');assert.equal(family,4);});
   const req=new EventEmitter();req.destroy=err=>{req.emit('error',err);req.emit('close');};
   req.end=()=>queueMicrotask(()=>{
@@ -76,3 +76,9 @@ test('provider session cookie is scoped to same-host HTMX endpoint only',async()
 test('raw redirect whitespace rejected before URL normalization',async t=>{const h=await transport(t,[{status:302,headers:{location:'https://bzzhr.co/file\n-xyz'}}]);await assert.rejects(http.publicHttp(page,bzzhr.BZZHR_HOSTS,signal()),error('INVALID_PROVIDER_RESPONSE'));assert.equal(h.calls.length,1);});
 
 for(const raw of ['https://fafda.to/d/file/a%0A?v=x','https://fafda.to/d/file/%zz?v=x'])test('encoded malformed destination rejected '+raw,()=>assert.throws(()=>bzzhr.signedDestination(raw,endpoint),error('INVALID_PROVIDER_RESPONSE')));
+
+for(const html of ['<a '.repeat(100000),'<a data-href="https://bzzhr.to/wrong">Fake</a>','<!-- <a href="https://bzzhr.to/wrong"> -->',`<script>const html='<a href="https://bzzhr.to/wrong">';</script>`])test('malformed/comment/script attributes are not source links '+html.slice(0,30),()=>assert.throws(()=>steam.steamripBzzhr(html,source),error('BZZHR_NOT_FOUND')));
+test('real href wins over a link mentioned inside quoted title text',()=>assert.equal(steam.steamripBzzhr(`<a title='href="https://bzzhr.to/wrong"' href="${page}">Download</a>`,source),page));
+
+test('HTML tag work is bounded',()=>assert.throws(()=>steam.steamripBzzhr('<div></div>'.repeat(10001),source),error('INVALID_PROVIDER_RESPONSE')));
+test('quoted HTMX mention cannot replace the real signed endpoint',()=>assert.equal(bzzhr.signedEndpoint(`<button title='hx-get="/file-xyz/download?t=wrong"' hx-get="${endpoint}">Download</button>`,page),endpoint));
