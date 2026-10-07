@@ -6,10 +6,12 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import CoverImage from '@/components/CoverImage';
 import Icon from '@/components/Icon';
 import SearchResultsSkeleton from '@/components/loading/SearchResultsSkeleton';
+import { useLocale } from '@/components/LocaleProvider';
 
 interface Suggestion {id:number;name:string;category:string|null;developer:string|null;imageUrl:string|null;href:string;}
 interface SearchBarProps {live?:boolean;autoFocus?:boolean;onNavigate?:()=>void;}
 export default function SearchBar({live=true,autoFocus=false,onNavigate}:SearchBarProps) {
+  const locale=useLocale(),english=locale==='en';
   const router=useRouter(),pathname=usePathname(),params=useSearchParams();
   const query=params.get('q')||'',category=params.get('category')||'';
   const [value,setValue]=useState(query),[expanded,setExpanded]=useState(false);
@@ -59,17 +61,17 @@ export default function SearchBar({live=true,autoFocus=false,onNavigate}:SearchB
       event.preventDefault();setExpanded(false);startTransition(()=>router.push(searchHref(value)));onNavigate?.();
     }}>
       <Icon name="search" className="search-symbol" width={22} height={22}/>
-      <label htmlFor={id} className="sr-only">ابحث عن تطبيق أو لعبة</label>
-      <input ref={input} id={id} name="q" type="search" value={value} onChange={event=>{setValue(event.target.value);setExpanded(true);}} onFocus={()=>setExpanded(true)} maxLength={100} autoComplete="off" autoFocus={autoFocus} placeholder="ابحث عن تطبيق أو لعبة…" aria-describedby={showSuggestions?`${id}-suggestions`:undefined} aria-controls={showSuggestions?`${id}-suggestions`:undefined}/>
-      {value&&<button type="button" className="icon-button search-clear" aria-label="مسح البحث" onClick={()=>{
+      <label htmlFor={id} className="sr-only">{english ? 'Search for an app or game' : 'ابحث عن تطبيق أو لعبة'}</label>
+      <input ref={input} id={id} name="q" type="search" value={value} onChange={event=>{setValue(event.target.value);setExpanded(true);}} onFocus={()=>setExpanded(true)} maxLength={100} autoComplete="off" autoFocus={autoFocus} placeholder={english ? 'Search for an app or game…' : 'ابحث عن تطبيق أو لعبة…'} aria-describedby={showSuggestions?`${id}-suggestions`:undefined} aria-controls={showSuggestions?`${id}-suggestions`:undefined}/>
+      {value&&<button type="button" className="icon-button search-clear" aria-label={english ? 'Clear search' : 'مسح البحث'} onClick={()=>{
         setValue('');setExpanded(false);if(live && query)window.location.replace(searchHref(''));input.current?.focus();
       }}><Icon name="close" width={17} height={17}/></button>}
-      <button type="submit" className="search-submit">بحث</button>
+      <button type="submit" className="search-submit">{english ? 'Search' : 'بحث'}</button>
     </form>
     {showSuggestions&&<div id={`${id}-suggestions`} className="search-suggestions" aria-busy={loading}>
-      <p role={loading?undefined:'status'} aria-hidden={loading||undefined}>{loading?'جارٍ البحث…':failed?'البحث غير متاح مؤقتًا':matches.length?'نتائج مقترحة':'ما لقينا نتيجة مطابقة'}</p>
-      {loading?<SearchResultsSkeleton count={3} suggestions />:matches.length>0?<ul>{matches.map(app=><li key={app.id}><Link href={app.href} onClick={()=>{setExpanded(false);onNavigate?.();}}><span className="suggestion-icon"><CoverImage src={app.imageUrl} alt="" aspectClassName="aspect-square"/></span><span><strong dir="auto">{app.name}</strong><small dir="auto">{[app.category,app.developer].filter(Boolean).join(' · ')||'المكتبة'}</small></span><Icon name="chevron"/></Link></li>)}</ul>:<div className="search-zero"><span>{failed?'حاول مرة أخرى بعد قليل.':'جرّب اسمًا أقصر، أو بالعربية أو الإنجليزية.'}</span><Link href="/#categories" onClick={()=>{setExpanded(false);onNavigate?.();}}>تصفح التصنيفات</Link></div>}
+      <p role={loading?undefined:'status'} aria-hidden={loading||undefined}>{english ? (loading?'Searching…':failed?'Search is temporarily unavailable':matches.length?'Suggested results':'No matching results') : (loading?'جارٍ البحث…':failed?'البحث غير متاح مؤقتًا':matches.length?'نتائج مقترحة':'ما لقينا نتيجة مطابقة')}</p>
+      {loading?<SearchResultsSkeleton count={3} suggestions />:matches.length>0?<ul>{matches.map(app=><li key={app.id}><Link href={app.href} onClick={()=>{setExpanded(false);onNavigate?.();}}><span className="suggestion-icon"><CoverImage src={app.imageUrl} alt="" aspectClassName="aspect-square"/></span><span><strong dir="auto">{app.name}</strong><small dir="auto">{[app.category,app.developer].filter(Boolean).join(' · ')||(english?'Library':'المكتبة')}</small></span><Icon name="chevron"/></Link></li>)}</ul>:<div className="search-zero"><span>{english ? (failed?'Try again in a moment.':'Try a shorter name, in Arabic or English.') : (failed?'حاول مرة أخرى بعد قليل.':'جرّب اسمًا أقصر، أو بالعربية أو الإنجليزية.')}</span><Link href="/#categories" onClick={()=>{setExpanded(false);onNavigate?.();}}>{english ? 'Browse categories' : 'تصفح التصنيفات'}</Link></div>}
     </div>}
-    <span className="sr-only" role="status">{pending?'جارٍ تحديث نتائج البحث':''}</span>
+    <span className="sr-only" role="status">{pending?(english?'Updating search results…':'جارٍ تحديث نتائج البحث'):''}</span>
   </div>;
 }
