@@ -3,21 +3,40 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deadline, downloadApi, DownloadApiError, secondsLeft, UUID } from './api';
 import type { DownloadFile, DownloadRequest, DownloadState, DownloadToken } from './types';
+import { useLocale } from '@/components/LocaleProvider';
+import type { Locale } from '@/lib/locale';
 
-const messages: Record<string, string> = {
-  NETWORK_ERROR: 'تعذر الاتصال. تحقق من الإنترنت ثم أعد المحاولة؛ سنحاول استعادة الطلب نفسه.',
-  DOWNLOAD_COOLDOWN: 'يرجى الانتظار قبل طلب تحميل آخر.',
-  RATE_LIMITED: 'وصلت إلى حد المحاولات مؤقتًا. يمكنك إعادة المحاولة بعد انتهاء الوقت أدناه.',
-  DIRECT_DOWNLOAD_UNAVAILABLE: 'التحميل المباشر متوقف مؤقتًا. حاول لاحقًا.',
-  VERIFICATION_UNAVAILABLE: 'تعذر التحقق من الطلب الآن. حاول مجددًا بعد قليل.',
-  STORAGE_UNAVAILABLE: 'خدمة الملفات غير متاحة مؤقتًا. حاول مجددًا بعد قليل.',
-  FILE_UNAVAILABLE: 'هذا الملف غير متاح للتحميل حاليًا. ارجع إلى صفحة التطبيق.',
-  REQUEST_REVOKED: 'لم يعد هذا الطلب متاحًا. ارجع إلى صفحة التطبيق للتحقق من الملف.',
-  DOWNLOAD_IN_PROGRESS: 'لديك طلب تحميل آخر قيد التجهيز. أكمله في تبويبه أو انتظر انتهاء صلاحيته.',
-  CSRF_REJECTED: 'تغيرت جلسة التحميل. أعد المحاولة لتحديثها.',
-  DOWNLOAD_SESSION_REQUIRED: 'انتهت جلسة التحميل. أعد المحاولة، وتأكد من السماح بملفات الارتباط لهذا الموقع.',
-  TOKEN_ISSUANCE_EXHAUSTED: 'تعذر تجديد هذا الرابط مرة أخرى. جهّز طلبًا جديدًا.',
-  TOKEN_USED: 'استُخدم هذا الرابط بالفعل. راجع تنزيلات المتصفح أو جهّز طلبًا جديدًا.',
+const messages: Record<Locale, Record<string, string>> = {
+  ar: {
+    NETWORK_ERROR: 'تعذر الاتصال. تحقق من الإنترنت ثم أعد المحاولة؛ سنحاول استعادة الطلب نفسه.',
+    DOWNLOAD_COOLDOWN: 'يرجى الانتظار قبل طلب تحميل آخر.',
+    RATE_LIMITED: 'وصلت إلى حد المحاولات مؤقتًا. يمكنك إعادة المحاولة بعد انتهاء الوقت أدناه.',
+    DIRECT_DOWNLOAD_UNAVAILABLE: 'التحميل المباشر متوقف مؤقتًا. حاول لاحقًا.',
+    VERIFICATION_UNAVAILABLE: 'تعذر التحقق من الطلب الآن. حاول مجددًا بعد قليل.',
+    STORAGE_UNAVAILABLE: 'خدمة الملفات غير متاحة مؤقتًا. حاول مجددًا بعد قليل.',
+    FILE_UNAVAILABLE: 'هذا الملف غير متاح للتحميل حاليًا. ارجع إلى صفحة التطبيق.',
+    REQUEST_REVOKED: 'لم يعد هذا الطلب متاحًا. ارجع إلى صفحة التطبيق للتحقق من الملف.',
+    DOWNLOAD_IN_PROGRESS: 'لديك طلب تحميل آخر قيد التجهيز. أكمله في تبويبه أو انتظر انتهاء صلاحيته.',
+    CSRF_REJECTED: 'تغيرت جلسة التحميل. أعد المحاولة لتحديثها.',
+    DOWNLOAD_SESSION_REQUIRED: 'انتهت جلسة التحميل. أعد المحاولة، وتأكد من السماح بملفات الارتباط لهذا الموقع.',
+    TOKEN_ISSUANCE_EXHAUSTED: 'تعذر تجديد هذا الرابط مرة أخرى. جهّز طلبًا جديدًا.',
+    TOKEN_USED: 'استُخدم هذا الرابط بالفعل. راجع تنزيلات المتصفح أو جهّز طلبًا جديدًا.',
+  },
+  en: {
+    NETWORK_ERROR: 'Unable to connect. Check your internet connection and try again; we will try to restore the same request.',
+    DOWNLOAD_COOLDOWN: 'Please wait before requesting another download.',
+    RATE_LIMITED: 'You have temporarily reached the request limit. Try again after the timer below.',
+    DIRECT_DOWNLOAD_UNAVAILABLE: 'Direct download is temporarily unavailable. Try again later.',
+    VERIFICATION_UNAVAILABLE: 'The request cannot be verified right now. Try again shortly.',
+    STORAGE_UNAVAILABLE: 'The file service is temporarily unavailable. Try again shortly.',
+    FILE_UNAVAILABLE: 'This file is currently unavailable. Return to the app page.',
+    REQUEST_REVOKED: 'This request is no longer available. Return to the app page to check the file.',
+    DOWNLOAD_IN_PROGRESS: 'Another download request is being prepared. Finish it in its tab or wait for it to expire.',
+    CSRF_REJECTED: 'The download session changed. Try again to refresh it.',
+    DOWNLOAD_SESSION_REQUIRED: 'The download session expired. Try again and make sure cookies are allowed for this site.',
+    TOKEN_ISSUANCE_EXHAUSTED: 'This link cannot be renewed again. Prepare a new request.',
+    TOKEN_USED: 'This link has already been used. Check your browser downloads or prepare a new request.',
+  },
 };
 
 /** Only the public request ID and idempotency key can survive reload; no secrets. */
@@ -30,6 +49,7 @@ function readSaved(key: string): { requestId?: string; idempotencyKey?: string }
 }
 
 export function useDownload(file: DownloadFile | null) {
+  const locale = useLocale();
   const [state, setState] = useState<DownloadState>('INITIAL');
   const [remaining, setRemaining] = useState(0);
   const [message, setMessage] = useState('');
@@ -54,17 +74,17 @@ export function useDownload(file: DownloadFile | null) {
     save();
     if (request.state === 'redeemed') { setState('SUCCESS'); return; }
     if (request.state === 'expired' || r.expiresAt <= performance.now()) { setState('EXPIRED'); return; }
-    if (request.state === 'revoked') { setMessage(messages.REQUEST_REVOKED); setState('FAILED'); return; }
+    if (request.state === 'revoked') { setMessage(messages[locale].REQUEST_REVOKED); setState('FAILED'); return; }
     // Countdown ending never grants access by itself; token() must authorize it.
     setRemaining(secondsLeft(r.readyAt));
     setState('COUNTDOWN');
-  }, [save]);
+  }, [locale, save]);
 
   const fail = useCallback((error: unknown) => {
     const e = error instanceof DownloadApiError ? error : new DownloadApiError(0, 'NETWORK_ERROR');
     const r = refs.current;
     setToken(null);
-    setMessage(messages[e.code] || 'تعذر تجهيز التحميل. أعد المحاولة أو ارجع إلى صفحة التطبيق.');
+    setMessage(messages[locale][e.code] || (locale === 'en' ? 'Unable to prepare the download. Try again or return to the app page.' : 'تعذر تجهيز التحميل. أعد المحاولة أو ارجع إلى صفحة التطبيق.'));
     if (e.code === 'CSRF_REJECTED' || e.status === 401) { r.csrf = ''; setCsrf(''); }
     if (e.status === 429 || (e.status === 503 && e.waitSeconds > 0)) {
       r.retryAt = performance.now() + e.waitSeconds * 1000;
@@ -83,7 +103,7 @@ export function useDownload(file: DownloadFile | null) {
       if (e.code === 'REQUEST_NOT_FOUND' || e.status === 401 || e.code === 'REQUEST_REVOKED') r.request = null;
       setState('FAILED');
     }
-  }, []);
+  }, [locale]);
 
   const session = useCallback(async () => {
     if (!refs.current.csrf) {
@@ -150,12 +170,12 @@ export function useDownload(file: DownloadFile | null) {
         // Native POST errors are rendered in the download tab by the API. There
         // is no invented JSON redeem endpoint and no cross-origin file fetch.
         setToken(null);
-        setMessage('لم يتأكد بدء التحميل. راجع تبويب التحميل لمعرفة السبب، ثم أعد تجهيز الرابط إذا لزم.');
+        setMessage(locale === 'en' ? 'The download could not be confirmed. Check the download tab for the reason, then prepare a new link if needed.' : 'لم يتأكد بدء التحميل. راجع تبويب التحميل لمعرفة السبب، ثم أعد تجهيز الرابط إذا لزم.');
         setState('FAILED');
       }
     } catch (error) { if (r.alive) fail(error); }
     finally { r.busy = false; }
-  }, [accept, fail]);
+  }, [accept, fail, locale]);
 
   const submit = useCallback((form: HTMLFormElement): boolean => {
     const r = refs.current;
