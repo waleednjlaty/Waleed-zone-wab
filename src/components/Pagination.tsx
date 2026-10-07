@@ -1,3 +1,4 @@
+import { getLocale } from '@/lib/locale-server';
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -31,18 +32,19 @@ function getPages(current: number, total: number): (number | 'ellipsis')[] {
   return pages;
 }
 
-export default function Pagination({ currentPage, totalPages, q, category, basePath = '/', browse = false }: PaginationProps) {
+export default async function Pagination({ currentPage, totalPages, q, category, basePath = '/', browse = false }: PaginationProps) {
   if (totalPages <= 1) return null;
+  const english = (await getLocale()) === 'en';
   const pages = getPages(currentPage, totalPages);
   const buttonClass = 'secondary-action';
   const pageClass = 'inline-flex h-11 w-11 items-center justify-center rounded-xl border text-sm font-bold transition duration-150';
 
   return (
-    <nav aria-label="التنقل بين الصفحات" className="flex flex-wrap items-center justify-center gap-2">
+    <nav aria-label={english ? "Pagination" : "التنقل بين الصفحات"} className="flex flex-wrap items-center justify-center gap-2">
       {currentPage > 1 ? (
-        <a href={buildHref(currentPage - 1, q, category, basePath, browse)} className={buttonClass}>السابق</a>
+        <a href={buildHref(currentPage - 1, q, category, basePath, browse)} className={buttonClass}>{english ? 'Previous' : 'السابق'}</a>
       ) : (
-        <span className={buttonClass + ' cursor-not-allowed opacity-35'}>السابق</span>
+        <span className={buttonClass + ' cursor-not-allowed opacity-35'}>{english ? 'Previous' : 'السابق'}</span>
       )}
 
       {pages.map((page, index) =>
@@ -63,9 +65,9 @@ export default function Pagination({ currentPage, totalPages, q, category, baseP
       )}
 
       {currentPage < totalPages ? (
-        <a href={buildHref(currentPage + 1, q, category, basePath, browse)} className={buttonClass}>التالي</a>
+        <a href={buildHref(currentPage + 1, q, category, basePath, browse)} className={buttonClass}>{english ? 'Next' : 'التالي'}</a>
       ) : (
-        <span className={buttonClass + ' cursor-not-allowed opacity-35'}>التالي</span>
+        <span className={buttonClass + ' cursor-not-allowed opacity-35'}>{english ? 'Next' : 'التالي'}</span>
       )}
     </nav>
   );
