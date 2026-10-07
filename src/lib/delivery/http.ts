@@ -1,19 +1,22 @@
 import 'server-only';
 import {scheduleMetrics} from '@/lib/analytics/schedule';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { getSql } from '@/lib/db';
 import type { Sql } from 'postgres';
 import { adminOrigin } from '@/lib/admin/security';
 import { DownloadError } from '@/lib/downloads/rules';
 import { downloadBody, downloadHeaders, downloadErrorResponse, downloadMethodNotAllowed } from '@/lib/downloads/http';
 import { LegacyCountdown, legacyDelivery } from './legacy';
+import { providerRetry } from './retry';
+import { resolveSteamrip } from '@/lib/downloads/providers/steamrip';
 import { consumeWindow, requestNetwork } from '@/lib/security/limits';
 
 // Bounded per-process load shedding; no fake trusted IP from forwarding headers.
 // This guards metadata APIs, not traffic to Telegram. Direct-download quotas remain unchanged.
 let minute = 0, count = 0;
-export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencies?: { sql: Sql; env: NodeJS.ProcessEnv; now?: () => number }) {
+export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencies?: { sql: Sql; env: NodeJS.ProcessEnv; now?: () => number; resolve?: typeof resolveSteamrip }) {
   return async (request: Request) => {
+    let retry: {id:number;token:unknown}|undefined;
     try {
       if (request.method !== 'POST') return downloadMethodNotAllowed();
       const env = dependencies?.env ?? process.env;
@@ -42,13 +45,45 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
       const source = await legacyDelivery(sql,Number(appId),env);
       if (!form) {
         const prepared=countdown.prepare(Number(appId),source.revision,client);
+        const hash=createHash('sha256').update(prepared.token).digest('hex');
+        await sql`INSERT INTO site_legacy_download_grants(token_hash,application_id,source_revision,ready_at,expires_at) VALUES(${hash},${Number(appId)},${source.revision},${prepared.ready_at},${prepared.expires_at})`;
+        // Bounded cleanup through indexed expiry, never a full-table scan.
+        await sql`DELETE FROM site_legacy_download_grants WHERE token_hash IN (SELECT token_hash FROM site_legacy_download_grants WHERE expires_at<clock_timestamp() ORDER BY expires_at LIMIT 100)`;
         scheduleMetrics([{metric:'download_prepare',id:Number(appId)}],request.headers);
         return Response.json(prepared,{ headers:{ ...downloadHeaders,
         'Set-Cookie': `${name}=${client}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${env.NODE_ENV==='production'?'; Secure':''}` } });
       }
       countdown.redeem(body.token,Number(appId),source.revision,client);
-      scheduleMetrics([{metric:'download_redeem',id:Number(appId)},...(source.provider==='telegram'?[{metric:'telegram_redirect' as const,id:Number(appId)}]:[])],request.headers);
-      return new Response(null,{ status:303,headers:{ ...downloadHeaders,Location:source.destination } });
-    } catch (error) { return downloadErrorResponse(error,request,operation==='redeem'); }
+      const hash=createHash('sha256').update(body.token as string).digest('hex');
+      const now=new Date((dependencies?.now??Date.now)());
+      // Each failed provider attempt remains retryable, but only three attempts per grant.
+      // This statement completes before any external request; no DB lease/lock spans network I/O.
+      const attempts=await sql`UPDATE site_legacy_download_grants SET attempts=attempts+1
+        WHERE token_hash=${hash} AND application_id=${Number(appId)} AND source_revision=${source.revision}
+        AND consumed_at IS NULL AND attempts<3 AND ready_at<=${now} AND expires_at>${now} RETURNING token_hash`;
+      if(!attempts.length)throw new DownloadError(410,'TOKEN_USED');
+      retry={id:Number(appId),token:body.token};
+      const destination=source.provider==='steamrip'
+        ?await (dependencies?.resolve??resolveSteamrip)(Number(appId),source.revision,source.destination):source.destination;
+      await sql.begin('isolation level read committed',async tx=>{
+        await tx`SET LOCAL lock_timeout='2s'`;
+        await tx`SET LOCAL statement_timeout='3s'`;
+        await tx`SELECT id FROM applications WHERE id=${Number(appId)} FOR SHARE`;
+        await tx`SELECT application_id FROM site_download_app_config WHERE application_id=${Number(appId)} FOR SHARE`;
+        await tx`SELECT application_id FROM site_delivery_sources WHERE application_id=${Number(appId)} FOR SHARE`;
+        const current=await legacyDelivery(tx as unknown as Sql,Number(appId),env);
+        if(current.revision!==source.revision)throw new DownloadError(409,'SOURCE_CHANGED');
+        countdown.redeem(body.token,Number(appId),current.revision,client);
+        const consumed=await tx`UPDATE site_legacy_download_grants SET consumed_at=${new Date((dependencies?.now??Date.now)())}
+          WHERE token_hash=${hash} AND consumed_at IS NULL RETURNING token_hash`;
+        if(!consumed.length)throw new DownloadError(410,'TOKEN_USED');
+      });
+      scheduleMetrics([{metric:'download_redeem',id:Number(appId)},
+        {metric:source.provider==='telegram'?'telegram_redirect':'external_download_redirect',id:Number(appId)}],request.headers);
+      return new Response(null,{ status:303,headers:{ ...downloadHeaders,Location:destination } });
+    } catch (error) {
+      if(retry && !request.headers.get('accept')?.includes('application/json')) {const response=providerRetry(error,retry.id,retry.token);if(response)return response;}
+      return downloadErrorResponse(error,request,operation==='redeem');
+    }
   };
 }

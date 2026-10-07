@@ -3,10 +3,11 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import type { Sql } from 'postgres';
 import { DownloadError } from '@/lib/downloads/rules';
 import { telegramDestination } from './telegram';
-import { telegramDownloadUrl } from '@/lib/site';
+import { publicUrl } from '@/lib/downloads/providers/public-http';
+import { STEAMRIP_HOSTS } from '@/lib/downloads/providers/steamrip';
 
 const fail = () => new DownloadError(404,'SOURCE_UNAVAILABLE');
-export type Delivery = { destination: string; revision: string; provider: 'telegram' | 'external' };
+export type Delivery = { destination: string; revision: string; provider: 'telegram' | 'external' | 'steamrip' };
 /** Re-read publication, disable gate and the exact source on every redemption. */
 export async function legacyDelivery(sql: Sql, applicationId: number, env: NodeJS.ProcessEnv): Promise<Delivery> {
   const [schema] = await sql`SELECT to_regclass('site_download_app_config') AS config,to_regclass('site_delivery_sources') AS sources`;
@@ -25,16 +26,14 @@ export async function legacyDelivery(sql: Sql, applicationId: number, env: NodeJ
     let destination; try { destination = telegramDestination(app.telegram_channel_username,app.telegram_message_id,env); } catch { throw fail(); }
     return delivery(destination,'telegram');
   }
-  const raw = app.shrankme_url || app.devupload_url;
-  if (typeof raw !== 'string' || raw.length > 2000) throw fail();
-  let url: URL; try { url = new URL(raw); } catch { throw fail(); }
-  if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hash) throw fail();
-  // SteamRIP's column is a source page, not a downloadable APK. Keep its live bot extractor.
-  if (url.hostname === 'steamrip.com' || url.hostname === 'www.steamrip.com')
-    return delivery(telegramDownloadUrl(applicationId),'external');
-  const hosts = (env.LEGACY_DOWNLOAD_ALLOWED_HOSTS || 'devuploads.com,shrinkme.io,shrinkme.site').split(',').map(v=>v.trim());
-  if (!hosts.includes(url.hostname)) throw fail();
-  return delivery(url.href,'external');
+  const hosts = (env.LEGACY_DOWNLOAD_ALLOWED_HOSTS || 'devuploads.com,shrinkme.io,shrinkme.site').split(',').map(v=>v.trim().toLowerCase()).filter(Boolean);
+  // Explicit custom/manual link has priority. An invalid configured link fails closed.
+  if(app.shrankme_url) {
+    try { return delivery(publicUrl(app.shrankme_url,hosts).href,'external'); } catch { throw fail(); }
+  }
+  if(typeof app.devupload_url!=='string' || app.devupload_url.length>2000)throw fail();
+  try {return delivery(publicUrl(app.devupload_url,STEAMRIP_HOSTS).href,'steamrip');}catch{/* then approved legacy source */}
+  try {return delivery(publicUrl(app.devupload_url,hosts).href,'external');}catch{throw fail();}
 }
 type Payload = { application_id: number; ready_at: number; expires_at: number; nonce: string; revision: string; client: string };
 export class LegacyCountdown {
@@ -64,5 +63,6 @@ export class LegacyCountdown {
       throw new DownloadError(400,'INVALID_TOKEN');
     if (this.now() >= data.expires_at) throw new DownloadError(410,'TOKEN_EXPIRED');
     if (this.now() < data.ready_at) throw new DownloadError(425,'COUNTDOWN_PENDING',new Date(data.ready_at),new Date(this.now()));
+    return data;
   }
 }

@@ -64,8 +64,22 @@ export async function downloadBody(request: Request, form = false, maxBytes = 20
     throw new DownloadError(400, 'INVALID_REQUEST');
   } finally { clearTimeout(timer); reader.releaseLock(); }
 }
-const message = (error: DownloadError) => error.status === 429 ? 'طلبات كثيرة؛ انتظر قبل المحاولة مجددًا.'
-  : error.status === 425 ? 'لم تنتهِ مهلة تجهيز التحميل.' : 'تعذر تنفيذ طلب التحميل.';
+const providerMessages:Record<string,string>={
+  PROVIDER_CHALLENGE:'المصدر يطلب تحققًا بشريًا مؤقتًا. أعد المحاولة لاحقًا.',
+  PROVIDER_TIMEOUT:'انتهت مهلة تجهيز المصدر. يمكنك إعادة المحاولة.',
+  PROVIDER_UNAVAILABLE:'مزود التحميل غير متاح مؤقتًا. أعد المحاولة بعد قليل.',
+  PROVIDER_RATE_LIMITED:'المزود مشغول بطلبات كثيرة. انتظر ثم أعد المحاولة.',
+  PROVIDER_BUSY:'تجهيز المصادر مشغول حاليًا. أعد المحاولة بعد قليل.',
+  BZZHR_NOT_FOUND:'لم يُعثر على مصدر BZZHR لهذه اللعبة. جرّب لاحقًا.',
+  SOURCE_REMOVED:'المصدر أُزيل أو لم يعد متاحًا.',
+  SOURCE_CHANGED:'تغيّر التطبيق أثناء التجهيز. ارجع إلى صفحته وجهّز طلبًا جديدًا.',
+  INVALID_SOURCE:'مصدر التحميل غير صالح حاليًا.',
+  INVALID_PROVIDER_RESPONSE:'تعذر التحقق من رابط التحميل. أعد المحاولة لاحقًا.',
+  TOKEN_USED:'استخدم هذا الطلب أو بلغ حد محاولاته. جهّز طلبًا جديدًا.',
+  TOKEN_EXPIRED:'انتهت صلاحية الطلب. جهّز طلبًا جديدًا.',
+};
+const message = (error: DownloadError) => providerMessages[error.code] || (error.status === 429 ? 'طلبات كثيرة؛ انتظر قبل المحاولة مجددًا.'
+  : error.status === 425 ? 'لم تنتهِ مهلة تجهيز التحميل.' : 'تعذر تنفيذ طلب التحميل.');
 export function downloadErrorResponse(error: unknown, request?: Request, html = false) {
   const e = error instanceof DownloadError ? error : unavailable();
   const headers: Record<string, string> = { ...downloadHeaders };

@@ -28,7 +28,7 @@ export class OwnerAnalyticsService{
         AND m.metric IN ('detail_view','download_redeem') GROUP BY a.id,a.name ORDER BY sum(m.value) FILTER(WHERE m.metric='detail_view') DESC NULLS LAST,
         sum(m.value) FILTER(WHERE m.metric='download_redeem') DESC NULLS LAST,a.id ASC LIMIT ${limit}`;
       return {days,from,to:today.toISOString().slice(0,10),timezone:'UTC',visitors:count(visitors.value),metrics,
-        conversions:{detail_to_download:conversion(metrics.detail_view,metrics.download_page_view),download_to_redeem:conversion(metrics.download_page_view,metrics.download_redeem),redeem_to_redirect:conversion(metrics.download_redeem,metrics.telegram_redirect)},
+        conversions:{detail_to_download:conversion(metrics.detail_view,metrics.download_page_view),download_to_redeem:conversion(metrics.download_page_view,metrics.download_redeem),redeem_to_redirect:conversion(metrics.download_redeem,metrics.telegram_redirect+metrics.external_download_redirect)},
         top:top.map(row=>({application_id:row.id,name:typeof row.name==='string'&&row.name.trim()?row.name:`تطبيق بدون اسم (${row.id})`,views:count(row.views),redeems:count(row.redeems),conversion:conversion(count(row.views),count(row.redeems))}))};
     });
   }

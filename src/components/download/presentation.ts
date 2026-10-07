@@ -18,7 +18,7 @@ export async function getDownloadPresentation(applicationId: number) {
 }
 
 /** Expose availability only; the destination never crosses the RSC boundary. */
-export async function getFallbackDelivery(applicationId: number): Promise<'telegram' | 'external' | null> {
+export async function getFallbackDelivery(applicationId: number): Promise<'telegram' | 'external' | 'steamrip' | null> {
   const sql = getSql();
   if (!sql) return null;
   try {

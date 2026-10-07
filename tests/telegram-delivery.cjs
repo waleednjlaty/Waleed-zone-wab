@@ -18,6 +18,8 @@ test('shared catalog CRUD and real Telegram metadata routes',async t=>{
  await db.exec(`CREATE TABLE applications(id SERIAL PRIMARY KEY,name TEXT,description TEXT,version TEXT,size TEXT,category TEXT,platform TEXT,developer TEXT,image_url TEXT,search_text TEXT,icon_file_id TEXT,active BOOLEAN,published BOOLEAN,downloads INT,views INT,shrankme_url TEXT,devupload_url TEXT,created_at TIMESTAMPTZ);`);
  await db.exec(readFileSync('migrations/003_runtime_security.sql','utf8'));
  await db.exec(readFileSync('migrations/001_downloads.sql','utf8'));await db.exec(readFileSync('migrations/002_delivery_sources.sql','utf8'));
+ await db.exec(readFileSync('migrations/005_monetization.sql','utf8'));
+ await db.exec(readFileSync('migrations/006_download_processing.sql','utf8'));
  await db.exec(readFileSync('migrations/002_delivery_sources.sql','utf8')); // additive/repeatable, preserves rows
  let queue=Promise.resolve();function tag(executor){const sql=(parts,...values)=>executor.query(parts.reduce((s,p,i)=>s+(i?'$'+i:'')+p,''),values).then(r=>r.rows);
  sql.begin=(mode,fn)=>{const pending=queue.then(()=>db.transaction(tx=>fn(tag(tx))));queue=pending.catch(()=>{});return pending;};return sql;}
@@ -69,7 +71,7 @@ test('shared catalog CRUD and real Telegram metadata routes',async t=>{
  await t.test('wrong configured channel rejected at redemption',async()=>{await sql`UPDATE site_delivery_sources SET telegram_channel_username='other_channel' WHERE application_id=${app.id}`;await assert.rejects(legacyDelivery(sql,app.id,env),e=>e.status===404);});
  await t.test('source absent rejected for new app',async()=>{await sql`DELETE FROM site_delivery_sources WHERE application_id=${app.id}`;await assert.rejects(legacyDelivery(sql,app.id,env),e=>e.status===404);});
  await t.test('no external open redirect; existing approved legacy URL works',async()=>{await sql`UPDATE applications SET shrankme_url='https://evil.test/file' WHERE id=${app.id}`;await assert.rejects(legacyDelivery(sql,app.id,env));await sql`UPDATE applications SET shrankme_url='https://shrinkme.io/old' WHERE id=${app.id}`;assert.equal((await legacyDelivery(sql,app.id,env)).destination,'https://shrinkme.io/old');});
- await t.test('SteamRIP column keeps source semantics',async()=>{await sql`UPDATE applications SET shrankme_url=NULL,devupload_url='https://steamrip.com/qa-game/' WHERE id=${app.id}`;assert.match((await legacyDelivery(sql,app.id,env)).destination,/t\.me\/.+\?start=app_/);});
+ await t.test('SteamRIP column keeps source semantics',async()=>{await sql`UPDATE applications SET shrankme_url=NULL,devupload_url='https://steamrip.com/qa-game/' WHERE id=${app.id}`;const source=await legacyDelivery(sql,app.id,env);assert.equal(source.provider,'steamrip');assert.equal(source.destination,'https://steamrip.com/qa-game/');});
  await t.test('disabled download config denies fallback',async()=>{await sql`INSERT INTO site_download_app_config(application_id,mode) VALUES(${app.id},'disabled')`;await assert.rejects(legacyDelivery(sql,app.id,env));});
 });
 

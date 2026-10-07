@@ -2,7 +2,7 @@
 import {useEffect,useState} from 'react';
 import {request,apiErrorMessage} from './api';
 import styles from './admin.module.css';
-const labels:Record<string,string>={detail_view:'مشاهدات التفاصيل',download_page_view:'مشاهدات صفحة التحميل',download_prepare:'تجهيزات التحميل',download_redeem:'الاستردادات الناجحة',telegram_redirect:'تحويلات Telegram'};
+const labels:Record<string,string>={detail_view:'مشاهدات التفاصيل',download_page_view:'مشاهدات صفحة التحميل',download_prepare:'تجهيزات التحميل',download_redeem:'الاستردادات الناجحة',telegram_redirect:'تحويلات Telegram',external_download_redirect:'تحويلات التحميل الخارجي'};
 type Report={days:number;from:string;to:string;visitors:number;metrics:Record<string,number>;conversions:Record<string,number|null>;top:{application_id:number;name:string;views:number;redeems:number;conversion:number|null}[]};
 const ratio=(value:number|null)=>value===null?'غير متاح':`${value}%`;
 function parse(value:Record<string,unknown>):Report{

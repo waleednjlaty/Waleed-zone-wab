@@ -36,6 +36,7 @@ async function createFixture(t, options={}) {
   if(options.monetization){
     await db.exec(readFileSync(require.resolve('../../migrations/002_delivery_sources.sql'),'utf8'));
     await db.exec(readFileSync(require.resolve('../../migrations/005_monetization.sql'),'utf8'));
+    await db.exec(readFileSync(require.resolve('../../migrations/006_download_processing.sql'),'utf8'));
   }
   for(const [key,secret] of Object.entries(sessions))await sql`INSERT INTO site_sessions VALUES(${createHash('sha256').update(secret).digest('hex')},${key==='visitor'?'qa-visitor':'qa-owner'},${new Date(Date.now()+(key==='expired'?-60000:86400000))},NOW())`;
   const original=Module._load;

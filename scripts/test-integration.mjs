@@ -28,6 +28,7 @@ try {
   await sql.unsafe((await import('node:fs')).readFileSync('migrations/001_downloads.sql','utf8'));
   await sql.unsafe((await import('node:fs')).readFileSync('migrations/002_delivery_sources.sql','utf8'));
   await sql.unsafe((await import('node:fs')).readFileSync('migrations/005_monetization.sql','utf8'));
+  await sql.unsafe((await import('node:fs')).readFileSync('migrations/006_download_processing.sql','utf8'));
   for(const [index,name] of ['WhatsApp','Telegram','Instagram','Spotify','TikTok','Facebook','Clash of Clans','Grand Theft Auto','Call of Duty'].entries()) {
     await sql`INSERT INTO applications(id,name,description,version,size,category,platform,developer,downloads,active,published,created_at)
       VALUES(${201+index},${name},${'Test fixture only. '.repeat(40)},'9.1','85 MB',${index>=6?'ألعاب':'تواصل'},'Android',${[0,2,5].includes(index)?'Meta':'Test Developer'},10,true,true,NOW())`;
