@@ -165,3 +165,18 @@ test('GET_HEADERS transport closes a huge file immediately without reading its b
  await transport(t,[{headers:{'content-length':'99999999999','content-type':'application/octet-stream'}}]);
  const result=await http.publicHttp(destination,bzzhr.BZZHR_FILE_HOSTS,signal(),{Range:'bytes=0-0'},true,'GET_HEADERS');assert.equal(result.body,'');assert.equal(result.status,200);
 });
+
+test('rejected redirect on one advertised SteamRIP source can use another vetted actual source',async()=>{
+ const second='https://bzzhr.co/other';let visited=[];
+ const fn=async(url,hosts,sig,headers,follow,method)=>{
+  visited.push(url);
+  if(url===source)return {url,status:200,headers:{},body:`<a href="${page}"><a href="${second}">`};
+  // Actual live first provider page redirected back to steamrip.com; transport rejects that hop.
+  if(url===page)throw http.providerError('INVALID_SOURCE');
+  if(url===second)return {url,status:200,headers:{},body:'<a hx-get="/other/fetch?signature=x">'};
+  if(method==='HEAD')return {url:destination,status:200,headers:{'content-type':'application/octet-stream'},body:''};
+  return {url,status:204,headers:{'hx-redirect':destination},body:''};
+ };
+ assert.equal(await steam.steamripDestination(source,signal(),fn),destination);
+ assert.equal(visited.length,5);assert.ok(!visited.some(url=>url==='https://steamrip.com'));
+});
