@@ -16,7 +16,7 @@ const messages: Record<Locale, Record<string, string>> = {
     STORAGE_UNAVAILABLE: 'خدمة الملفات غير متاحة مؤقتًا. حاول مجددًا بعد قليل.',
     FILE_UNAVAILABLE: 'هذا الملف غير متاح للتحميل حاليًا. ارجع إلى صفحة التطبيق.',
     REQUEST_REVOKED: 'لم يعد هذا الطلب متاحًا. ارجع إلى صفحة التطبيق للتحقق من الملف.',
-    DOWNLOAD_IN_PROGRESS: 'لديك طلب تحميل آخر قيد التجهيز. أكمله في تبويبه أو انتظر انتهاء صلاحيته.',
+    DOWNLOAD_IN_PROGRESS: 'لديك طلب تحميل آخر قيد التجهيز. أكمله أو انتظر انتهاء صلاحيته.',
     CSRF_REJECTED: 'تغيرت جلسة التحميل. أعد المحاولة لتحديثها.',
     DOWNLOAD_SESSION_REQUIRED: 'انتهت جلسة التحميل. أعد المحاولة، وتأكد من السماح بملفات الارتباط لهذا الموقع.',
     TOKEN_ISSUANCE_EXHAUSTED: 'تعذر تجديد هذا الرابط مرة أخرى. جهّز طلبًا جديدًا.',
@@ -31,7 +31,7 @@ const messages: Record<Locale, Record<string, string>> = {
     STORAGE_UNAVAILABLE: 'The file service is temporarily unavailable. Try again shortly.',
     FILE_UNAVAILABLE: 'This file is currently unavailable. Return to the app page.',
     REQUEST_REVOKED: 'This request is no longer available. Return to the app page to check the file.',
-    DOWNLOAD_IN_PROGRESS: 'Another download request is being prepared. Finish it in its tab or wait for it to expire.',
+    DOWNLOAD_IN_PROGRESS: 'Another download request is being prepared. Finish it or wait for it to expire.',
     CSRF_REJECTED: 'The download session changed. Try again to refresh it.',
     DOWNLOAD_SESSION_REQUIRED: 'The download session expired. Try again and make sure cookies are allowed for this site.',
     TOKEN_ISSUANCE_EXHAUSTED: 'This link cannot be renewed again. Prepare a new request.',
@@ -167,10 +167,10 @@ export function useDownload(file: DownloadFile | null) {
       if (!r.alive) return;
       if (result.state === 'redeemed' || result.state === 'expired' || result.state === 'revoked') accept(result);
       else {
-        // Native POST errors are rendered in the download tab by the API. There
-        // is no invented JSON redeem endpoint and no cross-origin file fetch.
+        // Native POST errors are rendered by the API in the same browsing context.
+        // There is no invented JSON redeem endpoint and no cross-origin file fetch.
         setToken(null);
-        setMessage('لم يتأكد بدء التحميل. راجع تبويب التحميل لمعرفة السبب، ثم أعد تجهيز الرابط إذا لزم.');
+        setMessage('لم يتأكد بدء التحميل. أعد تجهيز الرابط إذا لزم.');
         setState('FAILED');
       }
     } catch (error) { if (r.alive) fail(error); }
@@ -231,6 +231,6 @@ export function useDownload(file: DownloadFile | null) {
   }, [check, state]);
 
   const messageCode = Object.keys(messages.ar).find(code => messages.ar[code] === message);
-  const localizedMessage = locale === 'en' && message ? messageCode ? messages.en[messageCode] : message === 'لم يتأكد بدء التحميل. راجع تبويب التحميل لمعرفة السبب، ثم أعد تجهيز الرابط إذا لزم.' ? 'The download could not be confirmed. Check the download tab for the reason, then prepare a new link if needed.' : 'Unable to prepare the download. Try again or return to the app page.' : message;
+  const localizedMessage = locale === 'en' && message ? messageCode ? messages.en[messageCode] : message === 'لم يتأكد بدء التحميل. أعد تجهيز الرابط إذا لزم.' ? 'The download could not be confirmed. Prepare a new link if needed.' : 'Unable to prepare the download. Try again or return to the app page.' : message;
   return { state, remaining, message: localizedMessage, token, csrf, requestId, prepare, submit, check };
 }

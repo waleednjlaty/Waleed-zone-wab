@@ -45,15 +45,15 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
     <header className={styles.header}><p className="eyebrow">WALEED ZONE</p><h1>{t("تحميل")} <bdi>{app.name}</bdi></h1><p>{provider==='telegram'?t("بعد التجهيز، سيفتح ملف التطبيق في قناة Telegram."):t("بعد التجهيز، سيفتح مصدر التحميل الحالي.")}</p></header>
     <div className={styles.layout}><aside className={styles.summary}><div className={styles.identity}><span className={styles.icon}><CoverImage src={app.imageUrl} alt={t("أيقونة {0}", app.name)} aspectClassName="aspect-square"/></span><h2 dir="auto">{app.name}</h2></div><dl><div><dt>{t("الإصدار")}</dt><dd dir="auto">{app.version||t("غير معروف")}</dd></div><div><dt>{t("الحجم")}</dt><dd dir="auto">{app.size||t("غير معروف")}</dd></div></dl><Link href={app.detailHref}>{t("تفاصيل التطبيق")}</Link></aside>
       <section className={styles.panel} aria-labelledby="legacy-status"><div className={styles.status}><h2 ref={heading} tabIndex={-1} id="legacy-status">{state==='COUNTDOWN'?t("رابطك قيد التجهيز"):state==='READY'?(provider==='steamrip'?t("جاهز لتجهيز الرابط"):t("رابط التحميل جاهز")):state==='PROCESSING'?t("جارٍ تجهيز المصدر والتحويل"):t("تجهيز رابط التحميل")}</h2>
-      <p role="status" aria-live="polite">{t(error)|| (sent?(provider==='steamrip'?t("جارٍ العثور على BZZHR وتوليد رابط آمن على الخادم. نتيجة الطلب ستظهر في التبويب الجديد."):t("تابع نتيجة طلب التحميل في التبويب الجديد.")):busy?t("جارٍ التحقق من توفر التطبيق."):t("مهلة التجهيز 20 ثانية."))}</p>
+      <p role="status" aria-live="polite">{t(error)|| (sent?(provider==='steamrip'?t("جارٍ العثور على BZZHR وتوليد رابط آمن على الخادم. ستتابع النتيجة في هذه الصفحة."):t("جارٍ متابعة طلب التحميل في هذه الصفحة.")):busy?t("جارٍ التحقق من توفر التطبيق."):t("مهلة التجهيز 20 ثانية."))}</p>
       {grant&&remaining>0&&<><div className={styles.countdown} role="timer" aria-live="off"><strong>{remaining}</strong><span>{t("ثانية متبقية")}</span></div><progress className={styles.progress} max={20} value={20-remaining} aria-label={t("تقدم تجهيز الرابط")}/></>}</div>
-      <div className={styles.actions}>{grant&&remaining===0&&!sent?<form action="/api/downloads/legacy/redeem" method="post" target="_blank" rel="noopener" onSubmit={event=>{
+      <div className={styles.actions}>{grant&&remaining===0&&!sent?<form action="/api/downloads/legacy/redeem" method="post" onSubmit={event=>{
         event.preventDefault();
         if(submitted.current)return;submitted.current=true;
         // Launch the browser's native POST before React removes the form.
         event.currentTarget.submit();
         setTimeout(()=>setSent(true),0);
       }}><input type="hidden" name="application_id" value={app.id}/><input type="hidden" name="token" value={grant.token}/><button type="submit" className="primary-action">{provider==='telegram'?t("تحميل الملف عبر Telegram"):provider==='steamrip'?t("توليد رابط تحميل آمن"):t("فتح رابط التحميل")} ↓</button></form>:!grant||sent?<button type="button" className="primary-action" disabled={busy} onClick={()=>void prepare()}>{busy?t("جارٍ التحقق…"):sent?t("تجهيز طلب جديد"):t("تجهيز رابط التحميل")}</button>:<button type="button" disabled className="primary-action">{t("جارٍ التجهيز ·")} {remaining}  {t("ثانية")}</button>}
-      <p className={styles.note}>{t("عند فشل المزود يمكنك إعادة الطلب من تبويب النتيجة. يفتح التحميل في تبويب جديد. إذا رفض الخادم الطلب، تظهر رسالة السبب في ذلك التبويب.")}</p></div></section></div>
+      <p className={styles.note}>{t("تتم المعالجة في نفس التبويب. عند فشل المزود ستظهر شاشة آمنة داخل Waleed Zone لإعادة المحاولة أو تجهيز طلب جديد.")}</p></div></section></div>
   </div>;
 }
