@@ -124,5 +124,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Download and hash original authorized text on both live hosts
         run: |
-          node scripts/test-provider-live.cjs https://bzzhr.co/8hcdyeypd460
-          node scripts/test-provider-live.cjs https://buzzheavier.com/8hcdyeypd460
+          canary_failed=0
+          node scripts/test-provider-live.cjs https://bzzhr.co/8hcdyeypd460 || canary_failed=1
+          node scripts/test-provider-live.cjs https://buzzheavier.com/8hcdyeypd460 || canary_failed=1
+          exit "$canary_failed"

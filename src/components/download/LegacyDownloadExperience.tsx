@@ -38,7 +38,7 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
       // Conservative local display. Server independently rechecks the exact deadline.
       deadline.current={ready:Math.max(start,performance.now())+ready-server,expires:performance.now()+expires-server};
       setRemaining(20);setGrant(data);
-    }catch(e){setError(e instanceof Error&&e.name!=='AbortError'?e.message:'انتهت مهلة الاتصال. أعد المحاولة.');}
+    }catch(e){setError(e instanceof TypeError?'تعذر تنفيذ طلب التحميل.':e instanceof Error&&e.name!=='AbortError'?e.message:'انتهت مهلة الاتصال. أعد المحاولة.');}
     finally{clearTimeout(timer);active.current=null;setBusy(false);lock.current=false;}
   }
   async function redeem(form: HTMLFormElement){
@@ -65,7 +65,7 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
       // Attachment responses keep this UI; upstream HTML may navigate this same tab.
       // Browser transport/completion cannot be observed across origins.
       window.location.assign(data.destination);
-    }catch(e){setError(e instanceof Error&&e.name!=='AbortError'?e.message:'انتهت مهلة الاتصال. أعد المحاولة.');submitted.current=false;}
+    }catch(e){setError(e instanceof TypeError?'تعذر تنفيذ طلب التحميل.':e instanceof Error&&e.name!=='AbortError'?e.message:'انتهت مهلة الاتصال. أعد المحاولة.');submitted.current=false;}
     finally{clearTimeout(timer);active.current=null;setResolving(false);}
   }
   const state=busy?'PREPARING':resolving?'RESOLVING':error?'FAILED':sent?'DOWNLOADING':grant?remaining>0?'COUNTDOWN':'READY':'INITIAL';
