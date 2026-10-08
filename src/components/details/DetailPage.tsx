@@ -60,6 +60,11 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
       <div className="detail-content-grid"><div className="detail-main">
         {Boolean(details.screenshots?.length)&&<Screenshots images={details.screenshots!} name={name}/>}
         <section className="detail-section" aria-labelledby="description-title"><h2 id="description-title">{kind==='games'?t("عن اللعبة"):t("عن التطبيق")}</h2>{app.description?<ExpandableDescription text={app.description}/>:<p className="detail-subtitle">{t("لم يُضف وصف لهذا المحتوى بعد.")}</p>}</section>
-        {details.changelog&&<section className="detail-section" aria-labelledby="changelog-title"><h2 id="changelog-title">{t("ما الجديد؟")}</h2><p className="detail-description" dir="auto">{details.change…663 tokens truncated…ex)=><figure key={`${image.url}-${index}`}><img src={safeExternalUrl(image.url)!} alt={image.alt||t("لقطة شاشة {0} من {1}", index+1, name)} loading="lazy" decoding="async" referrerPolicy="no-referrer"/></figure>)}
-  </div></section>;
+        {details.changelog&&<section className="detail-section" aria-labelledby="changelog-title"><h2 id="changelog-title">{t("ما الجديد؟")}</h2><p className="detail-description" dir="auto">{details.changelog}</p></section>}
+        {details.modInfo&&<section className="detail-section" aria-labelledby="mod-title"><h2 id="mod-title">{t("معلومات النسخة المعدلة")} <span className="app-badge" lang="en">MOD</span></h2><p className="detail-description" dir="auto">{details.modInfo}</p></section>}
+      </div><aside className="detail-technical detail-section" aria-labelledby="technical-title"><h2 id="technical-title">{t("المعلومات التقنية")}</h2><dl>{technical.map(([label,value])=><div key={label}><dt>{label}</dt><dd dir="auto">{value}</dd></div>)}</dl></aside><div className="detail-version-section"><Versions items={details.versions||[]}/></div></div>
+    </article>
+    {related.length>0&&<section className="catalog-section detail-related" aria-labelledby="related-title"><SectionHeading id="related-title" title={kind==='games'?t("ألعاب ذات صلة"):t("تطبيقات ذات صلة")} subtitle={t("من التصنيف أو المطوّر نفسه")} href={categoryPath||undefined} linkLabel={t("عرض التصنيف")}/><AppGrid apps={related}/></section>}
+    {adEligible && adConfig && <ManualAd key={app.id} {...adConfig} nonce={nonce} path={appHref(app)} />}
+  </div>;
 }
