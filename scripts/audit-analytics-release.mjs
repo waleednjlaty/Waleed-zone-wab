@@ -18,7 +18,7 @@ export async function auditAnalytics(connection,{createSql=postgres,log=value=>c
   let probe;
   try {
     // Match the production metrics connection deadline without performing any writes.
-    probe=createSql(connection,{prepare:false,max:1,idle_timeout:5,connect_timeout:1,
+    probe=createSql(connection,{prepare:false,max:1,idle_timeout:5,connect_timeout:3,
       connection:{statement_timeout:250,lock_timeout:50,idle_in_transaction_session_timeout:1000,default_transaction_read_only:'on'},...ssl});
     await probe`SELECT 1`;
     report('ANALYTICS_RUNTIME_CONNECTION_READY');

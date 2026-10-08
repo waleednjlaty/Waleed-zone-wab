@@ -29,7 +29,7 @@ test('release audit uses bounded read-only connections and emits only whiteliste
     assert.equal(config.prepare,false);
     assert.equal(config.connection.default_transaction_read_only,'on');
   }
-  assert.equal(options[0].connect_timeout,1);
+  assert.equal(options[0].connect_timeout,3);
   assert.equal(options[0].connection.statement_timeout,250);
   assert.equal(options[1].connect_timeout,5);
   assert.ok(queries.every(query=>query.trim().startsWith('SELECT')));
