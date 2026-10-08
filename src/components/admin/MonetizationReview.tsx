@@ -1,4 +1,6 @@
 'use client';
+import { useTranslateUI } from '@/components/LocaleProvider';
+
 import { useEffect, useRef, useState } from 'react';
 import CoverImage from '@/components/CoverImage';
 import { adminApi, apiErrorMessage, AdminApiError, request } from './api';
@@ -26,6 +28,8 @@ function parsePage(value:Record<string,unknown>):Page {
   return {items,counts,gates,next_after:next as number|null};
 }
 export default function MonetizationReview() {
+  const t = useTranslateUI();
+
   const [cursors,setCursors]=useState<(number|null)[]>([null]),[epoch,setEpoch]=useState(0),[page,setPage]=useState<Page|null>(null);
   const [row,setRow]=useState<Review|null>(null),[basis,setBasis]=useState<Basis>('unknown'),[notes,setNotes]=useState('');
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[notice,setNotice]=useState(''),[error,setError]=useState('');
@@ -59,27 +63,27 @@ export default function MonetizationReview() {
       else setError(accepted?'استلم الخادم الحفظ، لكن تعذر تأكيده. حدّث الحالة قبل أي إجراء جديد.':apiErrorMessage(e));
     } finally {lock.current=false;setBusy(false);feedback.current?.focus();}
   }
-  const gateLabels:Record<string,string>={publisherConfigured:'معرّف الحساب',contentReviewed:'إقرار مراجعة المحتوى',siteApproved:'إقرار موافقة Google',privacyReady:'إقرار تجهيز CMP والخصوصية',enabled:'مفتاح العرض النهائي',serving:'اكتمال بوابات العرض',manualPlacementConfigured:'إعداد الموضع اليدوي وCMP'};
+  const gateLabels:Record<string,string>={publisherConfigured:t("معرّف الحساب"),contentReviewed:t("إقرار مراجعة المحتوى"),siteApproved:t("إقرار موافقة Google"),privacyReady:t("إقرار تجهيز CMP والخصوصية"),enabled:t("مفتاح العرض النهائي"),serving:t("اكتمال بوابات العرض"),manualPlacementConfigured:t("إعداد الموضع اليدوي وCMP")};
   return <section className={styles.panel} aria-labelledby="monetization-title">
-    <div className={styles.panelHead}><h3 id="monetization-title">مراجعة أهلية الإعلانات</h3><p>المراجعة داخلية للمالك. مجاني أو رسمي لا يعني وجود حق إعادة توزيع؛ وثّق المصدر والترخيص. تغيير المحتوى يلغي أهليته السابقة.</p></div>
-    <p ref={feedback} tabIndex={-1} role={error?'alert':'status'} aria-live="polite">{notice}{notice&&error?' ':''}{error}</p>
-    <button className={styles.secondary} disabled={busy} onClick={()=>{setNotice('');setEpoch(v=>v+1);}}>تحديث مراجعات الربح</button>
-    {loading&&<p role="status" aria-busy="true">جارٍ قراءة المراجعات…</p>}
-    {page&&<><div className={styles.stats}>{Object.entries(statuses).map(([key,label])=><div key={key}><span>{label}</span><strong>{page.counts[key as Status]}</strong><small>الكتالوج كاملًا</small></div>)}</div>
-      <div className={styles.gates}>{Object.entries(gateLabels).map(([key,label])=><div className={styles.gate} key={key}><span>{label}</span><span className={`${styles.badge} ${page.gates[key]?styles.success:styles.warning}`}>{page.gates[key]?'مُقرّ / مُعدّ':'غير جاهز'}</span></div>)}</div>
-      <div className={styles.gate}><span>إشارات المراجعة (Flagged)</span><span>تقرير التدقيق فقط؛ غير محسوبة مباشرة</span></div><p>التدقيق الكامل متاح للمالك عبر monetization:audit. الإشارة لا تعني الحظر أو الأهلية، ولا يُمسح الكتالوج بحثًا عن العبارات عند كل طلب.</p>
-      <p className={styles.warning}>هذه الإقرارات لا تتحقق من حساب Google. يظل عرض كل إعلان مشروطًا بأهلية الصفحة واستجابة CMP الفعلية.</p>
+    <div className={styles.panelHead}><h3 id="monetization-title">{t("مراجعة أهلية الإعلانات")}</h3><p>{t("المراجعة داخلية للمالك. مجاني أو رسمي لا يعني وجود حق إعادة توزيع؛ وثّق المصدر والترخيص. تغيير المحتوى يلغي أهليته السابقة.")}</p></div>
+    <p ref={feedback} tabIndex={-1} role={error?'alert':'status'} aria-live="polite">{t(notice)}{notice&&error?' ':''}{t(error)}</p>
+    <button className={styles.secondary} disabled={busy} onClick={()=>{setNotice('');setEpoch(v=>v+1);}}>{t("تحديث مراجعات الربح")}</button>
+    {loading&&<p role="status" aria-busy="true">{t("جارٍ قراءة المراجعات…")}</p>}
+    {page&&<><div className={styles.stats}>{Object.entries(statuses).map(([key,label])=><div key={key}><span>{t(label)}</span><strong>{page.counts[key as Status]}</strong><small>{t("الكتالوج كاملًا")}</small></div>)}</div>
+      <div className={styles.gates}>{Object.entries(gateLabels).map(([key,label])=><div className={styles.gate} key={key}><span>{t(label)}</span><span className={`${styles.badge} ${page.gates[key]?styles.success:styles.warning}`}>{page.gates[key]?t("مُقرّ / مُعدّ"):t("غير جاهز")}</span></div>)}</div>
+      <div className={styles.gate}><span>{t("إشارات المراجعة (Flagged)")}</span><span>{t("تقرير التدقيق فقط؛ غير محسوبة مباشرة")}</span></div><p>{t("التدقيق الكامل متاح للمالك عبر monetization:audit. الإشارة لا تعني الحظر أو الأهلية، ولا يُمسح الكتالوج بحثًا عن العبارات عند كل طلب.")}</p>
+      <p className={styles.warning}>{t("هذه الإقرارات لا تتحقق من حساب Google. يظل عرض كل إعلان مشروطًا بأهلية الصفحة واستجابة CMP الفعلية.")}</p>
       <div className={styles.appList}>{page.items.map(item=><button key={item.application_id} className={styles.appRow} disabled={busy} onClick={()=>select(item)} aria-pressed={row?.application_id===item.application_id}>
-        <span className={styles.identity}><span className={styles.appIcon}><CoverImage src={item.icon} alt="" aspectClassName="aspect-square"/></span><span><strong dir="auto">{item.name}</strong><small>{item.category||'بدون تصنيف'} · {item.version||'بدون إصدار'} · {item.active?'فعّال':'مؤرشف'} · {item.published?'منشور':'مسودة'}</small></span></span><span className={styles.badge}>{statuses[item.status]} · {bases[item.rights_basis]}</span>
+        <span className={styles.identity}><span className={styles.appIcon}><CoverImage src={item.icon} alt="" aspectClassName="aspect-square"/></span><span><strong dir="auto">{item.name}</strong><small>{item.category||t("بدون تصنيف")} · {item.version||t("بدون إصدار")} · {item.active?t("فعّال"):t("مؤرشف")} · {item.published?t("منشور"):t("مسودة")}</small></span></span><span className={styles.badge}>{t(statuses[item.status])} · {t(bases[item.rights_basis])}</span>
       </button>)}</div>
-      {!page.items.length&&<p>لا توجد تطبيقات في هذه الصفحة.</p>}
-      <div className={styles.pagination}><button className={styles.secondary} disabled={busy||cursors.length===1} onClick={()=>setCursors(v=>v.slice(0,-1))}>السابق</button><span>صفحة {cursors.length}</span><button className={styles.secondary} disabled={busy||page.next_after===null} onClick={()=>setCursors(v=>[...v,page.next_after])}>التالي</button></div>
+      {!page.items.length&&<p>{t("لا توجد تطبيقات في هذه الصفحة.")}</p>}
+      <div className={styles.pagination}><button className={styles.secondary} disabled={busy||cursors.length===1} onClick={()=>setCursors(v=>v.slice(0,-1))}>{t("السابق")}</button><span>{t("صفحة")} {cursors.length}</span><button className={styles.secondary} disabled={busy||page.next_after===null} onClick={()=>setCursors(v=>[...v,page.next_after])}>{t("التالي")}</button></div>
     </>}
-    {row&&<form className={styles.form} onSubmit={event=>event.preventDefault()}><fieldset disabled={busy}><legend>مراجعة {row.name}</legend><p>الحالة الحالية: {statuses[row.status]}</p>
-      <label htmlFor="monetization-basis">أساس الحقوق</label><select id="monetization-basis" value={basis} onChange={e=>setBasis(e.target.value as Basis)}>{Object.entries(bases).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select>
-      <label htmlFor="monetization-notes">ملاحظات داخلية ودليل الحقوق (حتى 1000 حرف)</label><textarea id="monetization-notes" maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)}/>
-      <p>أضف مصدر الإذن أو الترخيص وسبب ملاءمة الصفحة لسياسات الناشر. لا تضع كلمات مرور أو بيانات شخصية.</p>
-      <div className={styles.formActions}><button type="button" className={styles.primary} disabled={basis==='unknown'||!notes.trim()} onClick={()=>void save('eligible')}>تحديد كمؤهل</button><button type="button" className={styles.secondary} onClick={()=>void save('blocked')}>حظر الإعلانات</button><button type="button" className={styles.secondary} onClick={()=>void save('unreviewed')}>حفظ كغير مراجع</button></div>
+    {row&&<form className={styles.form} onSubmit={event=>event.preventDefault()}><fieldset disabled={busy}><legend>{t("مراجعة")} {row.name}</legend><p>{t("الحالة الحالية:")} {t(statuses[row.status])}</p>
+      <label htmlFor="monetization-basis">{t("أساس الحقوق")}</label><select id="monetization-basis" value={basis} onChange={e=>setBasis(e.target.value as Basis)}>{Object.entries(bases).map(([key,label])=><option key={key} value={key}>{t(label)}</option>)}</select>
+      <label htmlFor="monetization-notes">{t("ملاحظات داخلية ودليل الحقوق (حتى 1000 حرف)")}</label><textarea id="monetization-notes" maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)}/>
+      <p>{t("أضف مصدر الإذن أو الترخيص وسبب ملاءمة الصفحة لسياسات الناشر. لا تضع كلمات مرور أو بيانات شخصية.")}</p>
+      <div className={styles.formActions}><button type="button" className={styles.primary} disabled={basis==='unknown'||!notes.trim()} onClick={()=>void save('eligible')}>{t("تحديد كمؤهل")}</button><button type="button" className={styles.secondary} onClick={()=>void save('blocked')}>{t("حظر الإعلانات")}</button><button type="button" className={styles.secondary} onClick={()=>void save('unreviewed')}>{t("حفظ كغير مراجع")}</button></div>
     </fieldset></form>}
   </section>;
 }

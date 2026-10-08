@@ -21,10 +21,11 @@
     "metadata:downloads": "node scripts/download-metadata.mjs",
     "test:metadata": "node --test tests/file-metadata.cjs",
     "migrate:delivery": "node scripts/migrate-delivery.mjs",
-    "migrate:release": "npm run migrate:downloads && npm run migrate:delivery && npm run migrate:runtime-security && npm run migrate:monetization",
+    "migrate:release": "npm run migrate:downloads && npm run migrate:delivery && npm run migrate:runtime-security && npm run migrate:monetization && npm run migrate:download-processing",
     "migrate:runtime-security": "node scripts/migrate-runtime-security.mjs",
     "migrate:monetization": "node scripts/migrate-monetization.mjs",
-    "monetization:audit": "node scripts/monetization-audit.mjs"
+    "monetization:audit": "node scripts/monetization-audit.mjs",
+    "migrate:download-processing": "node scripts/migrate-download-processing.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1145.0",
@@ -34,10 +35,11 @@
     "@fontsource/space-grotesk": "^5.3.0",
     "@fontsource/tajawal": "^5.3.0",
     "drizzle-orm": "0.45.3",
-    "next": "15.5.26",
+    "htmlparser2": "^12.0.0",
     "postgres": "^3.4.5",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "next": "15.5.27"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
@@ -46,7 +48,7 @@
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
-    "eslint-config-next": "15.5.26",
+    "eslint-config-next": "15.5.27",
     "postcss": "8.5.28",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.5.4"

@@ -92,6 +92,8 @@ jobs:
         run: npm run test:integration
         env:
           WZ_BROWSER_TESTS: 'true'
+          WZ_FINAL_PROVIDER_FIXTURES: 'true'
+          NODE_OPTIONS: --require=${{ github.workspace }}/tests/providers/runtime-fixture.cjs
           WZ_AXE_MODULE: ${{ runner.temp }}/wz-browser/node_modules/axe-core/axe.min.js
 
       - name: Upload monetization UI evidence
@@ -99,5 +101,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: monetization-ui-evidence
-          path: docs/screenshots/monetization/
+          path: |
+            docs/screenshots/monetization/
+            tests/screenshots/
           if-no-files-found: ignore

@@ -33,7 +33,7 @@ test('005 release runner: fresh/idempotent/checksum/concurrency and existing dat
  });
  await t.test('release command includes 001/002/003/005, excludes optional 004',async()=>{
   const result=await new Promise(resolve=>{const child=spawn('npm',['run','migrate:release'],{env:{...process.env,DATABASE_URL:connection},stdio:['ignore','pipe','pipe']});let output='';child.stdout.on('data',d=>output+=d);child.stderr.on('data',d=>output+=d);child.on('exit',code=>resolve({code,output}));});assert.equal(result.code,0,result.output);
-  assert.deepEqual((await sql`SELECT name FROM site_schema_migrations ORDER BY name`).map(r=>r.name),['001_downloads.sql','002_delivery_sources.sql','003_runtime_security.sql','005_monetization.sql']);assert.equal(await snapshot(),before);
+  assert.deepEqual((await sql`SELECT name FROM site_schema_migrations ORDER BY name`).map(r=>r.name),['001_downloads.sql','002_delivery_sources.sql','003_runtime_security.sql','005_monetization.sql','006_download_processing.sql']);assert.equal(await snapshot(),before);
  });
  await t.test('audit CLI is read only, manual-only and never prints secrets/destinations',async()=>{
   const result=await run(['scripts/monetization-audit.mjs']);assert.equal(result.code,0,result.output);const report=JSON.parse(result.output);assert.equal(report.mode,'MANUAL_REVIEW_ONLY');assert.equal(report.summary.total_published,1);assert.equal(report.summary.flagged,1);assert.equal(report.summary.eligible,0);assert.equal(await snapshot(),before);assert.ok(!result.output.includes(connection)&&!result.output.includes('files_channel'));

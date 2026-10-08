@@ -1,7 +1,7 @@
 import 'server-only';
 import postgres, {type Sql} from 'postgres';
 import {logFailure} from '@/lib/security/logging';
-export const METRICS=['detail_view','download_page_view','download_prepare','download_redeem','telegram_redirect','catalog_view'] as const;
+export const METRICS=['detail_view','download_page_view','download_prepare','download_redeem','telegram_redirect','catalog_view','external_download_redirect'] as const;
 export type Metric=typeof METRICS[number];
 export function validMetric(metric:unknown,applicationId:unknown):metric is Metric {
   return typeof metric==='string'&&(METRICS as readonly string[]).includes(metric)

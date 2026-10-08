@@ -32,6 +32,7 @@ try {
   await sql.unsafe(readFileSync('migrations/001_downloads.sql','utf8'));
   await sql.unsafe(readFileSync('migrations/002_delivery_sources.sql','utf8'));
   await sql.unsafe((await import('node:fs')).readFileSync('migrations/005_monetization.sql','utf8'));
+  await sql.unsafe((await import('node:fs')).readFileSync('migrations/006_download_processing.sql','utf8'));
   await sql`INSERT INTO site_download_budget(id,starts_at,expires_at,allowance_verified,byte_limit,reserved_bytes) VALUES(1,NOW(),NOW()+INTERVAL '1 day',true,9007199254740993,9007199254740992)`;
   // Exact immutable trusted-publisher fixture; no real object or provider attestation.
   await sql`INSERT INTO site_download_versions(id,application_id,version_label,release_key) VALUES('11111111-1111-4111-8111-111111111111',201,'QA draft','qa-draft')`;

@@ -22,7 +22,7 @@ export async function verifyMonetizationUI({base,root}) {
         const path=url.pathname;
         if(path.endsWith('/analytics')){
           if(analyticsFailure)return respond({error:{code:'ANALYTICS_UNAVAILABLE',message:'PRIVATE_ANALYTICS_ERROR'}},503);
-          return respond({days:Number(url.searchParams.get('days')),from:'2026-10-01',to:'2026-10-04',visitors:10,metrics:{detail_view:20,download_page_view:10,download_prepare:8,download_redeem:5,telegram_redirect:5},conversions:{detail_to_download:50,download_to_redeem:50,redeem_to_redirect:100},top:[{application_id:201,name:'تطبيق التحليل',views:20,redeems:5,conversion:25}]});
+          return respond({days:Number(url.searchParams.get('days')),from:'2026-10-01',to:'2026-10-04',visitors:10,metrics:{detail_view:20,download_page_view:10,download_prepare:8,download_redeem:5,telegram_redirect:5,...(url.searchParams.get('days')==='1'?{}:{external_download_redirect:2})},conversions:{detail_to_download:50,download_to_redeem:50,redeem_to_redirect:140},top:[{application_id:201,name:'تطبيق التحليل',views:20,redeems:5,conversion:25}]});
         }
         if(path.includes('/monetization')){
           if(failure&&(failure!==409||route.request().method()!=='GET'))return respond({error:{message:'PRIVATE_ERROR_DO_NOT_RENDER'}},failure);
@@ -56,7 +56,7 @@ export async function verifyMonetizationUI({base,root}) {
       assert.ok(!(await page.locator('body').innerText()).includes('PRIVATE_ERROR_DO_NOT_RENDER'));assert.equal(await page.getByRole('button',{name:'تحديد كمؤهل'}).count(),0);
       await page.getByRole('navigation',{name:'أقسام لوحة المالك'}).getByRole('link',{name:/التحليلات/}).click();
       await page.getByRole('heading',{name:'تحليلات الموقع',exact:true}).waitFor();
-      for(const days of ['1','7','30']){await page.getByLabel('الفترة (UTC)').selectOption(days);await page.getByText('الزوار (مجموع يومي)',{exact:true}).waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+      for(const days of ['1','7','30']){await page.getByLabel('الفترة (UTC)').selectOption(days);await page.getByText('الزوار (مجموع يومي)',{exact:true}).waitFor();await page.getByText('تحويلات التحميل الخارجي',{exact:true}).waitFor();await page.getByText('الاسترداد ← وجهة التحميل',{exact:true}).waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
       if(process.env.WZ_AXE_MODULE){await page.addScriptTag({path:process.env.WZ_AXE_MODULE});assert.deepEqual(await page.evaluate(async()=> (await window.axe.run('#main-content',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>v.id)),[]);}
       await page.screenshot({path:join(output,`analytics-fixture-${width}.png`),fullPage:true});
       analyticsFailure=true;await page.getByRole('button',{name:'تحديث التحليلات'}).click();await page.locator('section[aria-labelledby="analytics-title"]').getByRole('alert').waitFor();assert.ok(!(await page.locator('body').innerText()).includes('PRIVATE_ANALYTICS_ERROR'));assert.equal(await page.getByText('الزوار (مجموع يومي)',{exact:true}).count(),0);

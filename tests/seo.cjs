@@ -6,11 +6,13 @@ require.extensions['.css'] = module => { module.exports = {}; };
 const catalog = Array.from({ length: 27 }, (_, i) => ({ id: i + 1, name: `Tool ${i + 1}`, category: 'أدوات', createdAt: null }));
 catalog.push({ id: 90, name: 'Game 90', category: 'ألعاب', createdAt: new Date('2026-09-01') });
 let entries = catalog;
+let locale = 'ar';
 const load = Module._load;
 Module._load = function(request, ...rest) {
   // Next supplies React.cache in the server runtime; unit tests have no RSC request.
   if (request === 'react') return { ...load.call(this, request, ...rest), cache: fn => fn };
   if (request === 'server-only') return {};
+  if (request === 'next/headers') return {cookies:async()=>({get:name=>name==='wz_locale'?{value:locale}:undefined})};
   if (request === '@/lib/queries') return { getAllAppsSitemap: async () => entries, getCatalogPage: async (kind,page) => { const all=entries.filter(app=>require('../src/components/catalog/presentation.ts').isGame(app)===(kind==='games')); return {items:all.slice((page-1)*24,page*24),total:all.length,totalPages:Math.max(1,Math.ceil(all.length/24)),currentPage:page}; }, getCategories: async () => [...new Set(entries.map(app => app.category))] };
   if (request === './resolve' && rest[0]?.filename.endsWith('/src/lib/catalog/seo.ts')) return { resolveDetail: async slug => ({ id: slug.endsWith('-90') ? 90 : 1, name: slug.endsWith('-90') ? 'Game 90' : 'Tool 1', category: slug.endsWith('-90') ? 'ألعاب' : 'أدوات', description: 'Shared description', version: '1.2', size: '20 MB', imageUrl: 'https://example.test/icon.png' }) };
   return load.call(this, request, ...rest);
@@ -18,8 +20,8 @@ Module._load = function(request, ...rest) {
 const { pageMetadata, websiteStructuredData, breadcrumbStructuredData } = require('../src/lib/seo.ts');
 const { HOME_TITLE, SITE_URL } = require('../src/lib/site.ts');
 const { generateMetadata: homeMetadata } = require('../src/app/page.tsx');
-const { metadata: privacy } = require('../src/app/privacy/page.tsx');
-const { metadata: about } = require('../src/app/about/page.tsx');
+const { generateMetadata: privacyMetadata } = require('../src/app/privacy/page.tsx');
+const { generateMetadata: aboutMetadata } = require('../src/app/about/page.tsx');
 const { getLanding, landingMetadata } = require('../src/lib/catalog/landing.ts');
 const { detailMetadata } = require('../src/lib/catalog/seo.ts');
 const sitemap = require('../src/app/sitemap.ts').default;
@@ -63,7 +65,8 @@ test('WebSite identifies the brand without invented business/search/rating schem
   for (const key of ['potentialAction', 'publisher', 'aggregateRating', 'offers']) assert.equal(data[key], undefined);
 });
 
-test('privacy is crawlable noindex/follow with its own canonical; about is indexable', () => {
+test('privacy is crawlable noindex/follow with its own canonical; about is indexable', async () => {
+  const privacy=await privacyMetadata(),about=await aboutMetadata();
   assert.deepEqual(privacy.robots, { index: false, follow: true });
   assert.equal(privacy.alternates.canonical, '/privacy');
   assert.equal(privacy.openGraph.url, SITE_URL + '/privacy');
@@ -121,4 +124,18 @@ test('breadcrumb positions are consecutive and retain canonical item URLs', () =
   assert.equal(data['@type'], 'BreadcrumbList');
   assert.deepEqual(data.itemListElement.map(item => item.position), [1, 2, 3]);
   assert.deepEqual(data.itemListElement.map(item => item.item), items.map(item => item.item));
+});
+
+test('English metadata follows locale without inventing language URLs',async()=>{
+ locale='en';
+ try{
+  const home=await homeMetadata({searchParams:Promise.resolve({})});
+  assert.deepEqual(home.title,{absolute:'Waleed Zone — Apps & Games'});
+  assert.equal(home.openGraph.locale,'en_US');assert.equal(home.alternates.canonical,'/');
+  assert.equal(websiteStructuredData('en').inLanguage,'en');
+  for(const metadata of [await aboutMetadata(),await privacyMetadata(),await landingMetadata('apps',2),await detailMetadata('tool-1-1','apps')]){
+   assert.equal(metadata.openGraph.locale,'en_US');assert.ok(!/[\u0600-\u06ff]/.test(metadata.description));
+   assert.equal(metadata.alternates.languages,undefined);assert.ok(!metadata.alternates.canonical.startsWith('/en'));
+  }
+ }finally{locale='ar';}
 });

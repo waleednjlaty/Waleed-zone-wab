@@ -1,4 +1,6 @@
 'use client';
+import { useTranslateUI } from '@/components/LocaleProvider';
+
 
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { AppDetail, ConfigInput, FileInput, SystemStatus, VersionInput, VersionAction } from './types';
@@ -6,9 +8,11 @@ import { directBlockers, modeLabels } from './presentation';
 import styles from './admin.module.css';
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: (id: string, hintId: string) => ReactNode }) {
+  const t = useTranslateUI();
+
   const id = useId();
-  return <div className={styles.field}><label htmlFor={id}>{label}</label>{children(id, `${id}-hint`)}
-    {hint && <small id={`${id}-hint`}>{hint}</small>}</div>;
+  return <div className={styles.field}><label htmlFor={id}>{t(label)}</label>{children(id, `${id}-hint`)}
+    {hint && <small id={`${id}-hint`}>{t(hint)}</small>}</div>;
 }
 function useValidation() {
   const [error, setError] = useState('');
@@ -17,15 +21,21 @@ function useValidation() {
 }
 type Validation = ReturnType<typeof useValidation>;
 function FormError({ validation }: { validation: Validation }) {
-  return <p ref={validation.ref} className={styles.formError} role={validation.error ? 'alert' : undefined} tabIndex={-1}>{validation.error}</p>;
+  const t = useTranslateUI();
+
+  return <p ref={validation.ref} className={styles.formError} role={validation.error ? 'alert' : undefined} tabIndex={-1}>{t(validation.error)}</p>;
 }
 function Actions({ busy, label }: { busy: boolean; label: string }) {
-  return <div className={styles.formActions}><button className={styles.primary} disabled={busy} type="submit">{busy ? 'جارٍ الحفظ والتحقق…' : label}</button>
-    <small>الحفظ لا يفعّل التحميل المباشر تلقائيًا.</small></div>;
+  const t = useTranslateUI();
+
+  return <div className={styles.formActions}><button className={styles.primary} disabled={busy} type="submit">{busy ? t("جارٍ الحفظ والتحقق…") : label}</button>
+    <small>{t("الحفظ لا يفعّل التحميل المباشر تلقائيًا.")}</small></div>;
 }
 type Common = { busy: boolean; locked: boolean };
 
 export function VersionForm({ detail, busy, locked, onSave }: Common & { detail: AppDetail; onSave: (input: VersionInput, id?: string) => void }) {
+  const t = useTranslateUI();
+
   const [selected, setSelected] = useState('');
   const version = detail.versions.find(v => v.id === selected);
   const [label, setLabel] = useState('');
@@ -56,26 +66,28 @@ export function VersionForm({ detail, busy, locked, onSave }: Common & { detail:
       onSave({ expected_revision: version.revision, action }, version.id);
     }
   }
-  return <form onSubmit={submit} className={styles.form} aria-label="بيانات الإصدار" aria-busy={busy}>
+  return <form onSubmit={submit} className={styles.form} aria-label={t("بيانات الإصدار")} aria-busy={busy}>
     <fieldset disabled={busy || locked}>
-      <Field label="الإصدار المراد تحريره">{id => <select id={id} value={selected} onChange={e => select(e.target.value)}><option value="">إنشاء إصدار pending</option>{detail.versions.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}</select>}</Field>
-      {version && <Field label="إجراء الإصدار">{id => <select id={id} value={action} onChange={e => setAction(e.target.value as typeof action)}>
-        <option value="rename" disabled={version.immutable || version.active || version.published}>تعديل اسم draft</option>
-        <option value="activate" disabled={!eligible || version.active}>activate · تفعيل الإصدار</option>
-        <option value="publish" disabled={!eligible || !version.active || version.published || !detail.app.active || !detail.app.published}>publish · نشر الإصدار</option>
-        <option value="withdraw">withdraw · سحب الإصدار</option>
+      <Field label={t("الإصدار المراد تحريره")}>{id => <select id={id} value={selected} onChange={e => select(e.target.value)}><option value="">{t("إنشاء إصدار pending")}</option>{detail.versions.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}</select>}</Field>
+      {version && <Field label={t("إجراء الإصدار")}>{id => <select id={id} value={action} onChange={e => setAction(e.target.value as typeof action)}>
+        <option value="rename" disabled={version.immutable || version.active || version.published}>{t("تعديل اسم draft")}</option>
+        <option value="activate" disabled={!eligible || version.active}>{t("activate · تفعيل الإصدار")}</option>
+        <option value="publish" disabled={!eligible || !version.active || version.published || !detail.app.active || !detail.app.published}>{t("publish · نشر الإصدار")}</option>
+        <option value="withdraw">{t("withdraw · سحب الإصدار")}</option>
       </select>}</Field>}
       {(!version || action === 'rename') && <div className={styles.fieldGrid}>
-        <Field label="اسم الإصدار">{id => <input id={id} required maxLength={100} value={label} onChange={e => setLabel(e.target.value)} dir="auto" />}</Field>
-        <Field label="مفتاح الإصدار (release_key)" hint="معرّف ثابت بحروف صغيرة مثل 1.0.0-r1.">{(id, hint) => <input id={id} aria-describedby={hint} required disabled={!!version} maxLength={100} value={release} onChange={e => setRelease(e.target.value)} dir="ltr" spellCheck={false} />}</Field>
+        <Field label={t("اسم الإصدار")}>{id => <input id={id} required maxLength={100} value={t(label)} onChange={e => setLabel(e.target.value)} dir="auto" />}</Field>
+        <Field label={t("مفتاح الإصدار (release_key)")} hint={t("معرّف ثابت بحروف صغيرة مثل 1.0.0-r1.")}>{(id, hint) => <input id={id} aria-describedby={t(hint)} required disabled={!!version} maxLength={100} value={release} onChange={e => setRelease(e.target.value)} dir="ltr" spellCheck={false} />}</Field>
       </div>}
-      <p className={styles.muted}>إنشاء pending، ثم تفعيل، ثم نشر بإجراءات مستقلة. التحقق من الملفات إجراء منفصل؛ الخادم يعيد فحص الشروط والrevision.</p>
-      <FormError validation={validation} /><Actions busy={busy} label={version ? 'تنفيذ إجراء الإصدار' : 'إنشاء إصدار pending'} />
+      <p className={styles.muted}>{t("إنشاء pending، ثم تفعيل، ثم نشر بإجراءات مستقلة. التحقق من الملفات إجراء منفصل؛ الخادم يعيد فحص الشروط والrevision.")}</p>
+      <FormError validation={validation} /><Actions busy={busy} label={version ? t("تنفيذ إجراء الإصدار") : t("إنشاء إصدار pending")} />
     </fieldset>
   </form>;
 }
 
 export function FileForm({ detail, busy, locked, onSave }: Common & { detail: AppDetail; onSave: (input: FileInput) => void }) {
+  const t = useTranslateUI();
+
   const validation = useValidation();
   const [fileId, setFileId] = useState('');
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -99,36 +111,38 @@ export function FileForm({ detail, busy, locked, onSave }: Common & { detail: Ap
       sha256: value('sha256'), mime_type: 'application/vnd.android.package-archive', download_filename: value('download_filename'),
       storage_backend: value('storage_backend') as 'railway-s3' | 's3', storage_key: key, storage_object_version: value('storage_object_version') || null } });
   }
-  return <form onSubmit={submit} className={styles.form} aria-label="بيانات ملف جديد" aria-busy={busy} onInvalidCapture={event => {
+  return <form onSubmit={submit} className={styles.form} aria-label={t("بيانات ملف جديد")} aria-busy={busy} onInvalidCapture={event => {
     const target = event.target as HTMLInputElement;
     const disclosure = target.closest('details');
     if (disclosure) disclosure.open = true;
   }}>
     <fieldset disabled={busy || locked || detail.versions.length === 0}>
-      <Field label="UUID الملف" hint="هوية الملف في manifest؛ المفتاح يجب أن يطابقها.">{(id, hint) => <input id={id} aria-describedby={hint} required maxLength={36} value={fileId} onChange={e => setFileId(e.target.value.toLowerCase())} dir="ltr" autoComplete="off" />}</Field>
-      <button className={styles.secondary} type="button" onClick={() => setFileId(crypto.randomUUID())}>توليد UUID جديد</button>
-      <Field label="الإصدار">{id => <select id={id} name="version_id" required defaultValue=""><option value="" disabled>اختر إصدارًا</option>{detail.versions.map(v => <option key={v.id} value={v.id} disabled={v.active || v.published}>{v.label}</option>)}</select>}</Field>
+      <Field label={t("UUID الملف")} hint={t("هوية الملف في manifest؛ المفتاح يجب أن يطابقها.")}>{(id, hint) => <input id={id} aria-describedby={t(hint)} required maxLength={36} value={fileId} onChange={e => setFileId(e.target.value.toLowerCase())} dir="ltr" autoComplete="off" />}</Field>
+      <button className={styles.secondary} type="button" onClick={() => setFileId(crypto.randomUUID())}>{t("توليد UUID جديد")}</button>
+      <Field label={t("الإصدار")}>{id => <select id={id} name="version_id" required defaultValue=""><option value="" disabled>{t("اختر إصدارًا")}</option>{detail.versions.map(v => <option key={v.id} value={v.id} disabled={v.active || v.published}>{v.label}</option>)}</select>}</Field>
       <div className={styles.fieldGrid}>
-        <Field label="نوع النسخة (variant_key)">{id => <input id={id} name="variant_key" required maxLength={100} defaultValue="universal" dir="ltr" spellCheck={false} />}</Field>
-        <Field label="اسم ملف التنزيل">{id => <input id={id} name="download_filename" required maxLength={180} placeholder="app-1.0.0.apk" dir="ltr" spellCheck={false} />}</Field>
-        <Field label="الحجم بالبايت" hint="الحجم الدقيق، حتى 2 GiB.">{(id, hint) => <input id={id} name="size_bytes" aria-describedby={hint} required type="number" min={1} max={2147483648} step={1} inputMode="numeric" dir="ltr" />}</Field>
-        <Field label="نوع الملف">{id => <input id={id} readOnly value="APK · application/vnd.android.package-archive" dir="ltr" />}</Field>
+        <Field label={t("نوع النسخة (variant_key)")}>{id => <input id={id} name="variant_key" required maxLength={100} defaultValue="universal" dir="ltr" spellCheck={false} />}</Field>
+        <Field label={t("اسم ملف التنزيل")}>{id => <input id={id} name="download_filename" required maxLength={180} placeholder="app-1.0.0.apk" dir="ltr" spellCheck={false} />}</Field>
+        <Field label={t("الحجم بالبايت")} hint={t("الحجم الدقيق، حتى 2 GiB.")}>{(id, hint) => <input id={id} name="size_bytes" aria-describedby={t(hint)} required type="number" min={1} max={2147483648} step={1} inputMode="numeric" dir="ltr" />}</Field>
+        <Field label={t("نوع الملف")}>{id => <input id={id} readOnly value="APK · application/vnd.android.package-archive" dir="ltr" />}</Field>
       </div>
-      <Field label="SHA-256" hint="بصمة من المصدر المعتمد. إدخالها لا يثبت سلامة الملف.">{(id, hint) => <input id={id} name="sha256" aria-describedby={hint} required minLength={64} maxLength={64} dir="ltr" spellCheck={false} autoComplete="off" />}</Field>
-      <details className={styles.disclosure}><summary>مرجع التخزين الخاص · metadata فقط</summary>
-        <p className={styles.muted}>أدخل مرجع الكائن فقط. لا تدخل بيانات اعتماد أو رابطًا موقّعًا. لن يظهر المفتاح في قائمة الملفات.</p>
-        <Field label="مزود التخزين (storage_backend)">{id => <select id={id} name="storage_backend" defaultValue="railway-s3"><option value="railway-s3">Railway</option><option value="s3">S3-compatible</option></select>}</Field>
-        <Field label="مفتاح الكائن (storage_key)" hint="مثال: artifacts/<file-uuid>/<sha256>.apk؛ يلزم تطابق دقيق في الخادم.">{(id, hint) => <input id={id} name="storage_key" aria-describedby={hint} required maxLength={512} dir="ltr" autoComplete="off" spellCheck={false} />}</Field>
-        <Field label="إصدار الكائن (اختياري)" hint="اتركه فارغًا لدى Railway؛ مزود يدعم versioning يحتاج إصدارًا حقيقيًا.">{(id, hint) => <input id={id} name="storage_object_version" aria-describedby={hint} maxLength={200} dir="ltr" autoComplete="off" spellCheck={false} />}</Field>
+      <Field label="SHA-256" hint={t("بصمة من المصدر المعتمد. إدخالها لا يثبت سلامة الملف.")}>{(id, hint) => <input id={id} name="sha256" aria-describedby={t(hint)} required minLength={64} maxLength={64} dir="ltr" spellCheck={false} autoComplete="off" />}</Field>
+      <details className={styles.disclosure}><summary>{t("مرجع التخزين الخاص · metadata فقط")}</summary>
+        <p className={styles.muted}>{t("أدخل مرجع الكائن فقط. لا تدخل بيانات اعتماد أو رابطًا موقّعًا. لن يظهر المفتاح في قائمة الملفات.")}</p>
+        <Field label={t("مزود التخزين (storage_backend)")}>{id => <select id={id} name="storage_backend" defaultValue="railway-s3"><option value="railway-s3">Railway</option><option value="s3">S3-compatible</option></select>}</Field>
+        <Field label={t("مفتاح الكائن (storage_key)")} hint={t("مثال: artifacts/<file-uuid>/<sha256>.apk؛ يلزم تطابق دقيق في الخادم.")}>{(id, hint) => <input id={id} name="storage_key" aria-describedby={t(hint)} required maxLength={512} dir="ltr" autoComplete="off" spellCheck={false} />}</Field>
+        <Field label={t("إصدار الكائن (اختياري)")} hint={t("اتركه فارغًا لدى Railway؛ مزود يدعم versioning يحتاج إصدارًا حقيقيًا.")}>{(id, hint) => <input id={id} name="storage_object_version" aria-describedby={t(hint)} maxLength={200} dir="ltr" autoComplete="off" spellCheck={false} />}</Field>
       </details>
-      <p className={styles.muted}>السجل الجديد pending وغير active. التحقق من السلامة إجراء منفصل؛ هذه الاستمارة تحفظ metadata فقط.</p>
-      <FormError validation={validation} /><Actions busy={busy} label="إنشاء metadata بحالة pending" />
+      <p className={styles.muted}>{t("السجل الجديد pending وغير active. التحقق من السلامة إجراء منفصل؛ هذه الاستمارة تحفظ metadata فقط.")}</p>
+      <FormError validation={validation} /><Actions busy={busy} label={t("إنشاء metadata بحالة pending")} />
     </fieldset>
-    {detail.versions.length === 0 && <p className={styles.warning}>أنشئ إصدارًا أولًا لإضافة ملف.</p>}
+    {detail.versions.length === 0 && <p className={styles.warning}>{t("أنشئ إصدارًا أولًا لإضافة ملف.")}</p>}
   </form>;
 }
 
 export function ConfigForm({ detail, system, busy, locked, onSave }: Common & { detail: AppDetail; system: SystemStatus | null; onSave: (input: ConfigInput) => void }) {
+  const t = useTranslateUI();
+
   const [mode, setMode] = useState(detail.app.mode);
   const [versionId, setVersionId] = useState(detail.app.currentVersionId || '');
   const validation = useValidation();
@@ -139,28 +153,30 @@ export function ConfigForm({ detail, system, busy, locked, onSave }: Common & { 
     if (versionId && !detail.versions.some(v => v.id === versionId)) return validation.fail('الإصدار المختار غير متاح لهذا التطبيق.');
     onSave({ expected_revision: detail.app.configRevision, mode, current_version_id: mode === 'direct' ? versionId || null : null });
   }
-  return <form onSubmit={submit} className={styles.form} aria-label="إعداد التحميل" aria-busy={busy}>
+  return <form onSubmit={submit} className={styles.form} aria-label={t("إعداد التحميل")} aria-busy={busy}>
     <fieldset disabled={busy || locked}>
-      <Field label="وضع التحميل" hint="legacy يحتفظ بالمسار السابق. disabled يمنع التحميل لهذا التطبيق.">{(id, hint) => <select id={id} value={mode} aria-describedby={`${hint} direct-blockers`} onChange={e => setMode(e.target.value as typeof mode)}>
-        <option value="legacy">{modeLabels.legacy}</option><option value="disabled">{modeLabels.disabled}</option>
-        <option value="direct" disabled={blockers.length > 0 && detail.app.mode !== 'direct'}>{modeLabels.direct}{blockers.length ? ' · محظور' : ''}</option>
+      <Field label={t("وضع التحميل")} hint={t("legacy يحتفظ بالمسار السابق. disabled يمنع التحميل لهذا التطبيق.")}>{(id, hint) => <select id={id} value={mode} aria-describedby={`${t(hint)} direct-blockers`} onChange={e => setMode(e.target.value as typeof mode)}>
+        <option value="legacy">{t(modeLabels.legacy)}</option><option value="disabled">{t(modeLabels.disabled)}</option>
+        <option value="direct" disabled={blockers.length > 0 && detail.app.mode !== 'direct'}>{t(modeLabels.direct)}{blockers.length ? t(" · محظور") : ''}</option>
       </select>}</Field>
-      <Field label="الإصدار الحالي">{id => <select id={id} value={versionId} disabled={mode !== 'direct'} onChange={e => setVersionId(e.target.value)}><option value="">لم يُحدّد</option>{detail.versions.map(v => <option key={v.id} value={v.id}>{v.label} · {v.published ? 'published' : 'pending'}</option>)}</select>}</Field>
-      <FormError validation={validation} /><Actions busy={busy} label="حفظ إعداد التطبيق" />
+      <Field label={t("الإصدار الحالي")}>{id => <select id={id} value={versionId} disabled={mode !== 'direct'} onChange={e => setVersionId(e.target.value)}><option value="">{t("لم يُحدّد")}</option>{detail.versions.map(v => <option key={v.id} value={v.id}>{v.label} · {v.published ? 'published' : 'pending'}</option>)}</select>}</Field>
+      <FormError validation={validation} /><Actions busy={busy} label={t("حفظ إعداد التطبيق")} />
     </fieldset>
-    <div id="direct-blockers" className={styles.blockers}><h3>{blockers.length ? 'عوائق تفعيل direct' : 'اجتازت البيانات شروط العرض'}</h3>
-      {blockers.length ? <ul>{blockers.map(text => <li key={text}>{text}</li>)}</ul> : <p>الخادم يعيد التحقق لحظة الحفظ. حفظ الإعداد وحده لا يثبت جاهزية التسليم الفعلي.</p>}
+    <div id="direct-blockers" className={styles.blockers}><h3>{blockers.length ? t("عوائق تفعيل direct") : t("اجتازت البيانات شروط العرض")}</h3>
+      {blockers.length ? <ul>{blockers.map(text => <li key={text}>{t(text)}</li>)}</ul> : <p>{t("الخادم يعيد التحقق لحظة الحفظ. حفظ الإعداد وحده لا يثبت جاهزية التسليم الفعلي.")}</p>}
     </div>
   </form>;
 }
 
 export function KillSwitchForm({ system, busy, locked, onDisable }: Common & { system: SystemStatus | null; onDisable: () => void }) {
+  const t = useTranslateUI();
+
   const [confirmed, setConfirmed] = useState(false);
-  return <form className={styles.form} aria-label="إيقاف التحميل العام" aria-busy={busy} onSubmit={e => { e.preventDefault(); if (confirmed && !busy && !locked && system?.enabled) onDisable(); }}>
+  return <form className={styles.form} aria-label={t("إيقاف التحميل العام")} aria-busy={busy} onSubmit={e => { e.preventDefault(); if (confirmed && !busy && !locked && system?.enabled) onDisable(); }}>
     <fieldset disabled={busy || locked || !system?.enabled}>
-      <label className={styles.confirm}><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />أؤكد إيقاف التحميل المباشر لجميع التطبيقات.</label>
-      <button className={styles.danger} disabled={!confirmed || busy} type="submit">{busy ? 'جارٍ تنفيذ الإيقاف…' : 'إيقاف التحميل المباشر'}</button>
+      <label className={styles.confirm}><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />{t("أؤكد إيقاف التحميل المباشر لجميع التطبيقات.")}</label>
+      <button className={styles.danger} disabled={!confirmed || busy} type="submit">{busy ? t("جارٍ تنفيذ الإيقاف…") : t("إيقاف التحميل المباشر")}</button>
     </fieldset>
-    <p className={styles.muted}>لن تؤكد اللوحة نجاح الإيقاف قبل قراءة الحالة الجديدة من الخادم. إعادة التفعيل تحتاج إجراء إطلاق معتمد.</p>
+    <p className={styles.muted}>{t("لن تؤكد اللوحة نجاح الإيقاف قبل قراءة الحالة الجديدة من الخادم. إعادة التفعيل تحتاج إجراء إطلاق معتمد.")}</p>
   </form>;
 }

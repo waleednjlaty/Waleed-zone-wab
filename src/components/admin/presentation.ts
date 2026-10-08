@@ -69,7 +69,7 @@ export function budgetPercent(budget: SystemStatus['budget']) {
   // Convert only a bounded 0..100 progress percentage, never the byte counters.
   return Number(BigInt(budget.reservedBytes) * BigInt(100) / BigInt(budget.limitBytes));
 }
-export function formatTime(iso?: string | null) {
+export function formatTime(iso?: string | null, locale: 'ar' | 'en' = 'ar') {
   return iso && Number.isFinite(Date.parse(iso))
-    ? new Intl.DateTimeFormat('ar-SY', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)) : 'غير متاح';
+    ? new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'ar-SY', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)) : 'غير متاح';
 }

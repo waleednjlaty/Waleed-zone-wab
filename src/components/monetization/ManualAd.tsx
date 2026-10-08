@@ -1,4 +1,6 @@
 'use client';
+import { useTranslateUI } from '@/components/LocaleProvider';
+
 import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
@@ -9,6 +11,8 @@ declare global {interface Window {__tcfapi?: TcfApi;adsbygoogle?: unknown[];}}
 type Props = {publisherId:string;slotId:string;cmpId:number;nonce?:string;path:string};
 /** Mounted ONLY by server-authorized detail pages. No SDK before live CMP consent. */
 export default function ManualAd({publisherId,slotId,cmpId,nonce,path}:Props) {
+  const t = useTranslateUI();
+
   const pathname=usePathname(),[consent,setConsent]=useState(false),[loaded,setLoaded]=useState(false);
   const pushed=useRef(false),element=useRef<HTMLModElement>(null);
   let currentPath='';
@@ -37,8 +41,8 @@ export default function ManualAd({publisherId,slotId,cmpId,nonce,path}:Props) {
     try{(window.adsbygoogle=window.adsbygoogle||[]).push({});}catch{/* Do not retry ad requests or report click data. */}
   },[routeAllowed,consent,loaded]);
   if(!routeAllowed||!consent)return null;
-  return <section aria-label="إعلان" className="manual-ad-placement">
-    <p className="manual-ad-label">إعلان</p>
+  return <section aria-label={t("إعلان")} className="manual-ad-placement">
+    <p className="manual-ad-label">{t("إعلان")}</p>
     <Script id="wz-manual-adsense" nonce={nonce} async strategy="afterInteractive"
       src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${publisherId}`} crossOrigin="anonymous" onReady={()=>setLoaded(true)}/>
     <ins ref={element} className="adsbygoogle" style={{display:'block',minHeight:250}} data-ad-client={publisherId}
