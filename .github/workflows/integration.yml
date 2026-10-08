@@ -109,3 +109,20 @@ jobs:
             docs/screenshots/monetization/
             tests/screenshots/
           if-no-files-found: ignore
+
+  live-bzzhr-release:
+    # One-time real transport gate; operator-owned canary expires 2026-10-12.
+    if: github.event_name == 'pull_request' && github.head_ref == 'fix/bzzhr-co-production-followup'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.5'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Download and hash original authorized text on both live hosts
+        run: |
+          node scripts/test-provider-live.cjs https://bzzhr.co/8hcdyeypd460
+          node scripts/test-provider-live.cjs https://buzzheavier.com/8hcdyeypd460

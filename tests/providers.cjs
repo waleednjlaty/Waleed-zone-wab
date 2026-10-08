@@ -128,3 +128,40 @@ test('page redirect cookies retain same-host session; path and mirror boundaries
  assert.equal(http.cookieHeader(result.cookies,'https://bzzhr.co/file-xyz/download?t=x'),'');
  assert.equal(http.cookieHeader(result.cookies,'https://bzzhr.to/file-xyzz/download?t=x'),'');
 });
+
+test('second observed CDN ts.bzzhr.co is exact allowlisted, no wildcard expansion',()=>{
+ assert.equal(bzzhr.signedDestination('https://ts.bzzhr.co/d/8hcdyeypd460?v=fixture',endpoint),'https://ts.bzzhr.co/d/8hcdyeypd460?v=fixture');
+ for(const host of ['ts.bzzhr.to','other.bzzhr.co','ts.bzzhr.co.evil.test'])assert.throws(()=>bzzhr.signedDestination(`https://${host}/d/id?v=x`,endpoint),error('INVALID_SOURCE'));
+});
+test('shared Turnstile script alone is not a challenge, actual 200 challenge is refused',()=>{
+ http.requireProviderSuccess({status:200,headers:{},body:'<script src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script><a hx-get="/file/download?t=x">',url:page});
+ assert.throws(()=>http.requireProviderSuccess({status:200,headers:{},body:'<form id="challenge-form"><div class="cf-turnstile"></div>',url:page}),error('PROVIDER_CHALLENGE'));
+});
+test('data-hx-get actual download attribute is parsed without accepting data-href sources',()=>{
+ assert.equal(bzzhr.signedEndpoint('<button data-hx-get="/file-xyz/fetch?signature=a&amp;alt=true">',page),page+'/fetch?signature=a&alt=true');
+});
+test('SteamRIP tries only actual advertised sources; removed first mirror does not hide second',async()=>{
+ const second='https://bzzhr.co/other';let calls=[];
+ const fn=async(url,hosts,sig,headers,follow,method)=>{
+  calls.push(url);
+  if(url===source)return {url,status:200,headers:{},body:`<a href="${page}"><a href="${second}">`};
+  if(url===page)return {url,status:404,headers:{},body:''};
+  if(url===second)return {url,status:200,headers:{},body:'<a hx-get="/other/fetch?signature=x">'};
+  if(method==='HEAD')return {url:destination,status:200,headers:{'content-type':'application/octet-stream'},body:''};
+  assert.equal(url,second+'/fetch?signature=x');return {url,status:204,headers:{'hx-redirect':destination},body:''};
+ };
+ assert.equal(await steam.steamripDestination(source,signal(),fn),destination);assert.equal(calls.length,5);
+});
+test('challenge on first advertised source is not bypassed with alternate requests',async()=>{
+ let n=0;const fn=async url=>{n++;return url===source?{url,status:200,headers:{},body:`<a href="${page}"><a href="https://bzzhr.co/other">`}:{url,status:403,headers:{'cf-mitigated':'challenge'},body:''};};
+ await assert.rejects(steam.steamripDestination(source,signal(),fn),error('PROVIDER_CHALLENGE'));assert.equal(n,2);
+});
+test('HEAD unsupported falls back to header-only GET and returns validated latest final URL',async()=>{
+ const final='https://ts.bzzhr.co/d/file-xyz?v=fresh';let calls=0;
+ const fn=async(url,hosts,sig,headers,follow,method)=>{calls++;return method==='HEAD'?{url,status:405,headers:{},body:''}:(assert.equal(method,'GET_HEADERS'),assert.equal(headers.Range,'bytes=0-0'),{url:final,status:206,headers:{'content-type':'application/octet-stream'},body:''});};
+ assert.equal(await bzzhr.validateBzzhrDns(destination,signal(),fn),final);assert.equal(calls,2);
+});
+test('GET_HEADERS transport closes a huge file immediately without reading its body',async t=>{
+ await transport(t,[{headers:{'content-length':'99999999999','content-type':'application/octet-stream'}}]);
+ const result=await http.publicHttp(destination,bzzhr.BZZHR_FILE_HOSTS,signal(),{Range:'bytes=0-0'},true,'GET_HEADERS');assert.equal(result.body,'');assert.equal(result.status,200);
+});

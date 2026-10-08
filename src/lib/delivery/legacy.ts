@@ -7,6 +7,7 @@ import { publicUrl } from '@/lib/downloads/providers/public-http';
 import { STEAMRIP_HOSTS } from '@/lib/downloads/providers/steamrip';
 import { BZZHR_HOSTS } from '@/lib/downloads/providers/bzzhr';
 
+const bzzhrSource=(raw:string)=>{const url=publicUrl(raw,BZZHR_HOSTS);if(!/^\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)||url.search)throw new Error('INVALID_SOURCE');return url.href;};
 const fail = () => new DownloadError(404,'SOURCE_UNAVAILABLE');
 export type Delivery = { destination: string; revision: string; provider: 'telegram' | 'external' | 'steamrip' };
 /** Re-read publication, disable gate and the exact source on every redemption. */
@@ -30,11 +31,11 @@ export async function legacyDelivery(sql: Sql, applicationId: number, env: NodeJ
   const hosts = (env.LEGACY_DOWNLOAD_ALLOWED_HOSTS || 'devuploads.com,shrinkme.io,shrinkme.site').split(',').map(v=>v.trim().toLowerCase()).filter(Boolean);
   // Explicit custom/manual link has priority. An invalid configured link fails closed.
   if(app.shrankme_url) {
-    try {return delivery(publicUrl(app.shrankme_url,BZZHR_HOSTS).href,'steamrip');}catch{/* approved manual link */}
+    try {return delivery(bzzhrSource(app.shrankme_url),'steamrip');}catch{/* approved manual link */}
     try { return delivery(publicUrl(app.shrankme_url,hosts).href,'external'); } catch { throw fail(); }
   }
   if(typeof app.devupload_url!=='string' || app.devupload_url.length>2000)throw fail();
-  try {return delivery(publicUrl(app.devupload_url,BZZHR_HOSTS).href,'steamrip');}catch{/* SteamRIP/legacy source */}
+  try {return delivery(bzzhrSource(app.devupload_url),'steamrip');}catch{/* SteamRIP/legacy source */}
   try {return delivery(publicUrl(app.devupload_url,STEAMRIP_HOSTS).href,'steamrip');}catch{/* then approved legacy source */}
   try {return delivery(publicUrl(app.devupload_url,hosts).href,'external');}catch{throw fail();}
 }

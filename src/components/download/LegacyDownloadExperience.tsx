@@ -11,12 +11,14 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
   const t = useTranslateUI();
 
   const [grant,setGrant] = useState<Grant|null>(null), [remaining,setRemaining] = useState(0);
-  const [busy,setBusy] = useState(false),[error,setError] = useState(''),[sent,setSent] = useState(false),[resolving,setResolving]=useState(false),[sourceUrl,setSourceUrl]=useState('');
-  const deadline = useRef({ready:0,expires:0}), lock = useRef(false),heading = useRef<HTMLHeadingElement>(null),submitted=useRef(false);
+  const [busy,setBusy] = useState(false),[error,setError] = useState(''),[sent,setSent] = useState(false),[resolving,setResolving]=useState(false),[sourceUrl,setSourceUrl]=useState(''),[retryRemaining,setRetryRemaining]=useState(0);
+  const deadline = useRef({ready:0,expires:0}), lock = useRef(false),heading = useRef<HTMLHeadingElement>(null),submitted=useRef(false),retryDeadline=useRef(0),active=useRef<AbortController|null>(null);
+  useEffect(()=>()=>active.current?.abort(),[]);
   useEffect(()=>{
     if (!grant) return;
     const tick=()=>{
       const now=performance.now();
+      setRetryRemaining(Math.max(0,Math.ceil((retryDeadline.current-now)/1000)));
       if(!submitted.current && now>=deadline.current.expires){setGrant(null);setError('انتهت صلاحية الطلب. أعد تجهيز الرابط.');return;}
       setRemaining(Math.max(0,Math.ceil((deadline.current.ready-now)/1000)));
     };
@@ -24,8 +26,8 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
   },[grant]);
   useEffect(()=>{if(grant&&remaining===0)heading.current?.focus({preventScroll:true});},[grant,remaining]);
   async function prepare(){
-    if(lock.current)return; lock.current=true;setBusy(true);setError('');setSent(false);setSourceUrl('');submitted.current=false;
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+    if(lock.current)return; lock.current=true;setBusy(true);setError('');setSent(false);setSourceUrl('');submitted.current=false;retryDeadline.current=0;setRetryRemaining(0);
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);active.current=controller;
     try{
       const start=performance.now();
       const response=await fetch('/api/downloads/legacy/prepare',{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal,
@@ -37,19 +39,25 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
       deadline.current={ready:Math.max(start,performance.now())+ready-server,expires:performance.now()+expires-server};
       setRemaining(20);setGrant(data);
     }catch(e){setError(e instanceof Error&&e.name!=='AbortError'?e.message:'انتهت مهلة الاتصال. أعد المحاولة.');}
-    finally{clearTimeout(timer);setBusy(false);lock.current=false;}
+    finally{clearTimeout(timer);active.current=null;setBusy(false);lock.current=false;}
   }
   async function redeem(form: HTMLFormElement){
-    if(submitted.current||!grant||remaining>0)return;
+    if(submitted.current||!grant||remaining>0||performance.now()<retryDeadline.current)return;
     submitted.current=true;setResolving(true);setError('');setSourceUrl('');
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);active.current=controller;
     try {
       const response=await fetch(form.action,{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal,
         headers:{'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({application_id:String(app.id),token:grant.token})});
       const data=await response.json();
       if(!response.ok){
         // Stable public source supplied only after server eligibility. No signatures in failures.
-        if(typeof data.error?.source_url==='string')setSourceUrl(data.error.source_url);
+        if(typeof data.error?.source_url==='string')try{
+          const url=new URL(data.error.source_url);
+          if(url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&!url.search&&!url.hash&&['steamrip.com','www.steamrip.com','bzzhr.to','www.bzzhr.to','bzzhr.co','www.bzzhr.co','buzzheavier.com','www.buzzheavier.com'].includes(url.hostname))setSourceUrl(url.href);
+        }catch{/* invalid manual fallback fails closed */}
+        const seconds=Math.min(60,Math.max(0,Number(response.headers.get('retry-after'))||Number(data.error?.retry_after_seconds)||0));
+        retryDeadline.current=performance.now()+seconds*1000;setRetryRemaining(seconds);
+        if(['TOKEN_USED','TOKEN_EXPIRED','INVALID_TOKEN','SOURCE_CHANGED','SOURCE_REMOVED','SOURCE_UNAVAILABLE'].includes(data.error?.code))setGrant(null);
         throw new Error(data.error?.message||'تعذر تنفيذ طلب التحميل.');
       }
       if(typeof data.destination!=='string'||data.destination.length>4096||new URL(data.destination).protocol!=='https:')throw new Error('استجابة غير صالحة.');
@@ -58,7 +66,7 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
       // Browser transport/completion cannot be observed across origins.
       window.location.assign(data.destination);
     }catch(e){setError(e instanceof Error&&e.name!=='AbortError'?e.message:'انتهت مهلة الاتصال. أعد المحاولة.');submitted.current=false;}
-    finally{clearTimeout(timer);setResolving(false);}
+    finally{clearTimeout(timer);active.current=null;setResolving(false);}
   }
   const state=busy?'PREPARING':resolving?'RESOLVING':error?'FAILED':sent?'DOWNLOADING':grant?remaining>0?'COUNTDOWN':'READY':'INITIAL';
   return <div className={`shell ${styles.page}`} data-download-state={state}>
@@ -71,7 +79,7 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
       {grant&&remaining>0&&<><div className={styles.countdown} role="timer" aria-live="off"><strong>{remaining}</strong><span>{t("ثانية متبقية")}</span></div><progress className={styles.progress} max={20} value={20-remaining} aria-label={t("تقدم تجهيز الرابط")}/></>}</div>
       <div className={styles.actions}>{grant&&remaining===0&&!sent?<form action="/api/downloads/legacy/redeem" method="post" onSubmit={event=>{
         event.preventDefault();void redeem(event.currentTarget);
-      }}><input type="hidden" name="application_id" value={app.id}/><input type="hidden" name="token" value={grant.token}/><button disabled={resolving} type="submit" className="primary-action">{resolving?t("جارٍ معالجة مصدر التحميل"):error?t("إعادة المحاولة"):provider==='telegram'?t("تحميل الملف عبر Telegram"):t("بدء التحميل")} ↓</button></form>:!grant||sent?<button type="button" className="primary-action" disabled={busy} onClick={()=>void prepare()}>{busy?t("جارٍ التحقق…"):sent?t("تجهيز طلب جديد"):t("تجهيز رابط التحميل")}</button>:<button type="button" disabled className="primary-action">{t("جارٍ التجهيز ·")} {remaining}  {t("ثانية")}</button>}
+      }}><input type="hidden" name="application_id" value={app.id}/><input type="hidden" name="token" value={grant.token}/><button disabled={resolving||retryRemaining>0} type="submit" className="primary-action">{resolving?t("جارٍ معالجة مصدر التحميل"):error?t("إعادة المحاولة"):provider==='telegram'?t("تحميل الملف عبر Telegram"):t("بدء التحميل")} ↓</button></form>:!grant||sent?<button type="button" className="primary-action" disabled={busy} onClick={()=>void prepare()}>{busy?t("جارٍ التحقق…"):sent?t("تجهيز طلب جديد"):t("تجهيز رابط التحميل")}</button>:<button type="button" disabled className="primary-action">{t("جارٍ التجهيز ·")} {remaining}  {t("ثانية")}</button>}
       <p className={styles.note}>{t("يبقى الموقع ظاهرًا أثناء المعالجة. عند بدء التنزيل قد ينقلك المضيف في التبويب نفسه إذا لم يرسل الملف كمرفق.")}</p></div></section></div>
   </div>;
 }

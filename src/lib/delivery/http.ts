@@ -17,7 +17,7 @@ import { consumeWindow, requestNetwork } from '@/lib/security/limits';
 let minute = 0, count = 0;
 export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencies?: { sql: Sql; env: NodeJS.ProcessEnv; now?: () => number; resolve?: typeof resolveSteamrip }) {
   return async (request: Request) => {
-    let retry: {id:number;token:unknown;source:string}|undefined;
+    let retry: {id:number;token:unknown;source:string;revision:string}|undefined;
     try {
       if (request.method !== 'POST') return downloadMethodNotAllowed();
       const env = dependencies?.env ?? process.env;
@@ -63,7 +63,7 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
         WHERE token_hash=${hash} AND application_id=${Number(appId)} AND source_revision=${source.revision}
         AND consumed_at IS NULL AND attempts<3 AND ready_at<=${now}::timestamptz AND expires_at>${now}::timestamptz RETURNING token_hash`;
       if(!attempts.length)throw new DownloadError(410,'TOKEN_USED');
-      retry={id:Number(appId),token:body.token,source:source.destination};
+      retry={id:Number(appId),token:body.token,source:source.destination,revision:source.revision};
       const destination=source.provider==='steamrip'
         ?await (dependencies?.resolve??resolveSteamrip)(Number(appId),source.revision,source.destination):source.destination;
       await sql.begin('isolation level read committed',async tx=>{
@@ -92,6 +92,12 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
       const driverCode=error && typeof error==='object' && 'code' in error ? String(error.code) : '';
       console.warn(JSON.stringify({area:'delivery',application_id:retry?.id,category:error instanceof DownloadError?error.code:/^[0-9A-Z]{5}$/.test(driverCode)?'DB_'+driverCode:error instanceof TypeError?'INTERNAL_TYPE_ERROR':'DELIVERY_UNAVAILABLE',
         ...(error instanceof ProviderFailure?{stage:error.stage,host:error.host,upstream_status:error.upstreamStatus}:{})}));
+      if(retry && error instanceof ProviderFailure){
+        try{const sql=dependencies?.sql??getSql();if(!sql)throw new DownloadError(503,'DELIVERY_UNAVAILABLE');
+          const current=await legacyDelivery(sql,retry.id,dependencies?.env??process.env);
+          if(current.revision!==retry.revision)throw new DownloadError(409,'SOURCE_CHANGED');
+        }catch(changed){return downloadErrorResponse(changed,request,true);}
+      }
       if(retry && !request.headers.get('accept')?.includes('application/json')) {const response=providerRetry(error,retry.id,retry.token,request);if(response)return response;}
       const response=downloadErrorResponse(error,request,operation==='redeem');
       if(retry && request.headers.get('accept')?.includes('application/json') && error instanceof ProviderFailure) {
