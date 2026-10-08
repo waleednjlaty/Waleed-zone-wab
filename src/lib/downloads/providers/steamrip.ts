@@ -28,7 +28,7 @@ export async function steamripDestination(source: string, signal: AbortSignal, h
   let lastError:unknown;
   for(const bzzhr of sources)try{return await resolveBzzhr(bzzhr,signal,http);}catch(error){
     lastError=error;
-    if(signal.aborted || (error && typeof error==='object' && 'code' in error && ['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_RATE_LIMITED'].includes(String(error.code))))throw error;
+    if(signal.aborted || (error && typeof error==='object' && 'code' in error && ['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_RATE_LIMITED','PROVIDER_FORBIDDEN'].includes(String(error.code))))throw error;
   }
   throw lastError;
 }

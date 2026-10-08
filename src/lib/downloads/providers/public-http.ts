@@ -70,7 +70,7 @@ function receiveCookies(jar: ProviderCookie[], raw: string, rows: string[]) {
     if(row.length>4096 || /[\r\n\x00]/.test(row))throw providerError('INVALID_PROVIDER_RESPONSE');
     const [pair,...attributes]=row.split(';'),separator=pair.indexOf('=');
     if(separator<1 || !/^[!#$%&'*+.^_`|~A-Za-z0-9-]+$/.test(pair.slice(0,separator)))continue;
-    let path=url.pathname.slice(0,url.pathname.lastIndexOf('/')+1)||'/',expires=Infinity,domain=url.hostname;
+    let path=url.pathname.slice(0,url.pathname.lastIndexOf('/'))||'/',expires=Infinity,domain=url.hostname;
     for(const attribute of attributes){const [key,...parts]=attribute.trim().split('='),value=parts.join('=');
       if(key.toLowerCase()==='path'&&value.startsWith('/'))path=value;
       if(key.toLowerCase()==='domain')domain=value.toLowerCase().replace(/^\./,'');
@@ -85,12 +85,15 @@ function receiveCookies(jar: ProviderCookie[], raw: string, rows: string[]) {
   }
 }
 export type PublicResponse = { status: number; headers: Record<string,string>; body: string; url: string; cookies?:ProviderCookie[] };
-export type PublicHttp = (url: string, hosts: readonly string[], signal: AbortSignal, headers?: Record<string,string>, follow?: boolean, method?: 'GET' | 'HEAD' | 'GET_HEADERS') => Promise<PublicResponse>;
+export type PublicHttp = (url: string, hosts: readonly string[], signal: AbortSignal, headers?: Record<string,string>, follow?: boolean, method?: 'GET' | 'HEAD' | 'GET_HEADERS', sessionJar?: ProviderCookie[]) => Promise<PublicResponse>;
 /** One fresh, TLS-verified socket pinned to vetted DNS. No environment proxy, pooled socket or second DNS lookup. */
-export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=true,method='GET') => {
+export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=true,method='GET',sessionJar) => {
   let url=publicUrl(raw,hosts);
   const visited=new Set<string>();
-  const jar:ProviderCookie[]=[];
+  const jar:ProviderCookie[]=sessionJar??[];
+  // Recompute scoped cookies after DNS and every response. A copied Cookie
+  // header must never revive a deleted/expired cookie on a redirect or retry.
+  if(sessionJar)headers=Object.fromEntries(Object.entries(headers).filter(([key])=>key.toLowerCase()!=='cookie'));
   const scope=AbortSignal.any([signal,AbortSignal.timeout(10000)]);
   for(let redirects=0;redirects<=3;redirects++) {
     if(visited.has(url.href))throw providerError('PROVIDER_REDIRECT_LOOP');visited.add(url.href);

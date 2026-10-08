@@ -41,7 +41,7 @@ export async function resolveBzzhr(page: string, signal: AbortSignal, http: Publ
   let lastError: unknown;
   for(const endpoint of endpoints)try {return await providerStage('bzzhr_htmx',endpoint,async()=>{
     const session=result.cookies?cookieHeader(result.cookies,endpoint):cookie;
-    const response=await http(endpoint,BZZHR_HOSTS,signal,{'HX-Request':'true','HX-Current-URL':result.url,Referer:result.url,...(session?{Cookie:session}: {})},false);
+    const response=await http(endpoint,BZZHR_HOSTS,signal,{'HX-Request':'true','HX-Current-URL':result.url,Referer:result.url,...(session?{Cookie:session}: {})},false,'GET',result.cookies);
     if(![301,302,303,307,308].includes(response.status))requireStageSuccess(response,'bzzhr_htmx');
     const raw=response.headers['hx-redirect']||response.headers.location;if(!raw)throw providerError('MISSING_HX_REDIRECT');
     const destination=signedDestination(raw,endpoint);
@@ -50,7 +50,7 @@ export async function resolveBzzhr(page: string, signal: AbortSignal, http: Publ
     lastError=error;
     // Alternate buttons are public provider-declared mirrors, not challenge bypass.
     if(signal.aborted || (error && typeof error==='object' && 'code' in error &&
-      ['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_RATE_LIMITED','INVALID_SOURCE'].includes(String(error.code))))throw error;
+      ['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_RATE_LIMITED','PROVIDER_FORBIDDEN','INVALID_SOURCE'].includes(String(error.code))))throw error;
   }
   throw lastError;
 }
