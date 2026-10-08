@@ -109,6 +109,18 @@ integration('search variants remain noindex and legacy detail routes redirect to
   }
 });
 
+integration('Arabic canonical route returns 200 and stale slug sends a valid single 308',async()=>{
+  const target='/games/'+encodeURIComponent('لعبة-عربية-2099');
+  const stale=await request('/games/old-2099');
+  assert.equal(stale.status,308);
+  assert.equal(stale.headers.get('location'),target);
+  const current=await request(target);
+  assert.equal(current.status,200);
+  assert.equal(current.headers.get('location'),null);
+  const html=await current.text();
+  assert.ok(!html.includes('ERR_INVALID_CHAR'));
+});
+
 integration('pagination has distinct metadata and self-canonical structured data', async () => {
   if (process.env.WZ_SEO_FIXTURES !== 'true') return;
   for (const path of ['/apps', '/category/' + encodeURIComponent('أدوات')]) {

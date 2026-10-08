@@ -73,6 +73,19 @@ test('SteamRIP route contract: countdown → fresh mocked provider → atomic 30
   const r=await inline(request());assert.equal(r.status,200);assert.deepEqual(await r.json(),{destination});assert.match(r.headers.get('cache-control'),/no-store/);
   assert.equal((await inline(request())).status,410);
  });
+ await t.test('failure metadata appears only after eligibility, source mutation prevents stale manual fallback',async()=>{
+  const {ProviderFailure,providerError}=require('../src/lib/downloads/providers/public-http.ts');
+  await h.sql`UPDATE applications SET active=true,published=true,shrankme_url=NULL,devupload_url='https://bzzhr.co/file-xyz' WHERE id=201`;
+  const p=await prepare();now=Date.parse(p.grant.ready_at)-1;let calls=0,mutate=false;
+  const handler=createLegacyHandler('redeem',{sql:h.sql,env,now:()=>now,resolve:async()=>{calls++;if(mutate)await h.sql`UPDATE applications SET devupload_url='https://bzzhr.co/changed' WHERE id=201`;throw new ProviderFailure(providerError('PROVIDER_CHALLENGE'),'bzzhr_page','bzzhr.co',403);}});
+  const request=()=>new Request(h.origin+'/api/downloads/legacy/redeem',{method:'POST',headers:{origin:h.origin,'sec-fetch-site':'same-origin',accept:'application/json',cookie:p.cookie,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({application_id:201,token:p.grant.token})});
+  let r=await handler(request()),data=await r.json();assert.equal(r.status,425);assert.equal(calls,0);assert.equal(data.error.source_url,undefined);
+  now++;r=await handler(request());data=await r.json();assert.equal(r.status,503);assert.equal(data.error.stage,'bzzhr_page');assert.equal(data.error.upstream_status,403);assert.equal(data.error.source_url,'https://bzzhr.co/file-xyz');
+  mutate=true;r=await handler(request());data=await r.json();assert.equal(r.status,409);assert.equal(data.error.code,'SOURCE_CHANGED');assert.equal(data.error.source_url,undefined);
+  await h.sql`UPDATE applications SET devupload_url='https://bzzhr.co/d/file-xyz?v=must-not-persist' WHERE id=201`;
+  assert.equal((await call('prepare',{application_id:201})).status,404);
+  await h.sql`UPDATE applications SET devupload_url='https://steamrip.com/qa-game/' WHERE id=201`;
+ });
  await t.test('Telegram priority unchanged; manual host policy fails closed',async()=>{
   await h.sql`INSERT INTO site_delivery_sources(application_id,provider,telegram_channel_username,telegram_message_id) VALUES(201,'telegram','files_channel',42)`;
   const p=await prepare();now=Date.parse(p.grant.ready_at);const count=resolutions;const r=await redeem(p);assert.equal(r.headers.get('location'),'https://t.me/files_channel/42');assert.equal(resolutions,count);

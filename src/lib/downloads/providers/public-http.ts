@@ -70,7 +70,7 @@ function receiveCookies(jar: ProviderCookie[], raw: string, rows: string[]) {
     if(row.length>4096 || /[\r\n\x00]/.test(row))throw providerError('INVALID_PROVIDER_RESPONSE');
     const [pair,...attributes]=row.split(';'),separator=pair.indexOf('=');
     if(separator<1 || !/^[!#$%&'*+.^_`|~A-Za-z0-9-]+$/.test(pair.slice(0,separator)))continue;
-    let path=url.pathname.slice(0,url.pathname.lastIndexOf('/')+1)||'/',expires=Infinity,domain=url.hostname;
+    let path=url.pathname.slice(0,url.pathname.lastIndexOf('/'))||'/',expires=Infinity,domain=url.hostname;
     for(const attribute of attributes){const [key,...parts]=attribute.trim().split('='),value=parts.join('=');
       if(key.toLowerCase()==='path'&&value.startsWith('/'))path=value;
       if(key.toLowerCase()==='domain')domain=value.toLowerCase().replace(/^\./,'');
@@ -85,12 +85,15 @@ function receiveCookies(jar: ProviderCookie[], raw: string, rows: string[]) {
   }
 }
 export type PublicResponse = { status: number; headers: Record<string,string>; body: string; url: string; cookies?:ProviderCookie[] };
-export type PublicHttp = (url: string, hosts: readonly string[], signal: AbortSignal, headers?: Record<string,string>, follow?: boolean, method?: 'GET' | 'HEAD') => Promise<PublicResponse>;
+export type PublicHttp = (url: string, hosts: readonly string[], signal: AbortSignal, headers?: Record<string,string>, follow?: boolean, method?: 'GET' | 'HEAD' | 'GET_HEADERS', sessionJar?: ProviderCookie[]) => Promise<PublicResponse>;
 /** One fresh, TLS-verified socket pinned to vetted DNS. No environment proxy, pooled socket or second DNS lookup. */
-export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=true,method='GET') => {
+export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=true,method='GET',sessionJar) => {
   let url=publicUrl(raw,hosts);
   const visited=new Set<string>();
-  const jar:ProviderCookie[]=[];
+  const jar:ProviderCookie[]=sessionJar??[];
+  // Recompute scoped cookies after DNS and every response. A copied Cookie
+  // header must never revive a deleted/expired cookie on a redirect or retry.
+  if(sessionJar)headers=Object.fromEntries(Object.entries(headers).filter(([key])=>key.toLowerCase()!=='cookie'));
   const scope=AbortSignal.any([signal,AbortSignal.timeout(10000)]);
   for(let redirects=0;redirects<=3;redirects++) {
     if(visited.has(url.href))throw providerError('PROVIDER_REDIRECT_LOOP');visited.add(url.href);
@@ -99,14 +102,14 @@ export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=
     const session=cookieHeader(jar,current);
     const result=await new Promise<PublicResponse>((resolve,reject)=>{
       let connected=false;
-      const req=httpsRequest(url,{method,agent:false,rejectUnauthorized:true,family:pin.family,signal:scope,headers:{'Accept-Encoding':'identity','User-Agent':'WaleedZone/1.0',...headers,...(session?{Cookie:session}:{})},
+      const req=httpsRequest(url,{method:method==='GET_HEADERS'?'GET':method,agent:false,rejectUnauthorized:true,family:pin.family,signal:scope,headers:{'Accept-Encoding':'identity','User-Agent':'WaleedZone/1.0',...headers,...(session?{Cookie:session}:{})},
         lookup:((_host: unknown,_options: unknown,callback: (error: null,address: string,family: number)=>void)=>callback(null,pin.address,pin.family)) as never}, res=>{
         clearTimeout(headerTimer);
         const h:Record<string,string>={};for(const [k,v] of Object.entries(res.headers))if(v!==undefined)h[k]=Array.isArray(v)?v.map(value=>k==='set-cookie'?value.split(';')[0]:value).join('; '):v;
         const status=res.statusCode||0;
         try {receiveCookies(jar,current,typeof res.headers['set-cookie']==='string'?[res.headers['set-cookie']]:res.headers['set-cookie']||[]);}catch(error){res.destroy();reject(error);return;}
         // Redirect/header-only HTMX responses never read a file body.
-        if (method==='HEAD' || h['hx-redirect'] || [301,302,303,307,308].includes(status)) {res.destroy();resolve({status,headers:h,body:'',url:current});return;}
+        if ((method==='HEAD'||method==='GET_HEADERS') || h['hx-redirect'] || [301,302,303,307,308].includes(status)) {res.destroy();resolve({status,headers:h,body:'',url:current});return;}
         if(Number(h['content-length']||0)>1048576 || (h['content-encoding']&&h['content-encoding']!=='identity')) {res.destroy();reject(providerError('INVALID_PROVIDER_RESPONSE'));return;}
         const chunks:Buffer[]=[];let bytes=0;
         res.setTimeout(4000,()=>res.destroy(providerError('PROVIDER_TIMEOUT')));
@@ -132,13 +135,18 @@ export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=
   throw providerError('INVALID_PROVIDER_RESPONSE');
 };
 export function requireProviderSuccess(result: PublicResponse) {
-  if (result.headers['cf-mitigated']==='challenge' || /cf-chl-|challenge-platform|cf-turnstile|just a moment|verify you are human/i.test(result.body)) throw providerError('PROVIDER_CHALLENGE');
+  // Only actual access interstitials are challenges. A normal 200 game page
+  // may include Cloudflare's shared challenge-platform JS without a challenge.
+  // The server classifies and fails closed; only the user's browser can verify.
+  const interstitial=/<title[^>]*>\s*(?:just a moment|attention required)\b|<(?:div|form)[^>]+(?:id|class)=["'][^"']*(?:challenge-form|cf-turnstile)/i.test(result.body);
+  const blockedWithMarkers=result.status>=400 && /cf-chl-|\/cdn-cgi\/challenge-platform\/|verify you are human/i.test(result.body);
+  if(result.headers['cf-mitigated']==='challenge' || interstitial || blockedWithMarkers)throw providerError('PROVIDER_CHALLENGE');
   if(result.status===404 || result.status===410)throw new DownloadError(404,'SOURCE_REMOVED');
   if(result.status===401)throw providerError('PROVIDER_AUTH_REQUIRED');
   if(result.status===403)throw providerError('PROVIDER_FORBIDDEN');
   if(result.status===429)throw providerError('PROVIDER_RATE_LIMITED');
   if(result.status>=500)throw providerError('PROVIDER_HTTP_ERROR');
-  if(![200,204].includes(result.status))throw providerError();
+  if(![200,204,206].includes(result.status))throw providerError();
 }
 export function requireStageSuccess(result: PublicResponse, stage: ProviderStage) {
   try { requireProviderSuccess(result); } catch(error) {
