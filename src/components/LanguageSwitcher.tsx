@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { LOCALE_COOKIE, type Locale } from '@/lib/locale';
 import { useLocale } from './LocaleProvider';
@@ -9,6 +9,8 @@ export default function LanguageSwitcher() {
   const locale = useLocale();
   const router = useRouter();
   const [pending,startTransition] = useTransition();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
   const next: Locale = locale === 'ar' ? 'en' : 'ar';
   const label = locale === 'ar' ? 'التبديل إلى الإنجليزية' : 'Switch to Arabic';
 
@@ -20,7 +22,7 @@ export default function LanguageSwitcher() {
     startTransition(() => router.refresh());
   }
 
-  return <button type="button" className="icon-button language-switcher" disabled={pending} aria-busy={pending} aria-label={label} title={label} onClick={switchLanguage}>
+  return <button type="button" className="icon-button language-switcher" disabled={!hydrated || pending} aria-busy={!hydrated || pending} aria-label={label} title={label} onClick={switchLanguage}>
     <span aria-hidden="true">{locale === 'ar' ? 'EN' : 'AR'}</span>
   </button>;
 }

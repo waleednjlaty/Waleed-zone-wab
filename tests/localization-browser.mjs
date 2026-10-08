@@ -16,6 +16,7 @@ try{
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'/');assert.equal(await page.locator('html').getAttribute('lang'),'ar');assert.equal(await page.locator('html').getAttribute('dir'),'rtl');
   // Use the visible control through keyboard, then verify cookie and server refresh.
+  await page.waitForFunction(() => document.querySelector('.language-switcher')?.disabled === false);
   await page.getByRole('button',{name:'التبديل إلى الإنجليزية'}).focus();await page.keyboard.press('Enter');
   await page.getByRole('heading',{name:/^Waleed Zone — Apps & Games/}).waitFor();
   const preference=(await context.cookies()).find(c=>c.name==='wz_locale');assert.equal(preference.value,'en');assert.equal(preference.path,'/');assert.equal(preference.sameSite,'Lax');assert.equal(preference.secure,true);
