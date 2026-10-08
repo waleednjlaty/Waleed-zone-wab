@@ -7,7 +7,14 @@ export function validMetric(metric:unknown,applicationId:unknown):metric is Metr
   return typeof metric==='string'&&(METRICS as readonly string[]).includes(metric)
     &&(metric==='catalog_view'?applicationId===null:Number.isSafeInteger(applicationId)&&Number(applicationId)>0&&Number(applicationId)<=2147483647);
 }
-let pool:Sql|undefined,inFlight=0,minute=0,hits=0,lastFailure=0;
+let pool:Sql|undefined,inFlight=0,minute=0,hits=0,lastFailure=0,hasWritten=false;
+/** Finite diagnostic categories only; driver messages can contain private connection data. */
+export function metricFailureCategory(error:unknown):string {
+  const code=error && typeof error==='object' && 'code' in error?String(error.code):'';
+  const categories:Record<string,string>={CONNECT_TIMEOUT:'CONNECT_TIMEOUT',ETIMEDOUT:'CONNECT_TIMEOUT',ECONNREFUSED:'CONNECTION_REFUSED',ENOTFOUND:'DNS_UNAVAILABLE',CONNECTION_CLOSED:'CONNECTION_CLOSED',CONNECTION_DESTROYED:'CONNECTION_CLOSED',
+    '57014':'STATEMENT_TIMEOUT','55P03':'LOCK_TIMEOUT','42P01':'SCHEMA_UNAVAILABLE','42703':'SCHEMA_UNAVAILABLE','23514':'CONSTRAINT_FAILURE','42501':'PERMISSION_DENIED','28P01':'AUTHENTICATION_FAILED'};
+  return Object.hasOwn(categories,code)?categories[code]:'UNKNOWN';
+}
 function metricsSql(){
   if(!process.env.DATABASE_URL)return null;
   // One isolated, short-lived low-priority connection protects the critical download pool.
@@ -32,7 +39,8 @@ export async function recordMetric(metric:unknown,applicationId:unknown,options:
       :await sql`INSERT INTO site_daily_metrics(metric_date,metric,application_id,value)
           SELECT ${date},${metric},id,1 FROM applications WHERE id=${Number(applicationId)} AND active=true AND published=true
           ON CONFLICT ON CONSTRAINT site_daily_metrics_daily_key DO UPDATE SET value=LEAST(site_daily_metrics.value+1,9007199254740991) RETURNING value`;
+    if(rows.length===1 && !options.sql && !hasWritten){hasWritten=true;console.info(JSON.stringify({area:'analytics',code:'METRIC_WRITE_READY'}));}
     return rows.length===1;
-  }catch{if(now-lastFailure>60000){lastFailure=now;logFailure('analytics','METRIC_WRITE_UNAVAILABLE');}return false;}
+  }catch(error){if(now-lastFailure>60000){lastFailure=now;logFailure('analytics','METRIC_WRITE_UNAVAILABLE_'+metricFailureCategory(error));}return false;}
   finally{inFlight--;}
 }

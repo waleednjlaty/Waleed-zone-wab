@@ -2,7 +2,7 @@
 
 Continue `agent/site-english-localization` from `bccd4ede53d8e78389998b22f2a58bc1c3b17775`, preserving the entire PR #54 ancestry and its provider security policy.
 
-Arabic remains the default. A keyboard-accessible AR/EN control sets `wz_locale` with Path=/, SameSite=Lax, a one-year preference lifetime, and Secure on HTTPS. Server refresh updates HTML language/direction and all public, owner, legal and download UI. Authentication, favorites and catalog values are unchanged.
+Arabic remains the default. A keyboard-accessible AR/EN control sets `wz_locale` with Path=/, SameSite=Lax, a one-year preference lifetime, and Secure on HTTPS. Reloading the current URL obtains a fresh server-rendered document and updates HTML language/direction and all public, owner, legal and download UI. Authentication, favorites and catalog values are unchanged.
 
 Static UI has reviewed English translations; catalog names/descriptions/developers/category keys are never machine translated. Canonical category keys still determine URLs. Dates follow the rendered locale. Directional styling uses logical alignment and only directional chevrons mirror. Error strings stay stable until rendered so switching does not leave the previous language in state.
 
@@ -14,7 +14,7 @@ Arabic and English share the same URL with a preference cookie. Canonicals and s
 
 ## Validation and release
 
-Node 20 type/lint/build and focused locale/details/SEO checks are required, followed by the full unit and native PostgreSQL integration/browser CI. The bilingual matrix covers both languages at 360/768/1440, public/legal/auth/account/owner routes, keyboard switching, refresh persistence, session preservation and countdown labels. Native SteamRIP POST/303, token replay and source fixtures run in both languages; existing Telegram/owner/security/monetization suites remain enabled.
+Node 20 type/lint/build and focused locale/details/SEO checks are required, followed by the full unit and native PostgreSQL integration/browser CI. The bilingual matrix covers both languages at 360/768/1440, public/legal/auth/account/owner routes, keyboard switching, refresh persistence, session/favorite preservation and countdown labels. Native SteamRIP POST/303, token replay and source fixtures run in both languages; existing Telegram/owner/security/monetization suites remain enabled.
 
 Local embedded PostgreSQL fixtures supplement testing; native PostgreSQL CI is the authoritative concurrency/release gate. Provider fixtures do not prove live upstream/CDN availability or actual Telegram transport. A live challenge must fail closed; no proxy, TLS bypass or challenge solver is introduced.
 
