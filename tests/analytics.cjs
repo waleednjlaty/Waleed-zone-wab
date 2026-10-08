@@ -2,10 +2,14 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),Module=require('node:module');
 require('./helpers/typescript.cjs');
 const original=Module._load;Module._load=function(name,...args){if(name==='server-only')return {};return original.call(this,name,...args);};
-const {recordMetric,METRICS,validMetric}=require('../src/lib/analytics/metrics.ts');
+const {recordMetric,METRICS,validMetric,metricFailureCategory}=require('../src/lib/analytics/metrics.ts');
 const {OwnerAnalyticsService,analyticsWindow}=require('../src/lib/admin/analytics.ts');
 const {publicContactEmail}=require('../src/lib/public-contact.ts');
 Module._load=original;
+test('metric diagnostics use finite categories and never copy driver data',()=>{
+ for(const [code,category] of [['CONNECT_TIMEOUT','CONNECT_TIMEOUT'],['ETIMEDOUT','CONNECT_TIMEOUT'],['57014','STATEMENT_TIMEOUT'],['55P03','LOCK_TIMEOUT'],['42P01','SCHEMA_UNAVAILABLE'],['23514','CONSTRAINT_FAILURE'],['42501','PERMISSION_DENIED']])assert.equal(metricFailureCategory({code,message:'postgres://private:password@host/db?token=secret'}),category);
+ for(const error of [null,new Error('postgres://secret'),{code:'DATABASE_URL=private'},{code:'__proto__'},{code:'constructor'}])assert.equal(metricFailureCategory(error),'UNKNOWN');
+});
 test('aggregate analytics: atomic increments, day/scope keys, validation and data minimization',{timeout:60000},async t=>{
  const h=await require('./admin/runtime.cjs').createFixture(t,{monetization:true});
  const options={sql:h.sql,date:'2026-10-04'};
