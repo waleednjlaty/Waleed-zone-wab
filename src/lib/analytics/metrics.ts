@@ -18,7 +18,8 @@ export function metricFailureCategory(error:unknown):string {
 function metricsSql(){
   if(!process.env.DATABASE_URL)return null;
   // One isolated, short-lived low-priority connection protects the critical download pool.
-  pool??=postgres(process.env.DATABASE_URL,{prepare:false,max:1,idle_timeout:5,connect_timeout:1,
+  // Production TLS startup exceeds one second; only connection establishment gets three seconds.
+  pool??=postgres(process.env.DATABASE_URL,{prepare:false,max:1,idle_timeout:5,connect_timeout:3,
     connection:{statement_timeout:250,lock_timeout:50,idle_in_transaction_session_timeout:1000},
     ...(/neon\.tech|sslmode|ssl=true/.test(process.env.DATABASE_URL)?{ssl:'require' as const}:{})});
   return pool;
