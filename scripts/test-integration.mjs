@@ -34,6 +34,7 @@ try {
       VALUES(${201+index},${name},${'Test fixture only. '.repeat(40)},'9.1','85 MB',${index>=6?'ألعاب':'تواصل'},'Android',${[0,2,5].includes(index)?'Meta':'Test Developer'},10,true,true,NOW())`;
   }
   await sql`INSERT INTO applications(id,name,category,active,published) VALUES(999,'PRIVATE DRAFT SECRET','تواصل',true,false),(1000,'INACTIVE PRIVATE','تواصل',false,true)`;
+  await sql`INSERT INTO applications(id,name,description,category,active,published) VALUES(2099,'لعبة عربية','Isolated Arabic canonical redirect fixture','ألعاب',true,true)`;
   // Optional public-only SEO fixtures exercise pagination beyond both page sizes.
   if(process.env.WZ_SEO_FIXTURES==='true') for(let i=0;i<27;i++) {
     await sql`INSERT INTO applications(id,name,description,category,active,published,created_at)

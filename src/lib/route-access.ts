@@ -17,6 +17,6 @@ export async function enforceRouteAccess() {
     // Warm the request cache before streaming. Missing details are handled by
     // their nested layout: Next.js forbids notFound() in the root layout.
     const id=idFromSlug(detail[2]),app=id?await getAppById(id):undefined;
-    if(app && appHref(app)!==path)permanentRedirect(appHref(app));
+    if(app && appHref(app)!==path)permanentRedirect(encodeURI(appHref(app)));
   }
 }
