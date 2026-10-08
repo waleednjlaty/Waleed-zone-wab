@@ -96,6 +96,10 @@ jobs:
           NODE_OPTIONS: --require=${{ github.workspace }}/tests/providers/runtime-fixture.cjs
           WZ_AXE_MODULE: ${{ runner.temp }}/wz-browser/node_modules/axe-core/axe.min.js
 
+      - name: Anonymous read-only production bilingual canary
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: node scripts/production-canary.mjs
+
       - name: Upload monetization UI evidence
         if: always()
         uses: actions/upload-artifact@v4

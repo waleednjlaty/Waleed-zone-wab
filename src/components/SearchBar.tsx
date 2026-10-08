@@ -17,7 +17,9 @@ export default function SearchBar({live=true,autoFocus=false,onNavigate}:SearchB
   const [value,setValue]=useState(query),[expanded,setExpanded]=useState(false);
   const [matches,setMatches]=useState<Suggestion[]>([]),[loading,setLoading]=useState(false),[failed,setFailed]=useState(false);
   const [pending,startTransition]=useTransition();
+  const [hydrated,setHydrated]=useState(false);
   const input=useRef<HTMLInputElement>(null),root=useRef<HTMLDivElement>(null),generation=useRef(0),id=useId();
+  useEffect(()=>{setHydrated(true);},[]);
   useEffect(()=>{setValue(query);},[query]);
   useEffect(()=>{if(autoFocus)input.current?.focus();},[autoFocus]);
   useEffect(()=>{
@@ -50,7 +52,7 @@ export default function SearchBar({live=true,autoFocus=false,onNavigate}:SearchB
     return `/${search.size?`?${search}`:''}`;
   }
   const showSuggestions=expanded&&Boolean(value.trim());
-  return <div ref={root} className="search-root" onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget))setExpanded(false);}} onKeyDown={event=>{
+  return <div ref={root} className="search-root" data-search-ready={hydrated?'true':'false'} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget))setExpanded(false);}} onKeyDown={event=>{
     if(event.key==='Escape'){setExpanded(false);input.current?.focus();}
     if((event.key==='ArrowDown'||event.key==='ArrowUp')&&showSuggestions){
       const links=Array.from(root.current?.querySelectorAll<HTMLAnchorElement>('.search-suggestions a')||[]);

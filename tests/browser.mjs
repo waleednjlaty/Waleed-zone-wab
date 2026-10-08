@@ -36,11 +36,12 @@ try {
    const gate = searchGate; await gate;
    try {await route.continue();} catch {} // Superseded searches are intentionally cancelled.
   });
-  // This React control proves hydration before filling the independently hydrated search.
+  // Navigation and the hero search hydrate independently; wait for both controls.
   await page.getByRole('button', {name:'فتح البحث', exact:true}).click();
   await page.locator('.search-dialog').waitFor();
   await page.keyboard.press('Escape');
   await page.locator('.search-dialog').waitFor({state:'hidden'});
+  await page.locator('.intro-search .search-root[data-search-ready="true"]').waitFor();
   const input=page.locator('.intro-search input[type="search"]');
   await input.fill('واتساب');
   const suggestion=page.locator('.search-suggestions');

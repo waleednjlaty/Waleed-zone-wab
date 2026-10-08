@@ -80,7 +80,13 @@ try {
     tests.on('exit',(status)=>resolve(status??1));
   });
   process.exitCode=code;
-  if(code===0 && process.env.WZ_BOT_TEST_PYTHON) {
+  if(code===0) {
+    process.exitCode=await new Promise(resolve=>{
+      const audit=spawn(process.execPath,['scripts/audit-analytics-release.mjs'],{env:{...process.env,DATABASE_URL:connection},stdio:'inherit'});
+      audit.on('error',()=>resolve(1));audit.on('exit',status=>resolve(status??1));
+    });
+  }
+  if(code===0 && !process.exitCode && process.env.WZ_BOT_TEST_PYTHON) {
     process.exitCode=await new Promise(resolve=>{const child=spawn(process.execPath,['tests/cross-repo.mjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});child.on('exit',status=>resolve(status??1));});
   }
   if(code===0 && !process.exitCode && process.env.WZ_BROWSER_TESTS==='true') {
