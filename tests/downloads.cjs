@@ -74,8 +74,9 @@ test('download PostgreSQL lifecycle, API abuse and concurrency', { skip: !proces
   const schema = 'download_test_' + randomUUID().replaceAll('-', '');
   const admin = postgres(connection, { max: 1, onnotice() {} });
   await admin.unsafe(`CREATE SCHEMA ${schema}`);
-  const sql = postgres(connection, { max: 8, prepare: false, connection: { search_path: schema }, onnotice() {} });
-  const other = postgres(connection, { max: 8, prepare: false, connection: { search_path: schema }, onnotice() {} });
+  // Fifty concurrent callers share bounded independent pools, as production workers do.
+  const sql = postgres(connection, { max: 2, prepare: false, connection: { search_path: schema }, onnotice() {} });
+  const other = postgres(connection, { max: 2, prepare: false, connection: { search_path: schema }, onnotice() {} });
   let headMode = 'ok', beforeSign = null;
   const adapter = {
     async headObject() {
@@ -139,7 +140,10 @@ test('download PostgreSQL lifecycle, API abuse and concurrency', { skip: !proces
     });
     await t.test('50 admissions on independent pools create one request, shared deadline, all keys remain idempotent', async () => {
       const keys = Array.from({ length: 50 }, () => randomUUID());
-      const responses = await Promise.all(keys.map((key, i) => (i % 2 ? service2 : service).admit(identity, selection, key)));
+      // Drain every transaction before assertions or the next TRUNCATE fixture reset.
+      const settled = await Promise.allSettled(keys.map((key, i) => (i % 2 ? service2 : service).admit(identity, selection, key)));
+      assert.deepEqual(settled.filter(x => x.status === 'rejected').map(x => x.reason?.code || 'UNKNOWN'), []);
+      const responses = settled.map(x => x.value);
       assert.equal(new Set(responses.map(x => x.data.request_id)).size, 1);
       assert.equal(responses.filter(x => x.created).length, 1);
       assert.equal((await sql`SELECT count(*)::int AS n FROM site_download_requests`)[0].n, 1);
