@@ -16,13 +16,14 @@ test('SteamRIP route contract: countdown → fresh mocked provider → atomic 30
   // Proves network work starts after the attempt write has committed, not inside sql.begin.
   if(fail)throw new DownloadError(503,'PROVIDER_CHALLENGE');
   if(change){await change();change=undefined;}
-  return steamripDestination(source,AbortSignal.timeout(1000),async(url)=>{
+  return steamripDestination(source,AbortSignal.timeout(1000),async(url,hosts,signal,headers,follow,method)=>{
+   if(method==='HEAD')return {status:200,url,headers:{'content-type':'application/octet-stream'},body:''};
    if(url.includes('steamrip.com'))return {status:200,url,headers:{},body:'<a href="https://bzzhr.to/file-xyz">BZZHR</a>'};
    if(!url.includes('/download'))return {status:200,url,headers:{},body:'<a hx-get="/file-xyz/download?t=abc">Download</a>'};
    return {status:200,url,headers:{'hx-redirect':destination},body:''};
   });
  };
- const call=(op,body,cookie='',accept='application/json')=>createLegacyHandler(op,{sql:h.sql,env,now:()=>now,resolve})(new Request(h.origin+'/api/downloads/legacy/'+op,{method:'POST',headers:{origin:h.origin,'sec-fetch-site':'same-origin',accept,cookie,'content-type':op==='prepare'?'application/json':'application/x-www-form-urlencoded'},body:op==='prepare'?JSON.stringify(body):new URLSearchParams(body)}));
+ const call=(op,body,cookie='',accept='text/html')=>createLegacyHandler(op,{sql:h.sql,env,now:()=>now,resolve})(new Request(h.origin+'/api/downloads/legacy/'+op,{method:'POST',headers:{origin:h.origin,'sec-fetch-site':'same-origin',accept,cookie,'content-type':op==='prepare'?'application/json':'application/x-www-form-urlencoded'},body:op==='prepare'?JSON.stringify(body):new URLSearchParams(body)}));
  const prepare=async()=>{const r=await call('prepare',{application_id:201});assert.equal(r.status,200);const text=await r.text();assert.ok(!text.includes('bzzhr')&&!text.includes('fafda')&&!text.includes('QA_SECRET'));return {grant:JSON.parse(text),cookie:r.headers.get('set-cookie').split(';')[0]};};
  const redeem=(p,accept)=>call('redeem',{application_id:201,token:p.grant.token},p.cookie,accept);
  await t.test('early denied without contacting provider; exact boundary allows destination only in 303',async()=>{
@@ -61,6 +62,16 @@ test('SteamRIP route contract: countdown → fresh mocked provider → atomic 30
  await t.test('concurrent redemption of the same grant has one winner',async()=>{
   await h.sql`UPDATE applications SET active=true,published=true,devupload_url='https://steamrip.com/qa-game/' WHERE id=201`;
   const p=await prepare();now=Date.parse(p.grant.ready_at);const rs=await Promise.all([redeem(p),redeem(p)]);assert.deepEqual(rs.map(r=>r.status).sort(),[303,410]);
+ });
+ await t.test('inline JSON contains a destination only after successful atomic redeem, replay denied',async()=>{
+  await h.sql`UPDATE applications SET active=true,published=true,shrankme_url=NULL,devupload_url='https://buzzheavier.com/file-xyz' WHERE id=201`;
+  const p=await prepare();now=Date.parse(p.grant.ready_at)-1;
+  assert.equal((await redeem(p,'application/json')).status,425);now++;
+  // Injected resolver asserts the app/revision and handles a direct provider source too.
+  const inline=createLegacyHandler('redeem',{sql:h.sql,env,now:()=>now,resolve:async()=>destination});
+  const request=()=>new Request(h.origin+'/api/downloads/legacy/redeem',{method:'POST',headers:{origin:h.origin,'sec-fetch-site':'same-origin',accept:'application/json',cookie:p.cookie,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({application_id:201,token:p.grant.token})});
+  const r=await inline(request());assert.equal(r.status,200);assert.deepEqual(await r.json(),{destination});assert.match(r.headers.get('cache-control'),/no-store/);
+  assert.equal((await inline(request())).status,410);
  });
  await t.test('Telegram priority unchanged; manual host policy fails closed',async()=>{
   await h.sql`INSERT INTO site_delivery_sources(application_id,provider,telegram_channel_username,telegram_message_id) VALUES(201,'telegram','files_channel',42)`;

@@ -579,5 +579,22 @@
   "انتهت صلاحية الطلب. جهّز طلبًا جديدًا.": "The request expired. Prepare a new request.",
   "طلبات كثيرة؛ انتظر قبل المحاولة مجددًا.": "Too many requests. Wait before trying again.",
   "لم تنتهِ مهلة تجهيز التحميل.": "The download preparation period has not ended.",
-  "تعذر تنفيذ طلب التحميل.": "Unable to complete the download request."
+  "تعذر تنفيذ طلب التحميل.": "Unable to complete the download request.",
+  "نعالج المصدر هنا، ثم يبدأ المتصفح التنزيل في التبويب نفسه.": "We prepare the source here, then the browser starts the download in this tab.",
+  "جارٍ معالجة مصدر التحميل": "Resolving download source",
+  "تم إرسال طلب التنزيل إلى المتصفح": "Download request sent to the browser",
+  "جارٍ استخراج رابط جديد والتحقق من المضيف النهائي.": "Resolving a fresh link and checking the final host.",
+  "تحقق من قائمة التنزيلات في متصفحك. لا يمكن للموقع تأكيد اكتمال الملف.": "Check your browser downloads. This site cannot confirm file completion.",
+  "فتح المصدر يدويًا في التبويب نفسه": "Open the source manually in this tab",
+  "التحقق البشري في متصفحك لا يفتح جلسة الخادم. اختر مصدرًا آخر إذا استمر الحظر.": "Human verification in your browser does not unlock the server session. Choose another source if the block persists.",
+  "بدء التحميل": "Start download",
+  "يبقى الموقع ظاهرًا أثناء المعالجة. عند بدء التنزيل قد ينقلك المضيف في التبويب نفسه إذا لم يرسل الملف كمرفق.": "The site stays visible during preparation. The host may navigate this tab when it does not send the file as an attachment.",
+  "تعذر الوصول إلى DNS الخاص بالمصدر. أعد المحاولة لاحقًا.": "The source DNS could not be reached. Try again later.",
+  "رفض المصدر اتصال الخادم (403). قد يلزم مصدر بديل أو فتحه يدويًا.": "The source denied the server connection (403). Use another source or open it manually.",
+  "المصدر يتطلب تسجيل دخول. افتحه يدويًا أو اختر مصدرًا آخر.": "The source requires sign-in. Open it manually or choose another source.",
+  "خادم المصدر أعاد خطأ مؤقتًا (5xx). أعد المحاولة لاحقًا.": "The source server returned a temporary error (5xx). Try again later.",
+  "استجاب BZZHR دون رابط تنزيل. أعد المحاولة أو اختر مصدرًا آخر.": "BZZHR responded without a download link. Retry or choose another source.",
+  "الرابط النهائي يعرض صفحة بدل ملف تنزيل. لم يبدأ التحميل.": "The final link serves a page instead of a file. The download did not start.",
+  "المصدر يعيد التحويل إلى الرابط نفسه. أوقفنا الطلب.": "The source redirects back to the same URL. The request was stopped.",
+  "تجاوز المصدر عدد التحويلات المسموح. لم يبدأ التحميل.": "The source exceeded the redirect limit. The download did not start."
 }

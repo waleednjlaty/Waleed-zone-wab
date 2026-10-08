@@ -9,6 +9,7 @@ import { downloadBody, downloadHeaders, downloadErrorResponse, downloadMethodNot
 import { LegacyCountdown, legacyDelivery } from './legacy';
 import { providerRetry } from './retry';
 import { resolveSteamrip } from '@/lib/downloads/providers/steamrip';
+import { ProviderFailure } from '@/lib/downloads/providers/public-http';
 import { consumeWindow, requestNetwork } from '@/lib/security/limits';
 
 // Bounded per-process load shedding; no fake trusted IP from forwarding headers.
@@ -16,7 +17,7 @@ import { consumeWindow, requestNetwork } from '@/lib/security/limits';
 let minute = 0, count = 0;
 export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencies?: { sql: Sql; env: NodeJS.ProcessEnv; now?: () => number; resolve?: typeof resolveSteamrip }) {
   return async (request: Request) => {
-    let retry: {id:number;token:unknown}|undefined;
+    let retry: {id:number;token:unknown;source:string}|undefined;
     try {
       if (request.method !== 'POST') return downloadMethodNotAllowed();
       const env = dependencies?.env ?? process.env;
@@ -62,7 +63,7 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
         WHERE token_hash=${hash} AND application_id=${Number(appId)} AND source_revision=${source.revision}
         AND consumed_at IS NULL AND attempts<3 AND ready_at<=${now}::timestamptz AND expires_at>${now}::timestamptz RETURNING token_hash`;
       if(!attempts.length)throw new DownloadError(410,'TOKEN_USED');
-      retry={id:Number(appId),token:body.token};
+      retry={id:Number(appId),token:body.token,source:source.destination};
       const destination=source.provider==='steamrip'
         ?await (dependencies?.resolve??resolveSteamrip)(Number(appId),source.revision,source.destination):source.destination;
       await sql.begin('isolation level read committed',async tx=>{
@@ -82,14 +83,24 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
       });
       scheduleMetrics([{metric:'download_redeem',id:Number(appId)},
         {metric:source.provider==='telegram'?'telegram_redirect':'external_download_redirect',id:Number(appId)}],request.headers);
+      // SAME route, only after the grant is atomically consumed; no file proxy.
+      if(request.headers.get('accept')?.includes('application/json'))return Response.json({destination},{headers:downloadHeaders});
       return new Response(null,{ status:303,headers:{ ...downloadHeaders,Location:destination } });
     } catch (error) {
       // Provider/driver error messages can contain signatures or connection strings.
       // Log only bounded categories, never the error object, query or destination.
       const driverCode=error && typeof error==='object' && 'code' in error ? String(error.code) : '';
-      console.warn(JSON.stringify({area:'delivery',application_id:retry?.id,category:error instanceof DownloadError?error.code:/^[0-9A-Z]{5}$/.test(driverCode)?'DB_'+driverCode:error instanceof TypeError?'INTERNAL_TYPE_ERROR':'DELIVERY_UNAVAILABLE'}));
+      console.warn(JSON.stringify({area:'delivery',application_id:retry?.id,category:error instanceof DownloadError?error.code:/^[0-9A-Z]{5}$/.test(driverCode)?'DB_'+driverCode:error instanceof TypeError?'INTERNAL_TYPE_ERROR':'DELIVERY_UNAVAILABLE',
+        ...(error instanceof ProviderFailure?{stage:error.stage,host:error.host,upstream_status:error.upstreamStatus}:{})}));
       if(retry && !request.headers.get('accept')?.includes('application/json')) {const response=providerRetry(error,retry.id,retry.token,request);if(response)return response;}
-      return downloadErrorResponse(error,request,operation==='redeem');
+      const response=downloadErrorResponse(error,request,operation==='redeem');
+      if(retry && request.headers.get('accept')?.includes('application/json') && error instanceof ProviderFailure) {
+        const payload=await response.json();
+        payload.error.stage=error.stage;payload.error.provider_host=error.host;payload.error.upstream_status=error.upstreamStatus;
+        if(['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_FORBIDDEN'].includes(error.code))payload.error.source_url=retry.source;
+        return Response.json(payload,{status:response.status,headers:response.headers});
+      }
+      return response;
     }
   };
 }
