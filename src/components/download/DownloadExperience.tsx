@@ -77,7 +77,7 @@ export default function DownloadExperience({ app, file }: { app: DownloadApp; fi
             <p>{english ? 'You can keep this page open. The download button will appear when the link is ready.' : 'يمكنك إبقاء هذه الصفحة مفتوحة. سيظهر زر التحميل عندما يصبح الرابط جاهزًا.'}</p>
           </>}
           {state === 'READY' && <><p>{english ? 'Start the download before the link expires.' : 'ابدأ التحميل قبل انتهاء صلاحية الرابط.'}</p><p className={styles.expiry}>{english ? 'The link is valid for' : 'الرابط صالح لمدة'} <bdi>{remaining}</bdi> {english ? 'seconds.' : 'ثانية.'}</p></>}
-          {state === 'DOWNLOADING' && <p>{english ? 'The download tab opened. Check your browser downloads; you may be asked to confirm saving the file.' : 'فُتح تبويب التحميل. راجع قائمة التنزيلات في متصفحك؛ قد يطلب منك تأكيد حفظ الملف.'}</p>}
+          {state === 'DOWNLOADING' && <p>{english ? 'Your download request was sent. The browser will continue from this page and may ask you to confirm saving the file.' : 'تم إرسال طلب التحميل. سيكمل المتصفح العملية من هذه الصفحة وقد يطلب منك تأكيد حفظ الملف.'}</p>}
           {state === 'SUCCESS' && <p>{english ? 'The server accepted the download request. Track progress in your browser downloads; this page cannot confirm that the file finished saving.' : 'وافق السيرفر على طلب التحميل. تابع التقدم في تنزيلات المتصفح؛ هذه الصفحة لا تستطيع تأكيد اكتمال حفظ الملف.'}</p>}
           {state === 'EXPIRED' && <p>{flow.message || (english ? 'The temporary link expired. Prepare it again to continue.' : 'انتهت صلاحية الرابط المؤقت. يمكنك إعادة تجهيزه لمتابعة التحميل.')}</p>}
           {['FAILED', 'RATE_LIMITED'].includes(state) && <p className={styles.error}>{flow.message}</p>}
@@ -85,7 +85,7 @@ export default function DownloadExperience({ app, file }: { app: DownloadApp; fi
         </div>
         <div className={styles.actions}>
           {/* Native form: no fetch/Blob, no secret in URLs or browser storage. */}
-          {!unavailable && state === 'READY' && flow.token && <form action="/api/downloads/redeem" method="post" target="_blank" rel="noopener noreferrer" onSubmit={event => { event.preventDefault(); flow.submit(event.currentTarget); }}>
+          {!unavailable && state === 'READY' && flow.token && <form action="/api/downloads/redeem" method="post" onSubmit={event => { event.preventDefault(); flow.submit(event.currentTarget); }}>
             <input type="hidden" name="request_id" value={flow.requestId} />
             <input type="hidden" name="token" value={flow.token?.token || ''} />
             <input type="hidden" name="csrf_token" value={flow.csrf} />
@@ -95,7 +95,7 @@ export default function DownloadExperience({ app, file }: { app: DownloadApp; fi
           {['LOADING', 'COUNTDOWN'].includes(state) && <button className="primary-action" disabled type="button">{english ? (state === 'COUNTDOWN' ? `Preparing · ${remaining}s` : 'Checking…') : (state === 'COUNTDOWN' ? `جارٍ التجهيز · ${remaining} ثانية` : 'جارٍ التحقق…')}</button>}
           {state === 'DOWNLOADING' && <button type="button" className="secondary-action" onClick={() => void flow.check()}>{english ? 'Check request status' : 'التحقق من حالة الطلب'}</button>}
           {unavailable && <Link className="secondary-action" href={app.detailHref}>{english ? 'View download options' : 'عرض خيارات التحميل'}</Link>}
-          {!unavailable && <p id="native-download-note" className={styles.note}>{english ? 'The download opens in a new tab. If it does not start, check that tab and the browser message, then try again.' : 'يفتح التحميل في تبويب جديد. إذا لم يبدأ، راجع ذلك التبويب ورسالة المتصفح ثم أعد المحاولة.'}</p>}
+          {!unavailable && <p id="native-download-note" className={styles.note}>{english ? 'The download continues in this tab. If the provider cannot prepare the source, you will see a safe retry screen on Waleed Zone.' : 'يستمر التحميل في نفس التبويب. إذا تعذر على المزود تجهيز المصدر فستظهر شاشة إعادة محاولة آمنة داخل Waleed Zone.'}</p>}
         </div>
         <noscript><p>{english ? 'JavaScript is required to prepare the download link and show the remaining time.' : 'يلزم تفعيل JavaScript لتجهيز رابط التحميل وعرض الوقت المتبقي.'}</p></noscript>
       </section>
