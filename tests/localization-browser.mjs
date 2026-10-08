@@ -17,8 +17,12 @@ try{
   await page.goto(base+'/');assert.equal(await page.locator('html').getAttribute('lang'),'ar');assert.equal(await page.locator('html').getAttribute('dir'),'rtl');
   // Use the visible control through keyboard, then verify cookie and server refresh.
   await page.locator('.language-switcher:not([disabled])').waitFor();
-  await page.getByRole('button',{name:'التبديل إلى الإنجليزية'}).focus();await page.keyboard.press('Enter');
-  await page.getByRole('heading',{name:/^Waleed Zone — Apps & Games/}).waitFor();
+  await page.getByRole('button',{name:'التبديل إلى الإنجليزية'}).press('Enter');
+  try { await page.getByRole('heading',{name:/^Waleed Zone — Apps & Games/}).waitFor(); }
+  catch(error){
+    console.log('Locale switch diagnostics',JSON.stringify({width,lang:await page.locator('html').getAttribute('lang'),dir:await page.locator('html').getAttribute('dir'),headings:await page.locator('h1').allTextContents(),localeCookie:(await context.cookies()).find(c=>c.name==='wz_locale')?.value,englishControl:await page.getByRole('button',{name:'Switch to Arabic'}).count(),errors}));
+    await page.screenshot({path:`tests/screenshots/i18n-switch-failure-${width}.png`,fullPage:true});throw error;
+  }
   const preference=(await context.cookies()).find(c=>c.name==='wz_locale');assert.equal(preference.value,'en');assert.equal(preference.path,'/');assert.equal(preference.sameSite,'Lax');assert.equal(preference.secure,true);
   assert.equal((await context.cookies()).find(c=>c.name===name)?.value,value,'session preserved by switch');
   await page.reload();await page.getByRole('button',{name:'Switch to Arabic'}).waitFor();
