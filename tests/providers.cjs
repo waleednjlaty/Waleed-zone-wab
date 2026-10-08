@@ -180,3 +180,16 @@ test('rejected redirect on one advertised SteamRIP source can use another vetted
  assert.equal(await steam.steamripDestination(source,signal(),fn),destination);
  assert.equal(visited.length,5);assert.ok(!visited.some(url=>url==='https://steamrip.com'));
 });
+
+
+test('real SteamRIP HTML with shared challenge-platform script is not a challenge',()=>{
+ http.requireProviderSuccess({status:200,headers:{},body:'<title>Example game</title><script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script><article><a href="https://bzzhr.co/file">Download</a></article>',url:source});
+});
+test('actual interstitial and header-based challenge still block website resolver',()=>{
+ for(const response of [
+  {status:200,headers:{},body:'<title>Just a moment...</title>'},
+  {status:200,headers:{},body:'<form id="challenge-form"><div class="cf-turnstile"></div></form>'},
+  {status:403,headers:{},body:'<script src="/cdn-cgi/challenge-platform/x"></script>'},
+  {status:200,headers:{'cf-mitigated':'challenge'},body:''}
+ ])assert.throws(()=>http.requireProviderSuccess({...response,url:source}),error('PROVIDER_CHALLENGE'));
+});
