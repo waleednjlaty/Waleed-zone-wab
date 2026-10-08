@@ -33,9 +33,10 @@ socket.on('message',async raw=>{
  if(message.method==='Fetch.requestPaused'){
   const {request,requestId}=message.params;
   if(request.url===base+'/api/downloads/legacy/redeem'){
-   assert.equal(message.params.responseStatusCode,303);
-   const location=message.params.responseHeaders.find(({name})=>name.toLowerCase()==='location')?.value;
-   assert.equal(location,'https://t.me/files_channel/123');redirects++;
+   assert.equal(message.params.responseStatusCode,200);
+   assert.ok(message.params.responseHeaders.some(({name,value})=>name.toLowerCase()==='content-type'&&value.includes('application/json')));redirects++;
+   const body=await send('Fetch.getResponseBody',{requestId},message.sessionId);
+   assert.equal(JSON.parse(body.base64Encoded?Buffer.from(body.body,'base64').toString():body.body).destination,'https://t.me/files_channel/123');
    await send('Fetch.continueRequest',{requestId},message.sessionId);return;
   }
   assert.equal(request.url,'https://t.me/files_channel/123');assert.equal(request.method,'GET');
@@ -92,14 +93,17 @@ try{
   await page.screenshot({path:`tests/screenshots/telegram-countdown-${width}.png`,fullPage:true});
   await page.getByRole('button',{name:'تحميل الملف عبر Telegram ↓',exact:true}).waitFor({timeout:25000});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Download overflow '+width);
-  const popupPromise=context.waitForEvent('page');await page.getByRole('button',{name:'تحميل الملف عبر Telegram ↓',exact:true}).click();const popup=await popupPromise;
-  try{await popup.waitForURL('https://t.me/files_channel/123',{timeout:10000});}catch(e){console.log('Native popup diagnostics:',popup.url(),await popup.locator('body').innerText().catch(()=>''));throw e;}
-  assert.equal(popup.url(),'https://t.me/files_channel/123');
+  let popups=0;page.on('popup',()=>popups++);
+  const redeemResponse=page.waitForResponse(r=>r.url()===base+'/api/downloads/legacy/redeem');
+  await page.getByRole('button',{name:'تحميل الملف عبر Telegram ↓',exact:true}).click();
+  assert.equal((await redeemResponse).status(),200);
+  await page.waitForURL('https://t.me/files_channel/123',{timeout:10000});
+  assert.equal(popups,0);assert.equal(context.pages().length,1);
   assert.deepEqual(errors,[]);checks+=4;
   for(const route of ['/','/?q=WhatsApp','/apps/whatsapp-201','/login','/account']){const response=await page.goto(base+route);assert.ok([200,307].includes(response.status()));assert.equal(await page.locator('[data-nextjs-dialog]').count(),0);checks++;}
   await context.close();
  }
  assert.equal(destinations,3);
  assert.equal(redirects,3);
- console.log(`Telegram/catalog browser checks passed: ${checks} (360, 768, 1440; real APIs, exact native 303)`);
+ console.log(`Telegram/catalog browser checks passed: ${checks} (360, 768, 1440; real APIs, atomic JSON redeem and exact same-tab destination)`);
 }finally{await send('Target.setAutoAttach',{autoAttach:false,waitForDebuggerOnStart:false,flatten:true});socket.close();await browser.close();}

@@ -178,14 +178,12 @@ export async function verifyDownloadUI({ base, root }) {
     await reload.close(); checks++;
 
     const failure = await fixture(360, 'redeem-error'); await prepare(failure.page); await ready(failure.page);
-    const popupPromise = failure.context.waitForEvent('page');
+    let popups=0;failure.page.on('popup',()=>popups++);
     await failure.page.getByRole('button', { name: 'تحميل الملف', exact: true }).click();
-    const popup = await popupPromise;
-    try { await popup.getByRole('heading', { name: 'انتظر 10 ثوانٍ' }).waitFor({ timeout: 5000 }); }
-    catch (error) { console.error('Native error tab diagnostics', popup.url(), await popup.content(), failure.calls.map(c => ({ path: c.path, method: c.method }))); throw error; }
-    await failure.page.clock.fastForward(3500); await state(failure.page, 'FAILED');
+    await failure.page.getByRole('heading', { name: 'انتظر 10 ثوانٍ' }).waitFor({ timeout: 5000 });
+    assert.equal(popups,0);
     assert.equal(failure.calls.filter(c => c.path === '/api/downloads/redeem').length, 1);
-    assert.equal(await popup.getByRole('link').getAttribute('href'), '/');
+    assert.equal(await failure.page.getByRole('link').getAttribute('href'), '/');
     await failure.close(); checks++;
 
     const missing = await fixture(); await missing.page.goto(base + '/?unavailable=1');
@@ -206,7 +204,7 @@ export async function verifyDownloadUI({ base, root }) {
       if (width < 1024) { await f.page.locator('.mobile-download-bar').waitFor({ state: 'visible' }); assert.equal(await f.page.locator('.mobile-download-bar a').getAttribute('href'), '/download/201'); }
       await noOverflow(f.page);
       await f.page.goto(base + '/?actions=1&unavailable=1'); await primary.waitFor();
-      assert.equal(await primary.getAttribute('href'), 'https://example.test/legacy'); assert.equal(await primary.getAttribute('target'), '_blank');
+      assert.equal(await primary.getAttribute('href'), 'https://example.test/legacy'); assert.equal(await primary.getAttribute('target'), null);
       await f.close(); checks++;
     }
     console.log(`Download UI: ${checks} browser flows passed (360/768/1440px, keyboard, reduced motion, reload, expiry, retries, native POST).`);

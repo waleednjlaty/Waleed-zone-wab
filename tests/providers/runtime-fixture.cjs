@@ -16,6 +16,7 @@ https.request=(url,options,callback)=>{
   if(u.href==='https://steamrip.com/qa-game/')body='<a href="https://bzzhr.to/file-xyz">BZZHR</a>';
   else if(u.href==='https://bzzhr.to/file-xyz')body='<a hx-get="/file-xyz/download?t=fixture">Download</a>';
   else if(u.href==='https://bzzhr.to/file-xyz/download?t=fixture')res.headers['hx-redirect']='https://fafda.to/d/file-xyz?v=QA_BROWSER_SECRET';
+  else if(u.href==='https://fafda.to/d/file-xyz?v=QA_BROWSER_SECRET' && options.method==='HEAD')res.headers['content-type']='application/octet-stream';
   else{res.statusCode=404;}
   callback(res);res.end(body);req.emit('close');
  });return req;

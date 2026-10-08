@@ -67,6 +67,14 @@ export async function downloadBody(request: Request, form = false, maxBytes = 20
   } finally { clearTimeout(timer); reader.releaseLock(); }
 }
 const providerMessages:Record<string,string>={
+  PROVIDER_DNS_FAILED:'تعذر الوصول إلى DNS الخاص بالمصدر. أعد المحاولة لاحقًا.',
+  PROVIDER_FORBIDDEN:'رفض المصدر اتصال الخادم (403). قد يلزم مصدر بديل أو فتحه يدويًا.',
+  PROVIDER_AUTH_REQUIRED:'المصدر يتطلب تسجيل دخول. افتحه يدويًا أو اختر مصدرًا آخر.',
+  PROVIDER_HTTP_ERROR:'خادم المصدر أعاد خطأ مؤقتًا (5xx). أعد المحاولة لاحقًا.',
+  MISSING_HX_REDIRECT:'استجاب BZZHR دون رابط تنزيل. أعد المحاولة أو اختر مصدرًا آخر.',
+  INVALID_FILE_RESPONSE:'الرابط النهائي يعرض صفحة بدل ملف تنزيل. لم يبدأ التحميل.',
+  PROVIDER_REDIRECT_LOOP:'المصدر يعيد التحويل إلى الرابط نفسه. أوقفنا الطلب.',
+  PROVIDER_REDIRECT_LIMIT:'تجاوز المصدر عدد التحويلات المسموح. لم يبدأ التحميل.',
   PROVIDER_CHALLENGE:'المصدر يطلب تحققًا بشريًا مؤقتًا. أعد المحاولة لاحقًا.',
   PROVIDER_TIMEOUT:'انتهت مهلة تجهيز المصدر. يمكنك إعادة المحاولة.',
   PROVIDER_UNAVAILABLE:'مزود التحميل غير متاح مؤقتًا. أعد المحاولة بعد قليل.',

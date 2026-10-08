@@ -1,21 +1,27 @@
 import 'server-only';
-import { firstHtmlAttribute } from './html';
-import { publicHttp, publicUrl, providerError, requireProviderSuccess, vettedAddresses, type PublicHttp } from './public-http';
+import { htmlAttributes } from './html';
+import { publicHttp, publicUrl, providerError, providerStage, requireStageSuccess, cookieHeader, type PublicHttp } from './public-http';
 export const BZZHR_HOSTS=['bzzhr.to','bzzhr.co','buzzheavier.com','www.bzzhr.to','www.bzzhr.co','www.buzzheavier.com'] as const;
-// Exact separate CDN evidenced by the existing bot test_hx_redirect_direct_download_is_accepted fixture.
-export const BZZHR_FILE_HOSTS=[...BZZHR_HOSTS,'fafda.to'] as const;
-export function signedEndpoint(html: string, page: string) {
+// ts.buzzheavier.com observed on an authorized 89-byte live download, 2026-10-08.
+// Keep exact hosts: provider HTML cannot expand the SSRF allowlist.
+export const BZZHR_FILE_HOSTS=[...BZZHR_HOSTS,'fafda.to','ts.buzzheavier.com'] as const;
+export function signedEndpoints(html: string, page: string) {
   const base=publicUrl(page,BZZHR_HOSTS);
-  const found=firstHtmlAttribute(html,'hx-get',value=>{
+  const found=htmlAttributes(html,'hx-get',value=>{
     try {
       if(/[\s\p{Cc}\p{Cf}\\]/u.test(value))return;
       const url=publicUrl(new URL(value,base).href,BZZHR_HOSTS);
-      if(url.hostname===base.hostname && url.pathname===base.pathname.replace(/\/$/,'')+'/download' && url.searchParams.get('t'))return url.href;
+      // Use the supplied endpoint, never construct /download. Bind to the file ID,
+      // but accept alternate server paths and query names on this same origin.
+      const id=base.pathname.split('/').filter(Boolean)[0];
+      if(id && url.hostname===base.hostname && url.pathname.startsWith('/'+id+'/')
+        && !/(?:^|\/)(?:preview|delete|remove|login|account)(?:\/|$)/i.test(url.pathname))return url.href;
     }catch{/* malformed endpoints fail closed */}
   });
-  if(found)return found;
+  if(found.length)return found;
   throw providerError('INVALID_PROVIDER_RESPONSE');
 }
+export function signedEndpoint(html: string,page: string) {return signedEndpoints(html,page)[0];}
 export function signedDestination(raw: string, base: string) {
   // Validate raw headers before URL normalization can discard CR/LF or whitespace.
   if(/[\s\p{Cc}\p{Cf}\\]/u.test(raw)||raw.includes('#'))throw providerError('INVALID_PROVIDER_RESPONSE');
@@ -27,15 +33,35 @@ export function signedDestination(raw: string, base: string) {
 }
 export async function resolveBzzhr(page: string, signal: AbortSignal, http: PublicHttp=publicHttp) {
   publicUrl(page,BZZHR_HOSTS);
-  const result=await http(page,BZZHR_HOSTS,signal);requireProviderSuccess(result);
-  const endpoint=signedEndpoint(result.body,result.url);
-  const cookie=result.headers['set-cookie'];
+  const result=await providerStage('bzzhr_page',page,()=>http(page,BZZHR_HOSTS,signal));requireStageSuccess(result,'bzzhr_page');
+  const endpoints=await providerStage('bzzhr_page',result.url,async()=>signedEndpoints(result.body,result.url));
+  const fallbackCookie=result.headers['set-cookie'];
+  const cookie=result.cookies?cookieHeader(result.cookies,endpoints[0]):fallbackCookie;
   if(cookie && (cookie.length>2048 || /[\r\n\x00]/.test(cookie)))throw providerError('INVALID_PROVIDER_RESPONSE');
-  const response=await http(endpoint,BZZHR_HOSTS,signal,{'HX-Request':'true','HX-Current-URL':result.url,Referer:result.url,...(cookie?{Cookie:cookie}: {})},false);
-  if(![200,204,302,303].includes(response.status))requireProviderSuccess(response);
-  const raw=response.headers['hx-redirect']||response.headers.location;if(!raw)throw providerError('INVALID_PROVIDER_RESPONSE');
-  return signedDestination(raw,endpoint);
+  let lastError: unknown;
+  for(const endpoint of endpoints)try {return await providerStage('bzzhr_htmx',endpoint,async()=>{
+    const session=result.cookies?cookieHeader(result.cookies,endpoint):cookie;
+    const response=await http(endpoint,BZZHR_HOSTS,signal,{'HX-Request':'true','HX-Current-URL':result.url,Referer:result.url,...(session?{Cookie:session}: {})},false);
+    if(![200,204,301,302,303,307,308].includes(response.status))requireStageSuccess(response,'bzzhr_htmx');
+    const raw=response.headers['hx-redirect']||response.headers.location;if(!raw)throw providerError('MISSING_HX_REDIRECT');
+    const destination=signedDestination(raw,endpoint);
+    await validateBzzhrDns(destination,signal,http);return destination;
+  });}catch(error){
+    lastError=error;
+    // Alternate buttons are public provider-declared mirrors, not challenge bypass.
+    if(signal.aborted || (error && typeof error==='object' && 'code' in error &&
+      ['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_RATE_LIMITED','INVALID_SOURCE'].includes(String(error.code))))throw error;
+  }
+  throw lastError;
 }
-export async function validateBzzhrDns(destination: string, signal: AbortSignal) {
-  const url=publicUrl(destination,BZZHR_FILE_HOSTS);await vettedAddresses(url.hostname,signal);
+export async function validateBzzhrDns(destination: string, signal: AbortSignal, http: PublicHttp=publicHttp) {
+  publicUrl(destination,BZZHR_FILE_HOSTS);
+  // Header-only request: never relay/download file bytes through Railway.
+  return providerStage('final_file',destination,async()=>{
+    const result=await http(destination,BZZHR_FILE_HOSTS,signal,{},true,'HEAD');
+    requireStageSuccess(result,'final_file');
+    const type=result.headers['content-type']||'';
+    if(/(?:text\/html|application\/(?:xhtml\+xml|json))/i.test(type))throw providerError('INVALID_FILE_RESPONSE');
+    if(!type && !result.headers['content-disposition'])throw providerError('INVALID_FILE_RESPONSE');
+  });
 }

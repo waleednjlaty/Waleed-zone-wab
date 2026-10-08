@@ -15,7 +15,7 @@ export default function DownloadActions({allowSticky=true,name,appId,imageUrl,si
   },[]);
   const direct=Boolean(directFile)||Boolean(directConfigured)||Boolean(deliveryAvailable),destination=direct?`/download/${appId}`:href;
   const label=english?(deliveryAvailable?'Download from Waleed Zone':direct?(directFile?'Direct download':'Direct download status'):external?'Open download link':'Download via bot'):(deliveryAvailable?'تحميل من Waleed Zone':direct?(directFile?'تحميل مباشر':'حالة التحميل المباشر'):external?'فتح رابط التحميل':'تحميل عبر البوت');
-  const linkProps=direct?{}:{target:'_blank',rel:`noopener noreferrer${external?' nofollow':''}`};
+  const linkProps=direct?{}:{rel:`noopener noreferrer${external?' nofollow':''}`};
   return <>
     <div className="detail-actions"><a ref={anchor} className="primary-action detail-download" href={destination} {...linkProps}>{label}<span aria-hidden="true">{direct?'↓':'↗'}</span></a><FavoriteButton appId={appId} initialSaved={initialSaved} signedIn={signedIn}/></div>
     <p className="detail-download-note">{english ? (deliveryAvailable?'Prepare the link on Waleed Zone, then continue the download.':direct?(directFile?'Prepare the link, then download the file directly in your browser.':'Direct download is currently unavailable; open the page to review its status.'):external?'The download is available through the current external link.':'The file is currently available through the Waleed Zone bot.') : (deliveryAvailable?'جهّز الرابط على Waleed Zone، ثم تابع التحميل.':direct?(directFile?'جهّز الرابط، ثم حمّل الملف مباشرة من متصفحك.':'التحميل المباشر غير متاح حاليًا؛ افتح الصفحة لمراجعة الحالة.'):external?'التحميل متاح عبر الرابط الخارجي الحالي.':'الملف متاح عبر بوت Waleed Zone حاليًا.')}</p>
