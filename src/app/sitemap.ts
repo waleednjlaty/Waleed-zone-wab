@@ -18,7 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const appUrls: MetadataRoute.Sitemap = apps.map((app) => ({
-    url: SITE_URL + appHref(app),
+    url: new URL(appHref(app),SITE_URL).href,
     ...(app.createdAt ? { lastModified: app.createdAt } : {}),
   }));
 
