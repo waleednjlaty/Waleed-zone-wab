@@ -88,7 +88,7 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
       // Log only bounded categories, never the error object, query or destination.
       const driverCode=error && typeof error==='object' && 'code' in error ? String(error.code) : '';
       console.warn(JSON.stringify({area:'delivery',application_id:retry?.id,category:error instanceof DownloadError?error.code:/^[0-9A-Z]{5}$/.test(driverCode)?'DB_'+driverCode:error instanceof TypeError?'INTERNAL_TYPE_ERROR':'DELIVERY_UNAVAILABLE'}));
-      if(retry && !request.headers.get('accept')?.includes('application/json')) {const response=providerRetry(error,retry.id,retry.token);if(response)return response;}
+      if(retry && !request.headers.get('accept')?.includes('application/json')) {const response=providerRetry(error,retry.id,retry.token,request);if(response)return response;}
       return downloadErrorResponse(error,request,operation==='redeem');
     }
   };

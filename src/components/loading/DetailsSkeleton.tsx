@@ -1,3 +1,6 @@
+
+'use client';
+import { useTranslateUI } from '@/components/LocaleProvider';
 import ImageSkeleton from './ImageSkeleton';
 import LoadingRegion from './LoadingRegion';
 import SectionSkeleton from './SectionSkeleton';
@@ -6,7 +9,9 @@ import styles from './loading.module.css';
 
 /** Reuses Phase 2 geometry; gallery defaults off because it is optional metadata. */
 export default function DetailsSkeleton({ screenshots = 0, relatedCount = 4 }: { screenshots?: number; relatedCount?: number }) {
-  return <LoadingRegion className="shell detail-page" label="جارٍ تحميل تفاصيل التطبيق">
+  const t = useTranslateUI();
+
+  return <LoadingRegion className="shell detail-page" label={t("جارٍ تحميل تفاصيل التطبيق")}>
     <div className="detail-breadcrumbs"><Skeleton className={styles.category} /></div>
     <div className="detail-summary">
       <div className="detail-identity"><span className="detail-icon"><ImageSkeleton variant="icon" /></span><div className={`detail-name ${styles.detailsCopy}`}><Skeleton className={styles.category} /><Skeleton className={styles.detailsTitle} /><Skeleton className={styles.developer} /></div></div>

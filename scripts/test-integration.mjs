@@ -84,7 +84,7 @@ try {
     process.exitCode=await new Promise(resolve=>{const child=spawn(process.execPath,['tests/cross-repo.mjs'],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});child.on('exit',status=>resolve(status??1));});
   }
   if(code===0 && !process.exitCode && process.env.WZ_BROWSER_TESTS==='true') {
-    for(const file of ['tests/monetization-release-browser.mjs','tests/browser.mjs','tests/seo-browser.mjs','tests/telegram-browser.mjs','tests/phase8-browser.mjs',...(process.env.WZ_FINAL_PROVIDER_FIXTURES==='true'?['tests/download-processing-browser.mjs']:[])].filter(file=>!process.env.WZ_BROWSER_TEST_FILTER||process.env.WZ_BROWSER_TEST_FILTER.split(',').some(name=>file.includes(name)))) {
+    for(const file of ['tests/localization-browser.mjs','tests/monetization-release-browser.mjs','tests/browser.mjs','tests/seo-browser.mjs','tests/telegram-browser.mjs','tests/phase8-browser.mjs',...(process.env.WZ_FINAL_PROVIDER_FIXTURES==='true'?['tests/download-processing-browser.mjs']:[])].filter(file=>!process.env.WZ_BROWSER_TEST_FILTER||process.env.WZ_BROWSER_TEST_FILTER.split(',').some(name=>file.includes(name)))) {
       process.exitCode=await new Promise(resolve=>{
         const browser=spawn(process.execPath,[file],{env:{...process.env,WZ_TEST_CONFIG:configPath},stdio:'inherit'});
         browser.on('exit',status=>resolve(status??1));

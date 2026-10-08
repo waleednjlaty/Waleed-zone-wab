@@ -1,3 +1,5 @@
+import { localeFromCookie, localeDirection } from '@/lib/locale';
+import { translateUI } from '@/lib/ui-translations';
 import 'server-only';
 import {scheduleMetric} from '@/lib/analytics/schedule';
 import { randomUUID } from 'node:crypto';
@@ -87,8 +89,10 @@ export function downloadErrorResponse(error: unknown, request?: Request, html = 
   else if (e.status === 503) headers['Retry-After'] = '10';
   if (html && !request?.headers.get('accept')?.includes('application/json')) {
     headers['Content-Type'] = 'text/html; charset=utf-8';
+    headers['Content-Security-Policy'] = "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+    const locale=localeFromCookie(request?.headers.get('cookie')), t=(text:string)=>translateUI(locale,text);
     // Only server-controlled codes/messages; no supplied values, tokens or file metadata.
-    return new Response(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>تعذر التحميل</title><main data-error-code="${e.code}"><h1>تعذر التحميل</h1><p>${message(e)}</p><a href="/">العودة إلى وليد زون</a></main></html>`, { status: e.status, headers });
+    return new Response(`<!doctype html><html lang="${locale}" dir="${localeDirection(locale)}"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${t('تعذر التحميل')}</title><main data-error-code="${e.code}"><h1>${t('تعذر التحميل')}</h1><p>${t(message(e))}</p><a href="/">${t('العودة إلى وليد زون')}</a></main></html>`, { status: e.status, headers });
   }
   return Response.json({ error: { code: e.code, message: message(e), retry_after_seconds: e.retrySeconds,
     retry_at: e.retryAt?.toISOString() ?? null }, server_time: e.serverTime.toISOString(), trace_id: randomUUID() }, { status: e.status, headers });

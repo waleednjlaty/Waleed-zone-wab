@@ -74,17 +74,17 @@ export function useDownload(file: DownloadFile | null) {
     save();
     if (request.state === 'redeemed') { setState('SUCCESS'); return; }
     if (request.state === 'expired' || r.expiresAt <= performance.now()) { setState('EXPIRED'); return; }
-    if (request.state === 'revoked') { setMessage(messages[locale].REQUEST_REVOKED); setState('FAILED'); return; }
+    if (request.state === 'revoked') { setMessage(messages.ar.REQUEST_REVOKED); setState('FAILED'); return; }
     // Countdown ending never grants access by itself; token() must authorize it.
     setRemaining(secondsLeft(r.readyAt));
     setState('COUNTDOWN');
-  }, [locale, save]);
+  }, [save]);
 
   const fail = useCallback((error: unknown) => {
     const e = error instanceof DownloadApiError ? error : new DownloadApiError(0, 'NETWORK_ERROR');
     const r = refs.current;
     setToken(null);
-    setMessage(messages[locale][e.code] || (locale === 'en' ? 'Unable to prepare the download. Try again or return to the app page.' : 'تعذر تجهيز التحميل. أعد المحاولة أو ارجع إلى صفحة التطبيق.'));
+    setMessage(messages.ar[e.code] || 'تعذر تجهيز التحميل. أعد المحاولة أو ارجع إلى صفحة التطبيق.');
     if (e.code === 'CSRF_REJECTED' || e.status === 401) { r.csrf = ''; setCsrf(''); }
     if (e.status === 429 || (e.status === 503 && e.waitSeconds > 0)) {
       r.retryAt = performance.now() + e.waitSeconds * 1000;
@@ -103,7 +103,7 @@ export function useDownload(file: DownloadFile | null) {
       if (e.code === 'REQUEST_NOT_FOUND' || e.status === 401 || e.code === 'REQUEST_REVOKED') r.request = null;
       setState('FAILED');
     }
-  }, [locale]);
+  }, []);
 
   const session = useCallback(async () => {
     if (!refs.current.csrf) {
@@ -170,12 +170,12 @@ export function useDownload(file: DownloadFile | null) {
         // Native POST errors are rendered in the download tab by the API. There
         // is no invented JSON redeem endpoint and no cross-origin file fetch.
         setToken(null);
-        setMessage(locale === 'en' ? 'The download could not be confirmed. Check the download tab for the reason, then prepare a new link if needed.' : 'لم يتأكد بدء التحميل. راجع تبويب التحميل لمعرفة السبب، ثم أعد تجهيز الرابط إذا لزم.');
+        setMessage('لم يتأكد بدء التحميل. راجع تبويب التحميل لمعرفة السبب، ثم أعد تجهيز الرابط إذا لزم.');
         setState('FAILED');
       }
     } catch (error) { if (r.alive) fail(error); }
     finally { r.busy = false; }
-  }, [accept, fail, locale]);
+  }, [accept, fail]);
 
   const submit = useCallback((form: HTMLFormElement): boolean => {
     const r = refs.current;
@@ -230,5 +230,7 @@ export function useDownload(file: DownloadFile | null) {
     return () => clearTimeout(timeout);
   }, [check, state]);
 
-  return { state, remaining, message, token, csrf, requestId, prepare, submit, check };
+  const messageCode = Object.keys(messages.ar).find(code => messages.ar[code] === message);
+  const localizedMessage = locale === 'en' && message ? messageCode ? messages.en[messageCode] : message === 'لم يتأكد بدء التحميل. راجع تبويب التحميل لمعرفة السبب، ثم أعد تجهيز الرابط إذا لزم.' ? 'The download could not be confirmed. Check the download tab for the reason, then prepare a new link if needed.' : 'Unable to prepare the download. Try again or return to the app page.' : message;
+  return { state, remaining, message: localizedMessage, token, csrf, requestId, prepare, submit, check };
 }

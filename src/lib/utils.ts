@@ -31,11 +31,11 @@ export function safeJsonLd(value: unknown): string {
   return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
-export function formatDate(input?: Date | string | null): string | null {
+export function formatDate(input?: Date | string | null, locale: 'ar' | 'en' = 'ar'): string | null {
   if (!input) return null;
   const date = input instanceof Date ? input : new Date(input);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat('ar', {
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

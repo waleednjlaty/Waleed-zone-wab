@@ -132,7 +132,7 @@ svg { flex-shrink: 0; }
 .app-icon { width: 56px; flex: 0 0 56px; border: 1px solid #ffffff0d; border-radius: 12px; overflow: hidden; background: var(--surface-2); }
 .app-icon .cover-image img { object-fit: cover; }
 .app-card-copy { flex: 1; min-width: 0; }
-.app-card-copy [dir="auto"] { text-align: right; }
+.app-card-copy [dir="auto"] { text-align: start; }
 .app-name-line { display: flex; align-items: baseline; gap: 6px; }
 .app-name-line h3 { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: .9375rem; font-weight: 600; line-height: 1.6; overflow-wrap: anywhere; }
 .app-category { color: var(--muted); font-size: .8125rem; margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -151,7 +151,7 @@ svg { flex-shrink: 0; }
 .app-card--row { border: 0; border-bottom: 1px solid var(--line-subtle); border-radius: 0; background: transparent; }
 .app-card--row .app-card-link { border-radius: 10px; }
 .app-card--row .app-card-body { padding: 14px 4px; }
-.app-card--row .app-metadata { text-align: right; }
+.app-card--row .app-metadata { text-align: start; }
 .app-card--row:hover { background: transparent; }
 .app-card--row:hover .app-card-link { background: var(--surface); }
 .featured-grid { display: grid; grid-auto-flow: column; grid-auto-columns: min(84%, 340px); gap: 14px; overflow-x: auto; padding: 4px 4px 14px; margin-inline: -4px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
@@ -357,6 +357,5 @@ svg { flex-shrink: 0; }
 /* Locale-aware presentation. Catalog/source text keeps dir=auto while UI follows the selected language. */
 .language-switcher { font-weight: 900; font-size: 12px; letter-spacing: .04em; }
 html[dir="ltr"] .app-card-copy [dir="auto"],
-html[dir="ltr"] .app-card--row .app-metadata { text-align: left; }
-html[dir="ltr"] .card-chevron,
-html[dir="ltr"] .view-all svg[name="chevron"] { transform: scaleX(-1); }
+html[dir="ltr"] .app-card--row .app-metadata { text-align: start; }
+html[dir="ltr"] svg[data-icon="chevron"] { transform: scaleX(-1); }

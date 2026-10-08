@@ -10,9 +10,9 @@ export const SITE_DESCRIPTION_EN =
   'Discover apps and games on Waleed Zone, browse release details, file sizes, platforms and download options, and search in Arabic or English.';
 
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, '') || 'https://waleed-zone.up.railway.app';
+  process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') || 'https://waleed-zone.up.railway.app';
 
-export const TELEGRAM_BOT_URL = 'https://t.me/WALEED_ZONE_BOT';
+export const TELEGRAM_BOT_URL = 'https://t.me/Waleedzone_bot';
 export const TELEGRAM_CHANNEL_URL = 'https://t.me/Waleed_Zone';
 
 export function telegramDownloadUrl(id: number | string): string {
