@@ -15,7 +15,8 @@ try{
   await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.fulfill({status:200,body:''}));
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'/');assert.equal(await page.locator('html').getAttribute('lang'),'ar');assert.equal(await page.locator('html').getAttribute('dir'),'rtl');
-  // Use the visible control through keyboard, then verify cookie and server refresh.
+  const favorite=await context.request.post(base+'/api/favorites',{headers:{Origin:base},data:{appId:201}});assert.equal(favorite.status(),200);
+  // Use the visible control through keyboard, then verify cookie and fresh server content.
   await page.locator('.language-switcher:not([disabled])').waitFor();
   await page.getByRole('button',{name:'التبديل إلى الإنجليزية'}).press('Enter');
   try { await page.getByRole('heading',{name:/^Waleed Zone — Apps & Games/}).waitFor(); }
@@ -26,10 +27,12 @@ try{
   const preference=(await context.cookies()).find(c=>c.name==='wz_locale');assert.equal(preference.value,'en');assert.equal(preference.path,'/');assert.equal(preference.sameSite,'Lax');assert.equal(preference.secure,true);
   assert.equal((await context.cookies()).find(c=>c.name===name)?.value,value,'session preserved by switch');
   await page.reload();await page.getByRole('button',{name:'Switch to Arabic'}).waitFor();
+  assert.ok((await context.request.get(base+'/account').then(r=>r.text())).includes('WhatsApp'),'saved favorite preserved after English switch/reload');
   for(const locale of ['en','ar']){
    if(locale==='ar'){
     await page.getByRole('button',{name:'Switch to Arabic'}).click();await page.getByRole('button',{name:'التبديل إلى الإنجليزية'}).waitFor();await page.reload();
    }
+   assert.ok((await context.request.get(base+'/account').then(r=>r.text())).includes('WhatsApp'),'saved favorite preserved in '+locale);
    for(const route of routes){
     const response=await page.goto(base+route);assert.equal(response.status(),route==='/not-a-page'?404:200,`${locale} ${width} ${route}`);
     await page.locator('.language-switcher:not([disabled])').waitFor();
