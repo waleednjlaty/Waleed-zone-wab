@@ -132,7 +132,12 @@ export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=
   throw providerError('INVALID_PROVIDER_RESPONSE');
 };
 export function requireProviderSuccess(result: PublicResponse) {
-  if (result.headers['cf-mitigated']==='challenge' || /cf-chl-|challenge-platform|<[^>]+(?:id|class)=["'][^"']*(?:challenge-form|cf-turnstile)|<title[^>]*>\s*just a moment|verify you are human/i.test(result.body)) throw providerError('PROVIDER_CHALLENGE');
+  // Only actual access interstitials are challenges. A normal 200 game page
+  // may include Cloudflare's shared challenge-platform JS without a challenge.
+  // The server classifies and fails closed; only the user's browser can verify.
+  const interstitial=/<title[^>]*>\s*(?:just a moment|attention required)\b|<(?:div|form)[^>]+(?:id|class)=["'][^"']*(?:challenge-form|cf-turnstile)/i.test(result.body);
+  const blockedWithMarkers=result.status>=400 && /cf-chl-|\/cdn-cgi\/challenge-platform\/|verify you are human/i.test(result.body);
+  if(result.headers['cf-mitigated']==='challenge' || interstitial || blockedWithMarkers)throw providerError('PROVIDER_CHALLENGE');
   if(result.status===404 || result.status===410)throw new DownloadError(404,'SOURCE_REMOVED');
   if(result.status===401)throw providerError('PROVIDER_AUTH_REQUIRED');
   if(result.status===403)throw providerError('PROVIDER_FORBIDDEN');
