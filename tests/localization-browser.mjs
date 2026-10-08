@@ -16,7 +16,7 @@ try{
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'/');assert.equal(await page.locator('html').getAttribute('lang'),'ar');assert.equal(await page.locator('html').getAttribute('dir'),'rtl');
   // Use the visible control through keyboard, then verify cookie and server refresh.
-  await page.waitForFunction(() => document.querySelector('.language-switcher')?.disabled === false);
+  await page.locator('.language-switcher:not([disabled])').waitFor();
   await page.getByRole('button',{name:'التبديل إلى الإنجليزية'}).focus();await page.keyboard.press('Enter');
   await page.getByRole('heading',{name:/^Waleed Zone — Apps & Games/}).waitFor();
   const preference=(await context.cookies()).find(c=>c.name==='wz_locale');assert.equal(preference.value,'en');assert.equal(preference.path,'/');assert.equal(preference.sameSite,'Lax');assert.equal(preference.secure,true);
@@ -28,7 +28,7 @@ try{
    }
    for(const route of routes){
     const response=await page.goto(base+route);assert.equal(response.status(),route==='/not-a-page'?404:200,`${locale} ${width} ${route}`);
-    await page.locator('.language-switcher').waitFor();
+    await page.locator('.language-switcher:not([disabled])').waitFor();
     assert.equal(await page.locator('html').getAttribute('lang'),locale);assert.equal(await page.locator('html').getAttribute('dir'),locale==='en'?'ltr':'rtl');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`overflow ${locale} ${width} ${route}`);
     assert.equal(await page.locator('[data-nextjs-dialog]').count(),0);checks++;
