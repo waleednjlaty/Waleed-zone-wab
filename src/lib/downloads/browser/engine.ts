@@ -32,9 +32,10 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
   options.signal.addEventListener('abort',abort,{once:true});
   try {
     options.signal.throwIfAborted();options.progress('BROWSER_STARTING');
+    const dnsFailures=new Map<string,unknown>();
     const pins=await Promise.all(HOSTS.map(async host=>{
       try {const rows=await vettedAddresses(host,options.signal,options.lookup),pin=rows.find(r=>r.family===4)||rows[0];return `MAP ${host} ${pin.family===6?'['+pin.address+']':pin.address}`;}
-      catch(error){if(host===source.hostname)throw error;return '';}
+      catch(error){if(host===source.hostname)throw error;dnsFailures.set(host,error);return '';}
     }));
     options.signal.throwIfAborted();
     try {browser=await (options.launch??(o=>chromium.launch(o)))({headless:true,timeout:8000,args:[
@@ -63,7 +64,16 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
       filter:[{type:'tab',exclude:false},{type:'shared_worker',exclude:false},{type:'service_worker',exclude:false},{exclude:true}]});
     context.on('page',page=>{if(page!==main)void page.close().catch(()=>{});});
     await installNativeNetwork(context,main,{signal:options.signal,declared:declaredProvider,endpoints:authorizedEndpoints,
-      direct:()=>authorizedDirect,destination:url=>{destination=url;},stop,fixture:options.nativeFixture});
+      direct:()=>authorizedDirect,destination:url=>{destination=url;},stop,fixture:options.nativeFixture,
+      requireDns:(url,resourceType)=>{
+        if(!dnsFailures.has(url.hostname))return;
+        // A missing optional HTMX asset can use the declared native-fetch path.
+        // Required page/endpoint lookups retain their exact stage and safe code.
+        if(ASSET_HOSTS.includes(url.hostname))throw providerError('INVALID_SOURCE');
+        const failedStage=STEAMRIP_HOSTS.includes(url.hostname as never)?'steamrip'
+          :resourceType==='Document'?'bzzhr_page':'bzzhr_htmx';
+        throw new ProviderFailure(dnsFailures.get(url.hostname) as never,failedStage,url.hostname);
+      }});
     context.on('response',response=>{
       if(response.request().isNavigationRequest())documents.set(response.url(),response);
       void (async()=>{

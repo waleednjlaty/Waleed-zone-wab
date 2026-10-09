@@ -11,7 +11,7 @@ process.on('message',async message=>{
  if(started||message?.type!=='resolve')return;started=true;
  const timer=setTimeout(()=>controller.abort(),40000);
  try {const result=await browserDestination(message.input,{signal:controller.signal,progress:state=>process.send?.({type:'progress',state})});process.send?.({type:'result',result});}
- catch(error){process.send?.({type:'failure',code:error.code,stage:error.stage,host:error.host,upstreamStatus:error.upstreamStatus});}
+ catch(error){process.send?.({type:'failure',code:error.code,dnsCode:error.dnsCode,stage:error.stage,host:error.host,upstreamStatus:error.upstreamStatus});}
  finally{clearTimeout(timer);process.disconnect?.();}
 });
 process.on('disconnect',()=>controller.abort());

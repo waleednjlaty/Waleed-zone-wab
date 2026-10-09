@@ -10,7 +10,10 @@ const source='https://steamrip.com/qa-game/',provider='https://buzzheavier.com/f
 async function run(change={}) {
  const states=[],calls=[],pages=[],head=[];
  const result=await browserDestination({source:change.direct?provider:source,cached:change.cached?[provider]:[]},{
-  signal:AbortSignal.timeout(15000),progress:s=>states.push(s),lookup:async()=>[{address:'8.8.8.8',family:4}],
+  signal:AbortSignal.timeout(15000),progress:s=>states.push(s),lookup:async host=>{
+   if(change.providerDnsFailure&&host==='buzzheavier.com')throw {code:'ENOTFOUND',message:'sensitive resolver information'};
+   return [{address:'8.8.8.8',family:4}];
+  },
   launch:async options=>{if(change.launchFailure)throw Error('sensitive launch error');return chromium.launch({...options,...(process.env.WZ_BROWSER_EXECUTABLE?{executablePath:process.env.WZ_BROWSER_EXECUTABLE}:{})});},
   http:async(url,hosts,signal,headers,follow,method)=>{head.push({url,method});assert.equal(method,'HEAD');if(change.ad||change.rogueProvider)assert.equal(pages.filter(p=>!p.isClosed()).length,1,'advertising popup closed before verification');return {url,status:200,headers:{'content-type':change.invalidFile?'text/html':'application/octet-stream'},body:''};},
   fixture:async context=>{context.on('page',page=>pages.push(page));},
@@ -36,6 +39,13 @@ async function run(change={}) {
  return {result,states,calls};
 }
 test('actual Chromium navigation, provider link click, hx-get click, HX-Redirect and HEAD',async()=>{const r=await run();assert.equal(r.result.destination,destination);assert.deepEqual(r.result.discovered,[provider]);assert.deepEqual(r.states,['BROWSER_STARTING','OPENING_SOURCE','FINDING_BZZHR','RESOLVING_DOWNLOAD','VERIFYING_FILE','READY']);});
+test('secondary provider DNS failure stays precise before native page I/O',async()=>assert.rejects(run({providerDnsFailure:true}),e=>e.code==='PROVIDER_DNS_FAILED'&&e.dnsCode==='ENOTFOUND'&&e.stage==='bzzhr_page'&&e.host==='buzzheavier.com'));
+test('initial DNS failure never launches Chromium or alters SSRF validation',async()=>{
+ let launched=false;
+ await assert.rejects(browserDestination({source:provider,cached:[]},{signal:AbortSignal.timeout(3000),progress:()=>{},
+  lookup:async()=>{throw {code:'EAI_AGAIN'};},launch:async()=>{launched=true;throw Error('must not launch');}}),e=>e.code==='PROVIDER_DNS_FAILED'&&e.dnsCode==='EAI_AGAIN');
+ assert.equal(launched,false);
+});
 test('legitimate target=_blank is closed before network and followed in original worker page',async()=>assert.equal((await run({popup:true})).result.destination,destination));
 test('advertising popup blocked and closed; original context follows declared source',async()=>assert.equal((await run({ad:true})).result.destination,destination));
 test('data-hx-get and normal Location supported in browser session',async()=>assert.equal((await run({dataHx:true,location:true})).result.destination,destination));

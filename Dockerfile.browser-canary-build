@@ -1,0 +1,12 @@
+# Free Railway BUILD-only diagnostics. Intentionally never produces a runnable image.
+# No environment duplication, service domains, DB, migrations or runtime deployment.
+FROM node:20.19.5-bookworm-slim
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund \
+    && npx playwright install --with-deps chromium --only-shell
+COPY scripts ./scripts
+COPY src/lib/downloads ./src/lib/downloads
+USER node
+RUN node scripts/run-browser-canary.cjs --build-only

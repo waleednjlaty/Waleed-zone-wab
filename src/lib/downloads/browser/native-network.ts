@@ -9,7 +9,8 @@ const HOSTS=[...PAGES,...BZZHR_FILE_HOSTS,...BROWSER_ASSET_HOSTS];
 export type NativeRequest={url:string;method:string;headers:Record<string,string>};
 export type NativeFixture=(request:NativeRequest)=>Promise<{status:number;headers?:Record<string,string>;body?:string}|undefined>;
 type Policy={signal:AbortSignal;declared:(url:string)=>boolean;endpoints:Set<string>;direct:()=>string|undefined;
-  destination:(url:string)=>void;stop:(error:unknown)=>void;fixture?:NativeFixture};
+  destination:(url:string)=>void;stop:(error:unknown)=>void;fixture?:NativeFixture;
+  requireDns?:(url:URL,resourceType:string)=>void};
 /** CDP Fetch pauses EVERY native request, including each HTTP redirect. Ordinary
  * Playwright route handlers apply only to the first request in a redirect chain. */
 export async function installNativeNetwork(context:BrowserContext,page:Page,policy:Policy) {
@@ -49,6 +50,9 @@ export async function installNativeNetwork(context:BrowserContext,page:Page,poli
           if(event.resourceType==='Document'&&!policy.declared(url.href)&&!policy.endpoints.has(url.href))throw providerError('INVALID_SOURCE');
           if(['XHR','Fetch'].includes(event.resourceType)&&!policy.endpoints.has(url.href))return await blocked();
         }
+        // Optional-host lookup failures must stay failures. Never allow Chromium
+        // to retry an unpinned name or mislabel its resolver error as a page error.
+        policy.requireDns?.(url,event.resourceType);
         // Tests supply native response fixtures only after the production policy.
         // This hook is absent from worker IPC and never enabled by environment.
         const headers=Object.fromEntries(Object.entries(event.request.headers).map(([k,v])=>[k.toLowerCase(),String(v)]));

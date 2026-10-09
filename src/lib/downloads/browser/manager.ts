@@ -3,7 +3,7 @@ import { fork, type ChildProcess } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { providerError, ProviderFailure } from '../providers/public-http';
+import { providerError, ProviderFailure, ProviderDnsFailure, safeDnsCode } from '../providers/public-http';
 import type { BrowserInput, BrowserResult, BrowserState } from './engine';
 export type Runner=(input:BrowserInput,signal:AbortSignal,progress:(state:BrowserState)=>void)=>Promise<BrowserResult>;
 export function memoryAvailable() {
@@ -19,9 +19,10 @@ export const childRunner:Runner=(input,signal,progress)=>new Promise((resolve,re
   if(!memoryAvailable()){reject(providerError('BROWSER_RESOURCE_LIMIT'));return;}
   let child:ChildProcess|undefined,settled=false,step:BrowserState='BROWSER_STARTING';
   const startedAt=Date.now();
-  const record=(outcome:'started'|'completed'|'failed',code?:string)=>console.info(JSON.stringify({
+  const record=(outcome:'started'|'completed'|'failed',code?:string,dnsCode?:unknown)=>console.info(JSON.stringify({
     area:'background_browser_worker',step,outcome,elapsed_ms:Date.now()-startedAt,
     ...(code&&/^[A-Z_]+$/.test(code)?{code}:{}),
+    ...(safeDnsCode(dnsCode)?{dns_code:safeDnsCode(dnsCode)}:{}),
   }));
   record('started');
   const terminate=()=>{
@@ -39,7 +40,7 @@ export const childRunner:Runner=(input,signal,progress)=>new Promise((resolve,re
   };
   const done=(error?:unknown,result?:BrowserResult)=>{
     if(settled)return;settled=true;clearInterval(memory);clearTimeout(deadline);signal.removeEventListener('abort',abort);
-    record(error?'failed':'completed',(error as {code?:string}|undefined)?.code);
+    record(error?'failed':'completed',(error as {code?:string}|undefined)?.code,(error as {dnsCode?:unknown}|undefined)?.dnsCode);
     terminate();if(error)reject(error);else resolve(result!);
   };
   const abort=()=>done(providerError('PROVIDER_TIMEOUT'));
@@ -50,13 +51,14 @@ export const childRunner:Runner=(input,signal,progress)=>new Promise((resolve,re
     const env={NODE_ENV:'production' as const,...Object.fromEntries(['PATH','HOME','PLAYWRIGHT_BROWSERS_PATH','TMPDIR','LD_LIBRARY_PATH'].flatMap(key=>process.env[key]?[[key,process.env[key]!]]:[]))};
     child=fork(join(process.cwd(),'scripts/browser-worker.cjs'),[],{env,execArgv:['--max-old-space-size=128'],stdio:['ignore','ignore','ignore','ipc']});
     child.on('message',(message:unknown)=>{
-      const m=message as {type:string;state:BrowserState;result:BrowserResult;code?:string;stage?:string;host?:string;upstreamStatus?:number};
+      const m=message as {type:string;state:BrowserState;result:BrowserResult;code?:string;dnsCode?:unknown;stage?:string;host?:string;upstreamStatus?:number};
       if(m.type==='progress'&&['BROWSER_STARTING','OPENING_SOURCE','FINDING_BZZHR','RESOLVING_DOWNLOAD','VERIFYING_FILE','READY','PROVIDER_CHALLENGE','FAILED'].includes(m.state)) {
         if(m.state!==step&&!['FAILED','PROVIDER_CHALLENGE'].includes(m.state)){record('completed');step=m.state;record('started');}
         progress(m.state);
       }
       if(m.type==='result')done(undefined,m.result);
-      if(m.type==='failure')done(new ProviderFailure(providerError(/^[A-Z_]+$/.test(m.code||'')?m.code:'BROWSER_FAILED'),m.stage as never,m.host||new URL(input.source).hostname,m.upstreamStatus));
+      if(m.type==='failure')done(new ProviderFailure(m.code==='PROVIDER_DNS_FAILED'?new ProviderDnsFailure({code:m.dnsCode})
+        :providerError(/^[A-Z_]+$/.test(m.code||'')?m.code:'BROWSER_FAILED'),m.stage as never,m.host||new URL(input.source).hostname,m.upstreamStatus));
     });
     child.once('error',()=>done(providerError('BROWSER_START_FAILED')));
     child.once('exit',()=>{if(!settled)done(providerError('BROWSER_START_FAILED'));});

@@ -59,6 +59,18 @@ test('redirect loop bounded at four requests',async t=>{const h=await transport(
 for(const headers of [{'content-length':'1048577'},{'content-encoding':'gzip'}])test('oversized/encoded response fails closed '+JSON.stringify(headers),async t=>{await transport(t,[{headers}]);await assert.rejects(http.publicHttp(page,bzzhr.BZZHR_HOSTS,signal()),error('INVALID_PROVIDER_RESPONSE'));});
 test('streamed oversized body is bounded',async t=>{await transport(t,[{body:'x'.repeat(1048577)}]);await assert.rejects(http.publicHttp(page,bzzhr.BZZHR_HOSTS,signal()));});
 test('DNS cancellation bounded',async()=>{const controller=new AbortController();controller.abort();await assert.rejects(http.vettedAddresses('bzzhr.to',controller.signal,()=>new Promise(()=>{})),error('PROVIDER_TIMEOUT'));});
+test('DNS failures retain only finite safe resolver codes, never raw errors',async()=>{
+ for(const code of ['EAI_AGAIN','ENOTFOUND','ECONNREFUSED','secret URL/token']) {
+  await assert.rejects(http.vettedAddresses('buzzheavier.com',signal(),async()=>{throw {code,message:'sensitive upstream details'};}),e=>{
+   assert.equal(e.code,'PROVIDER_DNS_FAILED');assert.equal(e.dnsCode,http.safeDnsCode(code));
+   const wrapped=new http.ProviderFailure(e,'bzzhr_page','buzzheavier.com');assert.equal(wrapped.dnsCode,e.dnsCode);
+   assert.ok(!JSON.stringify(wrapped).includes('sensitive'));assert.ok(!JSON.stringify(wrapped).includes('secret'));return true;
+  });
+ }
+});
+test('DNS family mismatch and empty answers fail closed independently from resolver failure',async()=>{
+ for(const rows of [[],[{address:'8.8.8.8',family:6}],[{address:'2606:4700:4700::1111',family:4}]])await assert.rejects(http.vettedAddresses('buzzheavier.com',signal(),async()=>rows),error('INVALID_SOURCE'));
+});
 test('resolution deduplication, two-operation cap, revision binding and no completed cache',async()=>{
  let calls=0,releases=[];const resolver=steam.createSteamripResolver(async()=>{calls++;await new Promise(r=>releases.push(r));return destination;},async()=>{});
  const a=resolver(1,'rev',source),b=resolver(1,'rev',source),c=resolver(2,'rev',source);

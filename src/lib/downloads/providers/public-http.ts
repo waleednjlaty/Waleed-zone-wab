@@ -6,9 +6,22 @@ import { DownloadError } from '../rules';
 
 export const providerError = (code = 'PROVIDER_UNAVAILABLE') => new DownloadError(503, code, new Date(Date.now() + 10000));
 export type ProviderStage = 'steamrip' | 'bzzhr_page' | 'bzzhr_htmx' | 'final_file';
+const DNS_CODES = ['EAI_AGAIN','ENOTFOUND','ENODATA','ETIMEOUT','ECONNREFUSED','ESERVFAIL','EREFUSED','ECANCELLED'] as const;
+export function safeDnsCode(value: unknown): string | undefined {
+  return typeof value === 'string' && DNS_CODES.includes(value as typeof DNS_CODES[number]) ? value : undefined;
+}
+export class ProviderDnsFailure extends DownloadError {
+  readonly dnsCode: string | undefined;
+  constructor(error: unknown) {
+    super(503,'PROVIDER_DNS_FAILED',new Date(Date.now()+10000));
+    this.dnsCode=safeDnsCode((error as {code?:unknown} | null)?.code);
+  }
+}
 export class ProviderFailure extends DownloadError {
+  readonly dnsCode: string | undefined;
   constructor(error: DownloadError, public stage: ProviderStage, public host: string, public upstreamStatus?: number) {
     super(error.status,error.code,error.retryAt,error.serverTime);
+    this.dnsCode=safeDnsCode((error as {dnsCode?:unknown}).dnsCode);
   }
 }
 /** Only finite host/stage/status metadata leaves this boundary; never raw URLs/errors. */
@@ -55,7 +68,7 @@ export async function vettedAddresses(host: string, signal: AbortSignal, lookup:
     })]);
     if (!rows.length || rows.some(row=>!globalAddress(row.address) || row.family!==isIP(row.address))) throw providerError('INVALID_SOURCE');
     return rows;
-  } catch(error) { throw error instanceof DownloadError?error:providerError('PROVIDER_DNS_FAILED'); }
+  } catch(error) { throw error instanceof DownloadError?error:new ProviderDnsFailure(error); }
   finally { clearTimeout(timer); if(abort)signal.removeEventListener('abort',abort); }
 }
 export type ProviderCookie = { host:string; path:string; pair:string; expires:number };
