@@ -54,7 +54,7 @@ try {
         message:'المصدر يطلب تحققًا بشريًا مؤقتًا. أعد المحاولة لاحقًا.',source_url:'https://steamrip.com/qa-game/'}})
     }));
     await page.getByRole('button',{name:'بدء التحميل ↓',exact:true}).click();
-    await page.locator('[data-download-state="FAILED"]').waitFor();
+    await page.locator('[data-download-state="PROVIDER_CHALLENGE"]').waitFor();
     const fallback=page.getByRole('link',{name:/فتح صفحة المصدر لإكمال التحميل/});
     await fallback.waitFor();
     assert.equal(await fallback.getAttribute('href'),'https://steamrip.com/qa-game/');

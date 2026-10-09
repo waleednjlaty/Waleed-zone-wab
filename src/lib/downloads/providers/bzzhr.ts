@@ -63,5 +63,6 @@ export async function validateBzzhrDns(destination: string, signal: AbortSignal,
     const type=result.headers['content-type']||'';
     if(/(?:text\/html|application\/(?:xhtml\+xml|json))/i.test(type))throw providerError('INVALID_FILE_RESPONSE');
     if(!type && !result.headers['content-disposition'])throw providerError('INVALID_FILE_RESPONSE');
+    return signedDestination(result.url,destination);
   });
 }

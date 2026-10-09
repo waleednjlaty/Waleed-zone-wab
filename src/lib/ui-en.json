@@ -598,5 +598,15 @@
   "المصدر يعيد التحويل إلى الرابط نفسه. أوقفنا الطلب.": "The source redirects back to the same URL. The request was stopped.",
   "تجاوز المصدر عدد التحويلات المسموح. لم يبدأ التحميل.": "The source exceeded the redirect limit. The download did not start.",
   "فتح صفحة المصدر لإكمال التحميل": "Open the original source to continue",
-  "هذه صفحة خارجية قد تتطلب تحققًا بشريًا. اختر رابط التحميل هناك. التحقق في متصفحك لا يفتح جلسة الخادم.": "This external page may ask for human verification. Choose the download link there. Browser verification cannot unlock our server session."
+  "هذه صفحة خارجية قد تتطلب تحققًا بشريًا. اختر رابط التحميل هناك. التحقق في متصفحك لا يفتح جلسة الخادم.": "This external page may ask for human verification. Choose the download link there. Browser verification cannot unlock our server session.",
+  "جارٍ تشغيل متصفح المعالجة": "Starting the background browser",
+  "جارٍ فتح مصدر اللعبة": "Opening the game source",
+  "جارٍ البحث عن مصدر BZZHR": "Finding the BZZHR source",
+  "جارٍ استخراج رابط التنزيل": "Resolving the download link",
+  "جارٍ التحقق من الملف": "Verifying the file",
+  "المصدر يتطلب تحققًا بشريًا": "The source requires human verification",
+  "تعذر تشغيل متصفح المعالجة. لم يبدأ التحميل.": "The background browser could not start. The download has not started.",
+  "توقفت معالجة المصدر داخل المتصفح. لم يبدأ التحميل.": "Source processing stopped in the browser. The download has not started.",
+  "موارد المعالجة مشغولة حاليًا. أعد المحاولة لاحقًا.": "Processing resources are busy. Try again later.",
+  "تجاوز المصدر حد طلبات المعالجة. أوقفنا الطلب.": "The source exceeded the processing request limit. The request was stopped."
 }

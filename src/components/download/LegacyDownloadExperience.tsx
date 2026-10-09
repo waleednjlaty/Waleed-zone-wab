@@ -11,6 +11,9 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
   const t = useTranslateUI();
 
   const [grant,setGrant] = useState<Grant|null>(null), [remaining,setRemaining] = useState(0);
+  const [browserState,setBrowserState]=useState('');
+  const activeRequest=useRef<AbortController|null>(null);
+  useEffect(()=>()=>activeRequest.current?.abort(),[]);
   const [busy,setBusy] = useState(false),[error,setError] = useState(''),[sent,setSent] = useState(false),[resolving,setResolving]=useState(false),[sourceUrl,setSourceUrl]=useState(''),[providerBlocked,setProviderBlocked]=useState(false);
   const deadline = useRef({ready:0,expires:0}), lock = useRef(false),heading = useRef<HTMLHeadingElement>(null),submitted=useRef(false);
   useEffect(()=>{
@@ -41,8 +44,20 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
   }
   async function redeem(form: HTMLFormElement){
     if(submitted.current||!grant||remaining>0)return;
-    submitted.current=true;setResolving(true);setError('');setSourceUrl('');setProviderBlocked(false);
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
+    submitted.current=true;setBrowserState('');setResolving(true);setError('');setSourceUrl('');setProviderBlocked(false);
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),55000);activeRequest.current=controller;
+    let pollTimer:ReturnType<typeof setTimeout>|undefined;
+    const poll=async()=>{
+      try {
+        const response=await fetch('/api/downloads/legacy/status',{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal,
+          headers:{'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({application_id:String(app.id),token:grant.token})});
+        if(!response.ok)return;
+        const data=await response.json();
+        if(['BROWSER_STARTING','OPENING_SOURCE','FINDING_BZZHR','RESOLVING_DOWNLOAD','VERIFYING_FILE','PROVIDER_CHALLENGE','FAILED'].includes(data.state))setBrowserState(data.state);
+        if(!controller.signal.aborted)pollTimer=setTimeout(()=>void poll(),2000);
+      }catch{/* main redemption owns failure presentation */}
+    };
+    if(provider==='steamrip')pollTimer=setTimeout(()=>void poll(),1500);
     try {
       const response=await fetch(form.action,{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal,
         headers:{'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({application_id:String(app.id),token:grant.token})});
@@ -51,6 +66,7 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
         // A stable, public original source is available only after server-side eligibility.
         // Cloudflare verification must happen in the visitor's own browser, never on Railway.
         const barrier=['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_FORBIDDEN'].includes(data.error?.code);
+        if(data.error?.code==='PROVIDER_CHALLENGE')setBrowserState('PROVIDER_CHALLENGE');
         setProviderBlocked(barrier);
         if(barrier && typeof data.error?.source_url==='string')try {
           const url=new URL(data.error.source_url);
@@ -69,14 +85,15 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
       // Browser transport/completion cannot be observed across origins.
       window.location.assign(data.destination);
     }catch(e){setError(e instanceof Error&&e.name!=='AbortError'?e.message:'انتهت مهلة الاتصال. أعد المحاولة.');submitted.current=false;}
-    finally{clearTimeout(timer);setResolving(false);}
+    finally{clearTimeout(timer);clearTimeout(pollTimer);controller.abort();activeRequest.current=null;setResolving(false);}
   }
-  const state=busy?'PREPARING':resolving?'RESOLVING':error?'FAILED':sent?'DOWNLOADING':grant?remaining>0?'COUNTDOWN':'READY':'INITIAL';
+  const state=busy?'PREPARING':resolving?(browserState||'RESOLVING'):error?(browserState==='PROVIDER_CHALLENGE'?'PROVIDER_CHALLENGE':'FAILED'):sent?'DOWNLOADING':grant?remaining>0?'COUNTDOWN':'READY':'INITIAL';
+  const progressLabel:Record<string,string>={BROWSER_STARTING:'جارٍ تشغيل متصفح المعالجة',OPENING_SOURCE:'جارٍ فتح مصدر اللعبة',FINDING_BZZHR:'جارٍ البحث عن مصدر BZZHR',RESOLVING_DOWNLOAD:'جارٍ استخراج رابط التنزيل',VERIFYING_FILE:'جارٍ التحقق من الملف',PROVIDER_CHALLENGE:'المصدر يتطلب تحققًا بشريًا'};
   return <div className={`shell ${styles.page}`} data-download-state={state}>
     <nav className="detail-breadcrumbs" aria-label={t("مسار التنقل")}><ol><li><Link href="/">{t("الرئيسية")}</Link></li><li><Link href={app.detailHref}>{app.name}</Link></li><li aria-current="page">{t("التحميل")}</li></ol></nav>
     <header className={styles.header}><p className="eyebrow">WALEED ZONE</p><h1>{t("تحميل")} <bdi>{app.name}</bdi></h1><p>{provider==='telegram'?t("بعد التجهيز، سيفتح ملف التطبيق في قناة Telegram."):t("نعالج المصدر هنا، ثم يبدأ المتصفح التنزيل في التبويب نفسه.")}</p></header>
     <div className={styles.layout}><aside className={styles.summary}><div className={styles.identity}><span className={styles.icon}><CoverImage src={app.imageUrl} alt={t("أيقونة {0}", app.name)} aspectClassName="aspect-square"/></span><h2 dir="auto">{app.name}</h2></div><dl><div><dt>{t("الإصدار")}</dt><dd dir="auto">{app.version||t("غير معروف")}</dd></div><div><dt>{t("الحجم")}</dt><dd dir="auto">{app.size||t("غير معروف")}</dd></div></dl><Link href={app.detailHref}>{t("تفاصيل التطبيق")}</Link></aside>
-      <section className={styles.panel} aria-labelledby="legacy-status"><div className={styles.status}><h2 ref={heading} tabIndex={-1} id="legacy-status">{state==='COUNTDOWN'?t("رابطك قيد التجهيز"):state==='READY'?(provider==='steamrip'?t("جاهز لتجهيز الرابط"):t("رابط التحميل جاهز")):state==='RESOLVING'?t("جارٍ معالجة مصدر التحميل"):state==='DOWNLOADING'?t("تم إرسال طلب التنزيل إلى المتصفح"):t("تجهيز رابط التحميل")}</h2>
+      <section className={styles.panel} aria-labelledby="legacy-status"><div className={styles.status}><h2 ref={heading} tabIndex={-1} id="legacy-status">{state==='COUNTDOWN'?t("رابطك قيد التجهيز"):state==='READY'?(provider==='steamrip'?t("جاهز لتجهيز الرابط"):t("رابط التحميل جاهز")):resolving?t(progressLabel[browserState]||"جارٍ معالجة مصدر التحميل"):state==='DOWNLOADING'?t("تم إرسال طلب التنزيل إلى المتصفح"):t("تجهيز رابط التحميل")}</h2>
       <p role="status" aria-live="polite">{t(error)|| (resolving?t("جارٍ استخراج رابط جديد والتحقق من المضيف النهائي."):sent?t("تحقق من قائمة التنزيلات في متصفحك. لا يمكن للموقع تأكيد اكتمال الملف."):busy?t("جارٍ التحقق من توفر التطبيق."):t("مهلة التجهيز 20 ثانية."))}</p>
       {grant&&remaining>0&&<><div className={styles.countdown} role="timer" aria-live="off"><strong>{remaining}</strong><span>{t("ثانية متبقية")}</span></div><progress className={styles.progress} max={20} value={20-remaining} aria-label={t("تقدم تجهيز الرابط")}/></>}</div>
       <div className={styles.actions}>{providerBlocked&&sourceUrl?<a className={`primary-action ${styles.fallbackLink}`} href={sourceUrl} rel="noreferrer" referrerPolicy="no-referrer">{t("فتح صفحة المصدر لإكمال التحميل")} ↗</a>:grant&&remaining===0&&!sent?<form action="/api/downloads/legacy/redeem" method="post" onSubmit={event=>{

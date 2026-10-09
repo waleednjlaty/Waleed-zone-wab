@@ -67,6 +67,10 @@ export async function downloadBody(request: Request, form = false, maxBytes = 20
   } finally { clearTimeout(timer); reader.releaseLock(); }
 }
 const providerMessages:Record<string,string>={
+  BROWSER_START_FAILED:'تعذر تشغيل متصفح المعالجة. لم يبدأ التحميل.',
+  BROWSER_FAILED:'توقفت معالجة المصدر داخل المتصفح. لم يبدأ التحميل.',
+  BROWSER_RESOURCE_LIMIT:'موارد المعالجة مشغولة حاليًا. أعد المحاولة لاحقًا.',
+  BROWSER_REQUEST_LIMIT:'تجاوز المصدر حد طلبات المعالجة. أوقفنا الطلب.',
   PROVIDER_DNS_FAILED:'تعذر الوصول إلى DNS الخاص بالمصدر. أعد المحاولة لاحقًا.',
   PROVIDER_FORBIDDEN:'رفض المصدر اتصال الخادم (403). قد يلزم مصدر بديل أو فتحه يدويًا.',
   PROVIDER_AUTH_REQUIRED:'المصدر يتطلب تسجيل دخول. افتحه يدويًا أو اختر مصدرًا آخر.',

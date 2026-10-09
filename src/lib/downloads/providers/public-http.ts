@@ -132,13 +132,20 @@ export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=
   throw providerError('INVALID_PROVIDER_RESPONSE');
 };
 export function requireProviderSuccess(result: PublicResponse) {
-  if (result.headers['cf-mitigated']==='challenge' || /cf-chl-|challenge-platform|cf-turnstile|just a moment|verify you are human/i.test(result.body)) throw providerError('PROVIDER_CHALLENGE');
+  if (humanChallenge(result.status,result.headers,result.body)) throw providerError('PROVIDER_CHALLENGE');
   if(result.status===404 || result.status===410)throw new DownloadError(404,'SOURCE_REMOVED');
   if(result.status===401)throw providerError('PROVIDER_AUTH_REQUIRED');
   if(result.status===403)throw providerError('PROVIDER_FORBIDDEN');
   if(result.status===429)throw providerError('PROVIDER_RATE_LIMITED');
   if(result.status>=500)throw providerError('PROVIDER_HTTP_ERROR');
   if(![200,204].includes(result.status))throw providerError();
+}
+/** Passive Cloudflare JS appears on ordinary pages too; it is not an access barrier. */
+export function humanChallenge(status:number,headers:Record<string,string>,html:string) {
+  return Object.entries(headers).some(([key,value])=>key.toLowerCase()==='cf-mitigated'&&value.toLowerCase()==='challenge')
+    || /<title[^>]*>\s*(?:just a moment|attention required)/i.test(html)
+    || /(?:id=["'](?:challenge-form|cf-chl-widget)|class=["'][^"']*cf-turnstile|window\._cf_chl_opt\s*=)/i.test(html)
+    || (status===403 && /cf-chl-|challenge-platform|verify you are human/i.test(html));
 }
 export function requireStageSuccess(result: PublicResponse, stage: ProviderStage) {
   try { requireProviderSuccess(result); } catch(error) {

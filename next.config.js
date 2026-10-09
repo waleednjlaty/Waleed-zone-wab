@@ -43,6 +43,7 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  serverExternalPackages: ['playwright','playwright-core'],
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   async headers() {
