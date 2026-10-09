@@ -7,23 +7,26 @@ export const BROWSER_STATES=['BROWSER_STARTING','OPENING_SOURCE','FINDING_BZZHR'
 export type BrowserState=typeof BROWSER_STATES[number];
 const PAGE_HOSTS=[...STEAMRIP_HOSTS,...BZZHR_HOSTS];
 // Only HTMX assets; never advertising, CAPTCHA, analytics or arbitrary CDN scripts.
-const ASSET_HOSTS=['cdn.jsdelivr.net','cdnjs.cloudflare.com','unpkg.com'];
+import { BROWSER_ASSET_HOSTS as ASSET_HOSTS, installNativeNetwork, type NativeFixture } from './native-network';
 const HOSTS=[...PAGE_HOSTS,...BZZHR_FILE_HOSTS,...ASSET_HOSTS];
 export { stableBzzhr } from './policy';
 import { stableBzzhr } from './policy';
 export type BrowserInput={source:string;cached:string[]};
 export type BrowserResult={destination:string;discovered:string[]};
-type Options={signal:AbortSignal;progress:(state:BrowserState)=>void;lookup?:Lookup; launch?:(options:LaunchOptions)=>Promise<Browser>; http?:PublicHttp; fixture?:(context:BrowserContext)=>Promise<void>};
+type Options={signal:AbortSignal;progress:(state:BrowserState)=>void;lookup?:Lookup; launch?:(options:LaunchOptions)=>Promise<Browser>; http?:PublicHttp; fixture?:(context:BrowserContext)=>Promise<void>;nativeFixture?:NativeFixture};
 /** Chromium uses native networking and cookies, with numerical DNS pins for this job.
  * No HTTP-resolver shortcut: navigation, JS and clicks execute inside the browser. */
 export async function browserDestination(input:BrowserInput,options:Options):Promise<BrowserResult> {
   const source=publicUrl(input.source,PAGE_HOSTS);let browser:Browser|undefined,context:BrowserContext|undefined;
   let failure:unknown,stage:'steamrip'|'bzzhr_page'|'bzzhr_htmx'|'final_file'=STEAMRIP_HOSTS.includes(source.hostname as never)?'steamrip':'bzzhr_page';
-  let discovered:string[]=[],destination:string|undefined,requests=0,activeHost=source.hostname;
+  let discovered:string[]=[],destination:string|undefined,activeHost=source.hostname;
   const requestedEndpoints=new Set<string>();
+  const authorizedEndpoints=new Set<string>();let authorizedDirect:string|undefined;
+  const declaredProvider=(url:string)=>{
+    try {const candidate=new URL(stableBzzhr(url));return discovered.some(page=>new URL(page).pathname.replace(/\/$/,'')===candidate.pathname.replace(/\/$/,''));}catch{return false;}
+  };
   // Initial popup navigation has no Frame yet; bind its response by exact URL.
   const documents=new Map<string,BrowserResponse>();
-  let deniedInitialPopup=0;
   const stop=(error:unknown)=>{failure??=error;void context?.close().catch(()=>{});};
   const abort=()=>stop(providerError('PROVIDER_TIMEOUT'));
   options.signal.addEventListener('abort',abort,{once:true});
@@ -43,57 +46,30 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
     context.setDefaultTimeout(6000);context.setDefaultNavigationTimeout(8000);
     context.on('request',request=>requestedEndpoints.add(request.url()));
     await context.routeWebSocket('**/*',socket=>socket.close());
-    // Install before the first page, including the initial request of popups.
-    await context.route('**/*',async route=>{
-      const request=route.request();
-      try {
-        if(failure || options.signal.aborted) return await route.abort();
-        const url=publicUrl(request.url(),HOSTS);
-        if(++requests>100)throw providerError('BROWSER_REQUEST_LIMIT');
-        if(!['GET','HEAD'].includes(request.method()))return await route.abort();
-        if(BZZHR_FILE_HOSTS.includes(url.hostname as never)&&url.pathname.startsWith('/d/')) {
-          destination=signedDestination(url.href,url.href);return await route.abort(); // Never fetch game bytes.
-        }
-        if(ASSET_HOSTS.includes(url.hostname)) {
-          if(request.resourceType()!=='script'||!/^\/(?:npm\/)?htmx(?:\.org)?(?:@|\/)|^\/ajax\/libs\/htmx\//.test(url.pathname))return await route.abort();
-        } else if(!PAGE_HOSTS.includes(url.hostname as never))return await route.abort();
-        if(['image','media','font','stylesheet'].includes(request.resourceType()))return await route.abort();
-        // Ads and unrelated provider popups cannot become a source or receive credentials.
-        const headers=await request.allHeaders();delete headers.authorization;delete headers.cookie;
-        const cookies=(await context!.cookies(url.href)).filter(c=>c.domain.replace(/^\./,'')===url.hostname);
-        if(cookies.length)headers.cookie=cookies.map(c=>c.name+'='+c.value).join('; ');
-        if(headers.referer&&new URL(headers.referer).hostname!==url.hostname)delete headers.referer;
-        await route.continue({headers});
-      } catch(error) {
-        // Unknown ad hosts are blocked, not treated as a failed legitimate download.
-        if(request.isNavigationRequest()&&!PAGE_HOSTS.includes(new URL(request.url()).hostname as never)) {
-          await route.abort().catch(()=>{});
-          let closed=false,initialPopup=false;
-          try {request.frame();}catch{initialPopup=true;}
-          // Initial popup navigation has no Frame. Close orphan about:blank
-          // popups too, before returning to the original declared source.
-          for(const page of context!.pages())if(page!==main)try {
-            if(page.url()==='about:blank'||!PAGE_HOSTS.includes(new URL(page.url()).hostname as never)){await page.close();closed=true;}
-          }catch{/* already closed */}
-          if(initialPopup&&!closed)deniedInitialPopup++;
-          return;
-        }
-        if(error instanceof ProviderFailure || (error as {code?:string})?.code!=='INVALID_SOURCE')stop(error);
-        await route.abort().catch(()=>{});
+    if(options.fixture)await options.fixture(context);
+    const main=await context.newPage();
+    const root=await browser.newBrowserCDPSession();
+    const existing=new Set((await root.send('Target.getTargets',{filter:[{type:'tab',exclude:false},{type:'page',exclude:false},{exclude:true}]})).targetInfos.map(target=>target.targetId));
+    let popupTargets=0;
+    root.on('Target.attachedToTarget',event=>{
+      if(!existing.has(event.targetInfo.targetId)){
+        if(++popupTargets>2)stop(providerError('BROWSER_REQUEST_LIMIT'));
+        void root.send('Target.closeTarget',{targetId:event.targetInfo.targetId}).catch(()=>{});
       }
     });
-    if(options.fixture)await options.fixture(context); // Only injected by tests, absent from worker IPC.
-    const main=await context.newPage();
-    context.on('page',page=>{
-      if(deniedInitialPopup>0){deniedInitialPopup--;void page.close().catch(()=>{});return;}
-      if(context!.pages().length>3){void page.close().catch(()=>{});return;}
-      page.on('framenavigated',frame=>{if(frame!==page.mainFrame())return;try {publicUrl(frame.url(),PAGE_HOSTS);}catch{void page.close().catch(()=>{});}});
-    });
+    // Pause every newly created page/tab before it can fetch a popup redirect.
+    // The declared anchor is still clicked; its approved target is followed in main.
+    await root.send('Target.setAutoAttach',{autoAttach:true,waitForDebuggerOnStart:true,flatten:true,
+      filter:[{type:'tab',exclude:false},{type:'shared_worker',exclude:false},{type:'service_worker',exclude:false},{exclude:true}]});
+    context.on('page',page=>{if(page!==main)void page.close().catch(()=>{});});
+    await installNativeNetwork(context,main,{signal:options.signal,declared:declaredProvider,endpoints:authorizedEndpoints,
+      direct:()=>authorizedDirect,destination:url=>{destination=url;},stop,fixture:options.nativeFixture});
     context.on('response',response=>{
       if(response.request().isNavigationRequest())documents.set(response.url(),response);
       void (async()=>{
       const request=response.request(),url=response.url();
       if(!request.isNavigationRequest()&&!['xhr','fetch'].includes(request.resourceType()))return;
+      if(BZZHR_HOSTS.includes(new URL(url).hostname as never)&&!declaredProvider(url)&&!authorizedEndpoints.has(url))return;
       const headers=await response.allHeaders(),status=response.status();
       if(Number(headers['content-length']||0)>1048576)throw providerError('INVALID_PROVIDER_RESPONSE');
       const xhr=['xhr','fetch'].includes(request.resourceType());
@@ -102,10 +78,16 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
         const body=await response.text().catch(()=>'');requireStageSuccess({url,status,headers,body},stage);
       }
       const raw=headers['hx-redirect']||headers.location;
-      if(raw&&BZZHR_HOSTS.includes(new URL(url).hostname as never)) {
+      if(raw&&authorizedEndpoints.has(url)) {
         const candidate=new URL(raw,url);
         if(BZZHR_FILE_HOSTS.includes(candidate.hostname as never)&&candidate.pathname.startsWith('/d/'))destination=signedDestination(raw,url);
         else if(headers['hx-redirect'])throw providerError('INVALID_SOURCE');
+        else if(headers.location) {
+          if(/[\s\p{Cc}\p{Cf}\\]/u.test(raw))throw providerError('INVALID_SOURCE');
+          const next=publicUrl(candidate.href,BZZHR_HOSTS),id=new URL(url).pathname.split('/')[1];
+          if(next.origin!==new URL(url).origin||!next.pathname.startsWith('/'+id+'/')||/(?:^|\/)(?:preview|delete|remove|login|account)(?:\/|$)/i.test(next.pathname))throw providerError('INVALID_SOURCE');
+          authorizedEndpoints.add(next.href);
+        }
       }
     })().catch(stop);});
     async function open(page:Page,url:string) {
@@ -145,12 +127,16 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
       const chosen=main.locator('a[href]').filter({hasText:/BZZHR|BuzzHeavier/i});
       const anchors=main.locator('a[href]');let clicked=false;
       for(let i=0;i<Math.min(await anchors.count(),1000);i++)if(await anchors.nth(i).evaluate(node=>(node as HTMLAnchorElement).href)===discovered[0]) {
-        await (await chosen.count()&&await chosen.first().evaluate(node=>(node as HTMLAnchorElement).href)===discovered[0]?chosen.first():anchors.nth(i)).click();clicked=true;break;
+        await (await chosen.count()&&await chosen.first().evaluate(node=>(node as HTMLAnchorElement).href)===discovered[0]?chosen.first():anchors.nth(i)).click({timeout:3000}).catch(error=>{
+          // A closed/paused advertising popup may stall Playwright's click wait.
+          // Never click again; continue only to the already declared source.
+          if(error.name!=='TimeoutError'||failure||options.signal.aborted||main.isClosed())throw error;
+        });clicked=true;break;
       }
       if(!clicked)throw providerError('BZZHR_NOT_FOUND');
       // Ad popup is closed by the context policy. A declared link can then be
       // opened in the original context without clicking the ad or its redirect.
-      const pages=context.pages();providerPage=pages.find(p=>BZZHR_HOSTS.includes(new URL(p.url()==='about:blank'?source.href:p.url()).hostname as never))||main;
+      const pages=context.pages();providerPage=pages.find(p=>declaredProvider(p.url()))||main;
     }
     stage='bzzhr_page';options.progress('RESOLVING_DOWNLOAD');
     let html='';
@@ -158,6 +144,7 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
       try {
         if(i>0||!BZZHR_HOSTS.includes(new URL(providerPage.url()).hostname as never))await open(providerPage,discovered[i]);
         else await providerPage.waitForLoadState('domcontentloaded');
+        if(!declaredProvider(providerPage.url()))throw providerError('INVALID_SOURCE');
         if(failure)throw failure;
         activeHost=new URL(providerPage.url()).hostname;
         html=await providerPage.content();const document=documents.get(providerPage.url());
@@ -171,24 +158,26 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
     }
     let endpoints:string[]=[];
     try {endpoints=signedEndpoints(html.replace(/\bdata-hx-get\s*=/gi,'hx-get='),providerPage.url());}catch{/* Explicit final attachment links are also supported below. */}
-    const buttons=providerPage.locator('[hx-get],[data-hx-get],a[href]');let button;
+    const buttons=providerPage.locator('[hx-get],[data-hx-get],a[href]');let button,clickedEndpoint:string|undefined;
     let directFile=false;
     for(let i=0;i<Math.min(await buttons.count(),1000);i++) {
       const node=buttons.nth(i),raw=await node.getAttribute('hx-get')||await node.getAttribute('data-hx-get')||await node.getAttribute('href');
-      if(raw&&endpoints.includes(new URL(raw,providerPage.url()).href)){button=node;break;}
+      if(raw&&endpoints.includes(new URL(raw,providerPage.url()).href)){button=node;clickedEndpoint=new URL(raw,providerPage.url()).href;authorizedEndpoints.add(clickedEndpoint);break;}
       if(raw&&!endpoints.length)try {
-        signedDestination(raw,providerPage.url());button=node;directFile=true;break;
+        authorizedDirect=signedDestination(raw,providerPage.url());button=node;directFile=true;break;
       }catch{/* unrelated links never become file destinations */}
     }
     if(!button)throw providerError('INVALID_PROVIDER_RESPONSE');
+    if(clickedEndpoint)requestedEndpoints.delete(clickedEndpoint);
     stage='bzzhr_htmx';await button.click().catch(error=>{if(!destination)throw error;});
+    if(directFile&&authorizedDirect)destination=authorizedDirect;
     // Prefer the real site's JS interaction. For a declarative endpoint without
     // installed HTMX, browser-native fetch uses this context's scoped cookie jar.
     if(!destination&&!failure&&!directFile) {
       const nativeHtmx=await providerPage.evaluate(()=>Boolean((window as unknown as {htmx?:unknown}).htmx));
-      if(!nativeHtmx&&!endpoints.some(endpoint=>requestedEndpoints.has(endpoint)))await providerPage.evaluate(async endpoint=>{
+      if(!nativeHtmx&&clickedEndpoint&&!requestedEndpoints.has(clickedEndpoint))await providerPage.evaluate(async endpoint=>{
         await fetch(endpoint,{credentials:'same-origin',headers:{'HX-Request':'true','HX-Current-URL':location.href},redirect:'manual'});
-      },endpoints[0]);
+      },clickedEndpoint);
     }
     const until=Date.now()+5000;
     while(!destination&&!failure&&Date.now()<until&&!options.signal.aborted)await new Promise(r=>setTimeout(r,50));
