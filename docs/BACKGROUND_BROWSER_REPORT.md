@@ -35,7 +35,7 @@ Local fixtures were run on actual Chromium 153 with Playwright 1.64.0. The usual
 - TypeScript and lint passed; Next.js build and compiled client secret scan passed.
 - Full local unit/contract run: 778 tests, 704 passed, 74 configuration-dependent skips, zero failures (includes browser manager/client-bound route coverage).
 - Focused final provider/browser-route/cache/manager regressions: 84 passed, zero failures.
-- Actual Chromium fixture suite: 20 passed, zero failures. Includes source/provider clicks, legitimate/ad popups, hx-get/data-hx-get, HX-Redirect/Location, direct final link, known CDN HEAD, invalid MIME/foreign host, passive Cloudflare JS, real challenge, 403/429 at source/provider/HTMX, no duplicate HTMX request, declared mirror fallback, and launch failure.
+- Actual Chromium fixture suite: 21 passed, zero failures. Includes source/provider clicks, legitimate/ad popups, hx-get/data-hx-get, HX-Redirect/Location, direct final link, known CDN HEAD, invalid MIME/foreign host, passive Cloudflare JS, real challenge, 403/429 at source/provider/HTMX, human challenge in an HTTP-200 HTMX response, ad popup closure before file verification, no duplicate HTMX request, declared mirror fallback, and launch failure.
 - Added manager tests cover 20-user deduplication, revision separation, subscriber cancellation, and barrier backoff. Route/cache tests cover grant expiry during work, source change during work, origin/client binding, one-use consumption, six-hour TTL and signed-cache rejection.
 - Production dependency audit: zero vulnerabilities.
 - Independent real 89-byte owner-created BZZHR canary attempted locally: FAILED with PROVIDER_DNS_FAILED at bzzhr_page / buzzheavier.com, before page opening or bytes. No browser download or hash verification occurred.
@@ -56,7 +56,7 @@ The expiring QA page `https://buzzheavier.com/724hyjkckpyu` was documented by th
 - `src/lib/downloads/providers/public-http.ts`, `bzzhr.ts`, `src/lib/downloads/http.ts`: precise challenge detection, final redirect path validation, clear failure messages.
 - `src/components/download/LegacyDownloadExperience.tsx`, `src/lib/ui-en.json`: same-tab progress, cancellation, bilingual states.
 - `migrations/007_provider_discovery.sql`, `scripts/migrate-provider-discovery.mjs`: additive checksum-tracked cache migration.
-- `tests/browser/engine.cjs`, `tests/browser-manager.cjs`, `tests/browser-service.cjs`, `tests/provider-discovery.cjs`: regressions.
+- `tests/browser/engine.cjs`, `tests/browser-manager.cjs`, `tests/browser-service.cjs`, `tests/provider-discovery.cjs`, `tests/monetization-migration.cjs`, `tests/download-processing-browser.mjs`: regressions, native cache migration checksum, and challenge-state compatibility.
 - `package.json`, `package-lock.json`, `next.config.js`, `.github/workflows/integration.yml`, `Dockerfile.browser`, `.dockerignore`: pinned runtime dependency, CI/browser image preparation.
 
 Primary references: https://playwright.dev/docs/network ; https://playwright.dev/docs/api/class-browsercontext ; https://docs.railway.com/pricing/plans ; https://docs.railway.com/builds/railpack .

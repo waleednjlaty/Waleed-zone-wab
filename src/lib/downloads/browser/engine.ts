@@ -23,6 +23,7 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
   const requestedEndpoints=new Set<string>();
   // Initial popup navigation has no Frame yet; bind its response by exact URL.
   const documents=new Map<string,BrowserResponse>();
+  let deniedInitialPopup=0;
   const stop=(error:unknown)=>{failure??=error;void context?.close().catch(()=>{});};
   const abort=()=>stop(providerError('PROVIDER_TIMEOUT'));
   options.signal.addEventListener('abort',abort,{once:true});
@@ -65,7 +66,18 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
         await route.continue({headers});
       } catch(error) {
         // Unknown ad hosts are blocked, not treated as a failed legitimate download.
-        if(request.isNavigationRequest())try {const page=request.frame().page();if(page!==main&& !PAGE_HOSTS.includes(new URL(request.url()).hostname as never)){await page.close();return;}}catch{/* closed popup */}
+        if(request.isNavigationRequest()&&!PAGE_HOSTS.includes(new URL(request.url()).hostname as never)) {
+          await route.abort().catch(()=>{});
+          let closed=false,initialPopup=false;
+          try {request.frame();}catch{initialPopup=true;}
+          // Initial popup navigation has no Frame. Close orphan about:blank
+          // popups too, before returning to the original declared source.
+          for(const page of context!.pages())if(page!==main)try {
+            if(page.url()==='about:blank'||!PAGE_HOSTS.includes(new URL(page.url()).hostname as never)){await page.close();closed=true;}
+          }catch{/* already closed */}
+          if(initialPopup&&!closed)deniedInitialPopup++;
+          return;
+        }
         if(error instanceof ProviderFailure || (error as {code?:string})?.code!=='INVALID_SOURCE')stop(error);
         await route.abort().catch(()=>{});
       }
@@ -73,6 +85,7 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
     if(options.fixture)await options.fixture(context); // Only injected by tests, absent from worker IPC.
     const main=await context.newPage();
     context.on('page',page=>{
+      if(deniedInitialPopup>0){deniedInitialPopup--;void page.close().catch(()=>{});return;}
       if(context!.pages().length>3){void page.close().catch(()=>{});return;}
       page.on('framenavigated',frame=>{if(frame!==page.mainFrame())return;try {publicUrl(frame.url(),PAGE_HOSTS);}catch{void page.close().catch(()=>{});}});
     });
@@ -83,7 +96,9 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
       if(!request.isNavigationRequest()&&!['xhr','fetch'].includes(request.resourceType()))return;
       const headers=await response.allHeaders(),status=response.status();
       if(Number(headers['content-length']||0)>1048576)throw providerError('INVALID_PROVIDER_RESPONSE');
-      if(status===403||status===429||headers['cf-mitigated']==='challenge') {
+      const xhr=['xhr','fetch'].includes(request.resourceType());
+      if(status===403||status===429||headers['cf-mitigated']==='challenge'
+        ||(xhr&&![301,302,303,307,308].includes(status))) {
         const body=await response.text().catch(()=>'');requireStageSuccess({url,status,headers,body},stage);
       }
       const raw=headers['hx-redirect']||headers.location;

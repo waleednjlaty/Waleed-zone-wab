@@ -11,7 +11,7 @@ async function run(change={}) {
  const result=await browserDestination({source:change.direct?provider:source,cached:change.cached?[provider]:[]},{
   signal:AbortSignal.timeout(15000),progress:s=>states.push(s),lookup:async()=>[{address:'8.8.8.8',family:4}],
   launch:async options=>{if(change.launchFailure)throw Error('sensitive launch error');return chromium.launch({...options,...(process.env.WZ_BROWSER_EXECUTABLE?{executablePath:process.env.WZ_BROWSER_EXECUTABLE}:{})});},
-  http:async(url,hosts,signal,headers,follow,method)=>{head.push({url,method});assert.equal(method,'HEAD');return {url,status:200,headers:{'content-type':change.invalidFile?'text/html':'application/octet-stream'},body:''};},
+  http:async(url,hosts,signal,headers,follow,method)=>{head.push({url,method});assert.equal(method,'HEAD');if(change.ad)assert.equal(pages.filter(p=>!p.isClosed()).length,1,'advertising popup closed before verification');return {url,status:200,headers:{'content-type':change.invalidFile?'text/html':'application/octet-stream'},body:''};},
   fixture:async context=>{
    context.on('page',page=>pages.push(page));
    await context.route('**/*',async route=>{
@@ -23,6 +23,7 @@ async function run(change={}) {
     if(url===provider)return route.fulfill({status:change.providerStatus||200,contentType:'text/html',body:change.directFile?`<a href="${destination}">Download file</a>`:`<button ${change.dataHx?'data-hx-get':'hx-get'}="/file-xyz/download?declared=true" onclick="window.clicked=(window.clicked||0)+1; fetch(this.getAttribute('hx-get')||this.getAttribute('data-hx-get'),{headers:{'HX-Request':'true'}})">Download</button>`});
     if(url===provider+'/download?declared=true') {
       assert.equal(route.request().headers()['hx-request'],'true');
+      if(change.endpointChallenge)return route.fulfill({status:200,contentType:'text/html',body:'<title>Just a moment</title><form id="challenge-form"></form>'});
       return route.fulfill({status:change.endpointStatus||204,headers:{[change.location?'Location':'HX-Redirect']:change.invalidHost?'https://evil.test/d/file-xyz?v=bad':destination}});
     }
     return route.fallback(); // Production policy must block ads and all file GETs.
@@ -57,3 +58,5 @@ test('declarative hx-get without provider JS uses browser fetch after a real cli
 for(const status of [403,429])test('HTMX '+status+' stops without repeated clicks/requests',async()=>assert.rejects(run({endpointStatus:status}),e=>e.code===(status===403?'PROVIDER_FORBIDDEN':'PROVIDER_RATE_LIMITED')));
 
 test('removed first declared mirror falls back to the second declaration, no guessed URLs',async()=>assert.equal((await run({mirrors:true,providerStatus:404})).result.destination,destination));
+
+test('HTMX 200 human challenge is accurately classified and extraction stops',async()=>assert.rejects(run({endpointChallenge:true}),e=>e.code==='PROVIDER_CHALLENGE'&&e.stage==='bzzhr_htmx'));
