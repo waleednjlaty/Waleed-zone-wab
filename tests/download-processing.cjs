@@ -73,6 +73,31 @@ test('SteamRIP route contract: countdown → fresh mocked provider → atomic 30
   const r=await inline(request());assert.equal(r.status,200);assert.deepEqual(await r.json(),{destination});assert.match(r.headers.get('cache-control'),/no-store/);
   assert.equal((await inline(request())).status,410);
  });
+ await t.test('human challenge offers only eligible stable landing pages; source revision changes hide fallback',async()=>{
+  const {ProviderFailure}=require('../src/lib/downloads/providers/public-http.ts');
+  await h.sql`UPDATE applications SET active=true,published=true,shrankme_url=NULL,devupload_url='https://steamrip.com/qa-game/' WHERE id=201`;
+  let mutate=false;
+  const denied=createLegacyHandler('redeem',{sql:h.sql,env,now:()=>now,resolve:async()=>{
+    if(mutate)await h.sql`UPDATE applications SET devupload_url='https://steamrip.com/changed-game/' WHERE id=201`;
+    throw new ProviderFailure(new DownloadError(503,'PROVIDER_CHALLENGE'),'steamrip','steamrip.com',403);
+  }});
+  const request=p=>new Request(h.origin+'/api/downloads/legacy/redeem',{method:'POST',headers:{origin:h.origin,'sec-fetch-site':'same-origin',accept:'application/json',cookie:p.cookie,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({application_id:201,token:p.grant.token})});
+  const p=await prepare();now=Date.parse(p.grant.ready_at)-1;
+  const early=await denied(request(p));assert.equal(early.status,425);assert.ok(!JSON.stringify(await early.json()).includes('source_url'));
+  now++;
+  const blocked=await denied(request(p));assert.equal(blocked.status,503);
+  const payload=await blocked.json();assert.equal(payload.error.code,'PROVIDER_CHALLENGE');
+  assert.equal(payload.error.source_url,'https://steamrip.com/qa-game/');
+  assert.ok(!JSON.stringify(payload).includes('QA_SECRET_SIGNED_DESTINATION'));
+  mutate=true;
+  const stale=await denied(request(p));assert.equal(stale.status,409);
+  assert.ok(!JSON.stringify(await stale.json()).includes('source_url'));
+  mutate=false;
+  await h.sql`UPDATE applications SET devupload_url='https://steamrip.com/qa-game/?signature=secret' WHERE id=201`;
+  const withQuery=await prepare();now=Date.parse(withQuery.grant.ready_at);
+  const guarded=await denied(request(withQuery));assert.equal(guarded.status,503);
+  assert.ok(!JSON.stringify(await guarded.json()).includes('source_url'));
+ });
  await t.test('Telegram priority unchanged; manual host policy fails closed',async()=>{
   await h.sql`INSERT INTO site_delivery_sources(application_id,provider,telegram_channel_username,telegram_message_id) VALUES(201,'telegram','files_channel',42)`;
   const p=await prepare();now=Date.parse(p.grant.ready_at);const count=resolutions;const r=await redeem(p);assert.equal(r.headers.get('location'),'https://t.me/files_channel/42');assert.equal(resolutions,count);

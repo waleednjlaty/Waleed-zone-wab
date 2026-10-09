@@ -43,6 +43,9 @@
 .actions > form:not(:has(button)) { display:none; }
 .actions button,.actions > a { width:100%; min-height:48px; gap:12px; font-size:14px; }
 .actions button:disabled { cursor:default; opacity:.65; }
+.fallbackLink { display:flex; align-items:center; justify-content:center; text-align:center; text-decoration:none; line-height:1.5; padding:12px 16px; }
+.fallbackLink:focus-visible { outline:2px solid var(--brand); outline-offset:4px; }
+.fallbackNote { color:var(--muted); font-size:13px; line-height:1.9; text-align:center; }
 .note { color:var(--muted); font-size:12px; line-height:1.9; text-align:center; }
 @media(min-width:768px) {
   .page { padding-top:32px; }

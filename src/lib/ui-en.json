@@ -596,5 +596,7 @@
   "استجاب BZZHR دون رابط تنزيل. أعد المحاولة أو اختر مصدرًا آخر.": "BZZHR responded without a download link. Retry or choose another source.",
   "الرابط النهائي يعرض صفحة بدل ملف تنزيل. لم يبدأ التحميل.": "The final link serves a page instead of a file. The download did not start.",
   "المصدر يعيد التحويل إلى الرابط نفسه. أوقفنا الطلب.": "The source redirects back to the same URL. The request was stopped.",
-  "تجاوز المصدر عدد التحويلات المسموح. لم يبدأ التحميل.": "The source exceeded the redirect limit. The download did not start."
+  "تجاوز المصدر عدد التحويلات المسموح. لم يبدأ التحميل.": "The source exceeded the redirect limit. The download did not start.",
+  "فتح صفحة المصدر لإكمال التحميل": "Open the original source to continue",
+  "هذه صفحة خارجية قد تتطلب تحققًا بشريًا. اختر رابط التحميل هناك. التحقق في متصفحك لا يفتح جلسة الخادم.": "This external page may ask for human verification. Choose the download link there. Browser verification cannot unlock our server session."
 }

@@ -12,12 +12,25 @@ import { resolveSteamrip } from '@/lib/downloads/providers/steamrip';
 import { ProviderFailure } from '@/lib/downloads/providers/public-http';
 import { consumeWindow, requestNetwork } from '@/lib/security/limits';
 
+/** Only stable, explicitly allowed provider landing pages may leave the error boundary. */
+function safeManualSource(raw:string):string|null {
+  try {
+    const url=new URL(raw);
+    if(url.protocol!=='https:'||url.username||url.password||url.port||url.search||url.hash)return null;
+    if(['steamrip.com','www.steamrip.com'].includes(url.hostname))
+      return /^\/[A-Za-z0-9-]+\/?$/.test(url.pathname)?url.href:null;
+    if(['bzzhr.to','www.bzzhr.to','bzzhr.co','www.bzzhr.co','buzzheavier.com','www.buzzheavier.com'].includes(url.hostname))
+      return /^\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)?url.href:null;
+  } catch {/* Invalid URLs cannot be exposed as a fallback. */}
+  return null;
+}
+
 // Bounded per-process load shedding; no fake trusted IP from forwarding headers.
 // This guards metadata APIs, not traffic to Telegram. Direct-download quotas remain unchanged.
 let minute = 0, count = 0;
 export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencies?: { sql: Sql; env: NodeJS.ProcessEnv; now?: () => number; resolve?: typeof resolveSteamrip }) {
   return async (request: Request) => {
-    let retry: {id:number;token:unknown;source:string}|undefined;
+    let retry: {id:number;token:unknown;source:string;revision:string}|undefined;
     try {
       if (request.method !== 'POST') return downloadMethodNotAllowed();
       const env = dependencies?.env ?? process.env;
@@ -63,7 +76,7 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
         WHERE token_hash=${hash} AND application_id=${Number(appId)} AND source_revision=${source.revision}
         AND consumed_at IS NULL AND attempts<3 AND ready_at<=${now}::timestamptz AND expires_at>${now}::timestamptz RETURNING token_hash`;
       if(!attempts.length)throw new DownloadError(410,'TOKEN_USED');
-      retry={id:Number(appId),token:body.token,source:source.destination};
+      retry={id:Number(appId),token:body.token,source:source.destination,revision:source.revision};
       const destination=source.provider==='steamrip'
         ?await (dependencies?.resolve??resolveSteamrip)(Number(appId),source.revision,source.destination):source.destination;
       await sql.begin('isolation level read committed',async tx=>{
@@ -92,12 +105,24 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem', dependencie
       const driverCode=error && typeof error==='object' && 'code' in error ? String(error.code) : '';
       console.warn(JSON.stringify({area:'delivery',application_id:retry?.id,category:error instanceof DownloadError?error.code:/^[0-9A-Z]{5}$/.test(driverCode)?'DB_'+driverCode:error instanceof TypeError?'INTERNAL_TYPE_ERROR':'DELIVERY_UNAVAILABLE',
         ...(error instanceof ProviderFailure?{stage:error.stage,host:error.host,upstream_status:error.upstreamStatus}:{})}));
+      if(retry && error instanceof ProviderFailure) {
+        // A failed upstream fetch must not expose a deleted, unpublished or superseded source.
+        try {
+          const sql=dependencies?.sql??getSql();
+          if(!sql)throw new DownloadError(503,'DELIVERY_UNAVAILABLE');
+          const current=await legacyDelivery(sql,retry.id,dependencies?.env??process.env);
+          if(current.revision!==retry.revision)throw new DownloadError(409,'SOURCE_CHANGED');
+        } catch(changed) {return downloadErrorResponse(changed,request,true);}
+      }
       if(retry && !request.headers.get('accept')?.includes('application/json')) {const response=providerRetry(error,retry.id,retry.token,request);if(response)return response;}
       const response=downloadErrorResponse(error,request,operation==='redeem');
       if(retry && request.headers.get('accept')?.includes('application/json') && error instanceof ProviderFailure) {
         const payload=await response.json();
         payload.error.stage=error.stage;payload.error.provider_host=error.host;payload.error.upstream_status=error.upstreamStatus;
-        if(['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_FORBIDDEN'].includes(error.code))payload.error.source_url=retry.source;
+        if(['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_FORBIDDEN'].includes(error.code)){
+          const stableSource=safeManualSource(retry.source);
+          if(stableSource)payload.error.source_url=stableSource;
+        }
         return Response.json(payload,{status:response.status,headers:response.headers});
       }
       return response;
