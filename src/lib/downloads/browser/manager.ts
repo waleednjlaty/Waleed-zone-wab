@@ -17,7 +17,13 @@ export function memoryAvailable() {
 export const childRunner:Runner=(input,signal,progress)=>new Promise((resolve,reject)=>{
   if(signal.aborted){reject(providerError('PROVIDER_TIMEOUT'));return;}
   if(!memoryAvailable()){reject(providerError('BROWSER_RESOURCE_LIMIT'));return;}
-  let child:ChildProcess|undefined,settled=false;
+  let child:ChildProcess|undefined,settled=false,step:BrowserState='BROWSER_STARTING';
+  const startedAt=Date.now();
+  const record=(outcome:'started'|'completed'|'failed',code?:string)=>console.info(JSON.stringify({
+    area:'background_browser_worker',step,outcome,elapsed_ms:Date.now()-startedAt,
+    ...(code&&/^[A-Z_]+$/.test(code)?{code}:{}),
+  }));
+  record('started');
   const terminate=()=>{
     if(!child)return;
     const descendants:number[]=[];
@@ -33,6 +39,7 @@ export const childRunner:Runner=(input,signal,progress)=>new Promise((resolve,re
   };
   const done=(error?:unknown,result?:BrowserResult)=>{
     if(settled)return;settled=true;clearInterval(memory);clearTimeout(deadline);signal.removeEventListener('abort',abort);
+    record(error?'failed':'completed',(error as {code?:string}|undefined)?.code);
     terminate();if(error)reject(error);else resolve(result!);
   };
   const abort=()=>done(providerError('PROVIDER_TIMEOUT'));
@@ -44,7 +51,10 @@ export const childRunner:Runner=(input,signal,progress)=>new Promise((resolve,re
     child=fork(join(process.cwd(),'scripts/browser-worker.cjs'),[],{env,execArgv:['--max-old-space-size=128'],stdio:['ignore','ignore','ignore','ipc']});
     child.on('message',(message:unknown)=>{
       const m=message as {type:string;state:BrowserState;result:BrowserResult;code?:string;stage?:string;host?:string;upstreamStatus?:number};
-      if(m.type==='progress'&&['BROWSER_STARTING','OPENING_SOURCE','FINDING_BZZHR','RESOLVING_DOWNLOAD','VERIFYING_FILE','READY','PROVIDER_CHALLENGE','FAILED'].includes(m.state))progress(m.state);
+      if(m.type==='progress'&&['BROWSER_STARTING','OPENING_SOURCE','FINDING_BZZHR','RESOLVING_DOWNLOAD','VERIFYING_FILE','READY','PROVIDER_CHALLENGE','FAILED'].includes(m.state)) {
+        if(m.state!==step&&!['FAILED','PROVIDER_CHALLENGE'].includes(m.state)){record('completed');step=m.state;record('started');}
+        progress(m.state);
+      }
       if(m.type==='result')done(undefined,m.result);
       if(m.type==='failure')done(new ProviderFailure(providerError(/^[A-Z_]+$/.test(m.code||'')?m.code:'BROWSER_FAILED'),m.stage as never,m.host||new URL(input.source).hostname,m.upstreamStatus));
     });
