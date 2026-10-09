@@ -123,7 +123,21 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
       options.progress('OPENING_SOURCE');await open(main,source.href);options.progress('FINDING_BZZHR');
       // Anchor domain/path is decisive. CSS class names and scripts are not trusted.
       await main.locator('a[href]').first().waitFor({state:'attached'});
-      const hrefs=await main.locator('a[href]').evaluateAll(nodes=>nodes.slice(0,1000).map(node=>({href:(node as HTMLAnchorElement).href,raw:node.getAttribute('href')||'',text:node.textContent||''})));
+      const hrefs=await main.locator('a[href]').evaluateAll(nodes=>{
+        const markers=Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6,strong,b'))
+          .filter(node=>!node.closest('nav,aside,footer')&&/\bdownload\s+links?\b/i.test(node.textContent||''));
+        const scopes=markers.map(marker=>{
+          const root=marker.closest('article,main,section')||document.body;
+          const level=Number(marker.tagName.slice(1))||2;
+          const end=Array.from(root.querySelectorAll('h1,h2,h3,h4,h5,h6')).find(node=>
+            node!==marker&&!node.contains(marker)&&Number(node.tagName.slice(1))<=level&&Boolean(marker.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING));
+          return {marker,root,end};
+        });
+        return nodes.slice(0,1000).filter(node=>!node.closest('nav,aside,footer')&&scopes.some(({marker,root,end})=>
+          root.contains(node)&&Boolean(marker.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING)
+          &&(!end||Boolean(node.compareDocumentPosition(end)&Node.DOCUMENT_POSITION_FOLLOWING))))
+          .map(node=>({href:(node as HTMLAnchorElement).href,raw:node.getAttribute('href')||'',text:node.textContent||''}));
+      });
       for(const link of hrefs)try {if(/[\s\p{Cc}\p{Cf}\\]/u.test(link.raw)||/:[0-9]+$/.test(link.raw.split('/')[2]||''))continue;const url=stableBzzhr(link.href);if(!discovered.includes(url))discovered.push(url);if(discovered.length===3)break;}catch{/* other providers/ads */}
       if(!discovered.length)throw providerError('BZZHR_NOT_FOUND');
       stage='bzzhr_page';

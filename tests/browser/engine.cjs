@@ -16,7 +16,7 @@ async function run(change={}) {
    context.on('page',page=>pages.push(page));
    await context.route('**/*',async route=>{
     const url=route.request().url();calls.push(url);
-    if(url===source)return route.fulfill({status:change.sourceStatus||200,contentType:'text/html',body:(change.cloudflareScript?'<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script>':'')+(change.challenge?'<title>Just a moment...</title><form id="challenge-form"></form>':`<h2>Download Links</h2><a href="${provider}" ${change.popup?'target="_blank"':''} ${change.ad?'onclick="event.preventDefault();window.open(\'https://ad.invalid/trap\')"':''}>BuzzHeavier</a>${change.mirrors?'<a href="https://buzzheavier.com/alternate-file">BZZHR mirror</a>':''}`)});
+    if(url===source)return route.fulfill({status:change.sourceStatus||200,contentType:'text/html',body:(change.cloudflareScript?'<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script>':'')+(change.challenge?'<title>Just a moment...</title><form id="challenge-form"></form>':`<aside><a href="https://buzzheavier.com/unrelated-file">BuzzHeavier unrelated game</a></aside>${change.noSection?'':'<h2>Download Links</h2>'}<a href="${provider}" ${change.popup?'target="_blank"':''} ${change.ad?'onclick="event.preventDefault();window.open(\'https://ad.invalid/trap\')"':''}>BuzzHeavier</a>${change.mirrors?'<a href="https://buzzheavier.com/alternate-file">BZZHR mirror</a>':''}`)});
     if(url.startsWith(source+'cdn-cgi/'))return route.fulfill({body:''});
     if(url==='https://buzzheavier.com/alternate-file')return route.fulfill({contentType:'text/html',body:`<button hx-get="/alternate-file/download">Download</button>`});
     if(url==='https://buzzheavier.com/alternate-file/download')return route.fulfill({status:204,headers:{'HX-Redirect':destination}});
@@ -60,3 +60,5 @@ for(const status of [403,429])test('HTMX '+status+' stops without repeated click
 test('removed first declared mirror falls back to the second declaration, no guessed URLs',async()=>assert.equal((await run({mirrors:true,providerStatus:404})).result.destination,destination));
 
 test('HTMX 200 human challenge is accurately classified and extraction stops',async()=>assert.rejects(run({endpointChallenge:true}),e=>e.code==='PROVIDER_CHALLENGE'&&e.stage==='bzzhr_htmx'));
+
+test('missing Download Links section cannot select an unrelated provider anchor',async()=>assert.rejects(run({noSection:true}),e=>e.code==='BZZHR_NOT_FOUND'));
