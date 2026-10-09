@@ -11,7 +11,7 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
   const t = useTranslateUI();
 
   const [grant,setGrant] = useState<Grant|null>(null), [remaining,setRemaining] = useState(0);
-  const [busy,setBusy] = useState(false),[error,setError] = useState(''),[sent,setSent] = useState(false),[resolving,setResolving]=useState(false),[sourceUrl,setSourceUrl]=useState('');
+  const [busy,setBusy] = useState(false),[error,setError] = useState(''),[sent,setSent] = useState(false),[resolving,setResolving]=useState(false),[sourceUrl,setSourceUrl]=useState(''),[providerBlocked,setProviderBlocked]=useState(false);
   const deadline = useRef({ready:0,expires:0}), lock = useRef(false),heading = useRef<HTMLHeadingElement>(null),submitted=useRef(false);
   useEffect(()=>{
     if (!grant) return;
@@ -24,7 +24,7 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
   },[grant]);
   useEffect(()=>{if(grant&&remaining===0)heading.current?.focus({preventScroll:true});},[grant,remaining]);
   async function prepare(){
-    if(lock.current)return; lock.current=true;setBusy(true);setError('');setSent(false);setSourceUrl('');submitted.current=false;
+    if(lock.current)return; lock.current=true;setBusy(true);setError('');setSent(false);setSourceUrl('');setProviderBlocked(false);submitted.current=false;
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
     try{
       const start=performance.now();
@@ -41,15 +41,26 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
   }
   async function redeem(form: HTMLFormElement){
     if(submitted.current||!grant||remaining>0)return;
-    submitted.current=true;setResolving(true);setError('');setSourceUrl('');
+    submitted.current=true;setResolving(true);setError('');setSourceUrl('');setProviderBlocked(false);
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
     try {
       const response=await fetch(form.action,{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal,
         headers:{'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({application_id:String(app.id),token:grant.token})});
       const data=await response.json();
       if(!response.ok){
-        // Stable public source supplied only after server eligibility. No signatures in failures.
-        if(typeof data.error?.source_url==='string')setSourceUrl(data.error.source_url);
+        // A stable, public original source is available only after server-side eligibility.
+        // Cloudflare verification must happen in the visitor's own browser, never on Railway.
+        const barrier=['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_FORBIDDEN'].includes(data.error?.code);
+        setProviderBlocked(barrier);
+        if(barrier && typeof data.error?.source_url==='string')try {
+          const url=new URL(data.error.source_url);
+          const host=url.hostname;
+          const stablePage=url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&!url.search&&!url.hash
+            && (['steamrip.com','www.steamrip.com'].includes(host)?/^\/[A-Za-z0-9-]+\/?$/.test(url.pathname)
+            :['bzzhr.to','www.bzzhr.to','bzzhr.co','www.bzzhr.co','buzzheavier.com','www.buzzheavier.com'].includes(host)
+              && /^\/[A-Za-z0-9_-]+\/?$/.test(url.pathname));
+          if(stablePage)setSourceUrl(url.href);
+        } catch {/* never render untrusted provider URLs */}
         throw new Error(data.error?.message||'تعذر تنفيذ طلب التحميل.');
       }
       if(typeof data.destination!=='string'||data.destination.length>4096||new URL(data.destination).protocol!=='https:')throw new Error('استجابة غير صالحة.');
@@ -67,11 +78,11 @@ export default function LegacyDownloadExperience({app,provider}:{app:DownloadApp
     <div className={styles.layout}><aside className={styles.summary}><div className={styles.identity}><span className={styles.icon}><CoverImage src={app.imageUrl} alt={t("أيقونة {0}", app.name)} aspectClassName="aspect-square"/></span><h2 dir="auto">{app.name}</h2></div><dl><div><dt>{t("الإصدار")}</dt><dd dir="auto">{app.version||t("غير معروف")}</dd></div><div><dt>{t("الحجم")}</dt><dd dir="auto">{app.size||t("غير معروف")}</dd></div></dl><Link href={app.detailHref}>{t("تفاصيل التطبيق")}</Link></aside>
       <section className={styles.panel} aria-labelledby="legacy-status"><div className={styles.status}><h2 ref={heading} tabIndex={-1} id="legacy-status">{state==='COUNTDOWN'?t("رابطك قيد التجهيز"):state==='READY'?(provider==='steamrip'?t("جاهز لتجهيز الرابط"):t("رابط التحميل جاهز")):state==='RESOLVING'?t("جارٍ معالجة مصدر التحميل"):state==='DOWNLOADING'?t("تم إرسال طلب التنزيل إلى المتصفح"):t("تجهيز رابط التحميل")}</h2>
       <p role="status" aria-live="polite">{t(error)|| (resolving?t("جارٍ استخراج رابط جديد والتحقق من المضيف النهائي."):sent?t("تحقق من قائمة التنزيلات في متصفحك. لا يمكن للموقع تأكيد اكتمال الملف."):busy?t("جارٍ التحقق من توفر التطبيق."):t("مهلة التجهيز 20 ثانية."))}</p>
-      {sourceUrl&&<p><a href={sourceUrl} rel="noreferrer">{t("فتح المصدر يدويًا في التبويب نفسه")}</a> — {t("التحقق البشري في متصفحك لا يفتح جلسة الخادم. اختر مصدرًا آخر إذا استمر الحظر.")}</p>}
       {grant&&remaining>0&&<><div className={styles.countdown} role="timer" aria-live="off"><strong>{remaining}</strong><span>{t("ثانية متبقية")}</span></div><progress className={styles.progress} max={20} value={20-remaining} aria-label={t("تقدم تجهيز الرابط")}/></>}</div>
-      <div className={styles.actions}>{grant&&remaining===0&&!sent?<form action="/api/downloads/legacy/redeem" method="post" onSubmit={event=>{
+      <div className={styles.actions}>{providerBlocked&&sourceUrl?<a className={`primary-action ${styles.fallbackLink}`} href={sourceUrl} rel="noreferrer" referrerPolicy="no-referrer">{t("فتح صفحة المصدر لإكمال التحميل")} ↗</a>:grant&&remaining===0&&!sent?<form action="/api/downloads/legacy/redeem" method="post" onSubmit={event=>{
         event.preventDefault();void redeem(event.currentTarget);
       }}><input type="hidden" name="application_id" value={app.id}/><input type="hidden" name="token" value={grant.token}/><button disabled={resolving} type="submit" className="primary-action">{resolving?t("جارٍ معالجة مصدر التحميل"):error?t("إعادة المحاولة"):provider==='telegram'?t("تحميل الملف عبر Telegram"):t("بدء التحميل")} ↓</button></form>:!grant||sent?<button type="button" className="primary-action" disabled={busy} onClick={()=>void prepare()}>{busy?t("جارٍ التحقق…"):sent?t("تجهيز طلب جديد"):t("تجهيز رابط التحميل")}</button>:<button type="button" disabled className="primary-action">{t("جارٍ التجهيز ·")} {remaining}  {t("ثانية")}</button>}
+      {providerBlocked&&sourceUrl&&<p className={styles.fallbackNote}>{t("هذه صفحة خارجية قد تتطلب تحققًا بشريًا. اختر رابط التحميل هناك. التحقق في متصفحك لا يفتح جلسة الخادم.")}</p>}
       <p className={styles.note}>{t("يبقى الموقع ظاهرًا أثناء المعالجة. عند بدء التنزيل قد ينقلك المضيف في التبويب نفسه إذا لم يرسل الملف كمرفق.")}</p></div></section></div>
   </div>;
 }
