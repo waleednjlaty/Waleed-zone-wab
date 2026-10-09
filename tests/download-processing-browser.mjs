@@ -43,6 +43,27 @@ try {
   assert.equal(page.url(),base+'/download/210');assert.equal(popups,0);assert.equal(context.pages().length,1);
   await page.locator('[data-download-state="DOWNLOADING"]').waitFor();checks++;
   const replay=await context.request.post(base+'/api/downloads/legacy/redeem',{form:fields,headers:{Origin:base,'Sec-Fetch-Site':'same-origin'},maxRedirects:0});assert.equal(replay.status(),410);checks++;
+  // One real mobile flow verifies the denied-provider screenshot has a visible same-tab exit.
+  if(locale==='ar'&&width===360){
+    await page.goto(base+'/download/210');
+    assert.equal(await page.getByRole('link',{name:/فتح صفحة المصدر لإكمال التحميل/}).count(),0);checks++;
+    await page.getByRole('button',{name:'تجهيز رابط التحميل',exact:true}).click();
+    await page.getByRole('button',{name:'بدء التحميل ↓',exact:true}).waitFor({timeout:26000});
+    await page.route('**/api/downloads/legacy/redeem',route=>route.fulfill({
+      status:503,contentType:'application/json',body:JSON.stringify({error:{code:'PROVIDER_CHALLENGE',
+        message:'المصدر يطلب تحققًا بشريًا مؤقتًا. أعد المحاولة لاحقًا.',source_url:'https://steamrip.com/qa-game/'}})
+    }));
+    await page.getByRole('button',{name:'بدء التحميل ↓',exact:true}).click();
+    await page.locator('[data-download-state="FAILED"]').waitFor();
+    const fallback=page.getByRole('link',{name:/فتح صفحة المصدر لإكمال التحميل/});
+    await fallback.waitFor();
+    assert.equal(await fallback.getAttribute('href'),'https://steamrip.com/qa-game/');
+    const box=await fallback.boundingBox();assert.ok(box&&box.width>=250);
+    assert.equal(await page.getByRole('button',{name:'إعادة المحاولة ↓'}).count(),0);
+    assert.equal(page.url(),base+'/download/210');assert.equal(popups,0);
+    checks+=4;
+    await page.unroute('**/api/downloads/legacy/redeem');
+  }
   assert.deepEqual(errors,[]);await context.close();
  }
  console.log(`Inline download browser checks passed: ${checks} (ar/en; Android Chromium emulation/Desktop; no popups; POST, retry, attachment, replay)`);
