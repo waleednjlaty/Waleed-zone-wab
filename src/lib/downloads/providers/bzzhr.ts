@@ -2,9 +2,9 @@ import 'server-only';
 import { htmlAttributes } from './html';
 import { publicHttp, publicUrl, providerError, providerStage, requireStageSuccess, cookieHeader, type PublicHttp } from './public-http';
 export const BZZHR_HOSTS=['bzzhr.to','bzzhr.co','buzzheavier.com','www.bzzhr.to','www.bzzhr.co','www.buzzheavier.com'] as const;
-// ts.buzzheavier.com observed on an authorized 89-byte live download, 2026-10-08.
-// Keep exact hosts: provider HTML cannot expand the SSRF allowlist.
-export const BZZHR_FILE_HOSTS=[...BZZHR_HOSTS,'fafda.to','ts.buzzheavier.com'] as const;
+// Exact CDN hosts observed on authorized tiny-file QA (ts.buzzheavier.com)
+// and user-supplied copied BZZHR links (ts.bzzhr.to). Do not allow wildcard subdomains.
+export const BZZHR_FILE_HOSTS=[...BZZHR_HOSTS,'fafda.to','ts.buzzheavier.com','ts.bzzhr.to'] as const;
 export function signedEndpoints(html: string, page: string) {
   const base=publicUrl(page,BZZHR_HOSTS);
   const found=htmlAttributes(html,'hx-get',value=>{
