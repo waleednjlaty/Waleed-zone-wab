@@ -23,7 +23,9 @@ async function run(change={}) {
     if(url.startsWith(source+'cdn-cgi/'))return route.fulfill({body:''});
     if(url==='https://buzzheavier.com/alternate-file')return route.fulfill({contentType:'text/html',body:`<button hx-get="/alternate-file/download">Download</button>`});
     if(url==='https://buzzheavier.com/alternate-file/download')return route.fulfill({status:204,headers:{'HX-Redirect':destination}});
-    if(url===provider)return route.fulfill({status:change.providerStatus||200,headers:change.forgedDocumentHeader?{'HX-Redirect':'https://ts.buzzheavier.com/d/unrelated?v=fixture-only'}:{},contentType:'text/html',body:change.directFile?`<a href="${destination}" ${change.directPopup?'target="_blank"':''}>Download file</a>`:`<button ${change.dataHx?'data-hx-get':'hx-get'}="/file-xyz/download?declared=true" onclick="window.clicked=(window.clicked||0)+1; fetch(this.getAttribute('hx-get')||this.getAttribute('data-hx-get'),{headers:{'HX-Request':'true'}})">Download</button>`});
+    if(url===provider)return route.fulfill({status:change.providerStatus||200,headers:change.forgedDocumentHeader?{'HX-Redirect':'https://ts.buzzheavier.com/d/unrelated?v=fixture-only'}:{},contentType:'text/html',body:change.copyLink
+      ? '<a href="#" onclick=\'event.preventDefault();navigator.clipboard.writeText(' + JSON.stringify(change.badCopy?'https://evil.test/d/trap?v=bad':destination) + ')\'>Copy download link</a>'
+      : change.directFile?`<a href="${destination}" ${change.directPopup?'target="_blank"':''}>Download file</a>`:`<button ${change.dataHx?'data-hx-get':'hx-get'}="/file-xyz/download?declared=true" onclick="window.clicked=(window.clicked||0)+1; fetch(this.getAttribute('hx-get')||this.getAttribute('data-hx-get'),{headers:{'HX-Request':'true'}})">Download</button>`});
     if(url===provider+'/endpoint-final')return route.fulfill({status:change.redirectStatus||204,headers:{'HX-Redirect':destination}});
     if(url===provider+'/download?declared=true') {
       if(change.endpointRedirect)return route.fulfill({status:302,headers:{Location:typeof change.endpointRedirect==='string'?change.endpointRedirect:'/file-xyz/endpoint-final'}});
@@ -35,7 +37,7 @@ async function run(change={}) {
   },
  });
  assert.ok(pages.every(p=>p.isClosed()),'all pages closed in finally');
- assert.equal(head.length,1);assert.equal(calls.filter(u=>u===provider+'/download?declared=true').length,change.directFile||change.mirrors?0:1);assert.ok(calls.filter(u=>u.includes('/d/')).length<=1);
+ assert.equal(head.length,1);assert.equal(calls.filter(u=>u===provider+'/download?declared=true').length,change.directFile||change.mirrors||change.copyLink?0:1);assert.ok(calls.filter(u=>u.includes('/d/')).length<=1);
  return {result,states,calls};
 }
 test('actual Chromium navigation, provider link click, hx-get click, HX-Redirect and HEAD',async()=>{const r=await run();assert.equal(r.result.destination,destination);assert.deepEqual(r.result.discovered,[provider]);assert.deepEqual(r.states,['BROWSER_STARTING','OPENING_SOURCE','FINDING_BZZHR','RESOLVING_DOWNLOAD','VERIFYING_FILE','READY']);});
@@ -52,6 +54,16 @@ test('data-hx-get and normal Location supported in browser session',async()=>ass
 test('cached stable provider skips SteamRIP without caching signed destination',async()=>{const r=await run({cached:true});assert.ok(!r.calls.includes(source));assert.equal(r.result.destination,destination);});
 test('provider-declared static final link is clicked without fetching game bytes',async()=>assert.equal((await run({directFile:true})).result.destination,destination));
 test('direct approved provider source opens actual page',async()=>assert.equal((await run({direct:true})).result.destination,destination));
+test('BZZHR Copy download link uses isolated Chromium clipboard; only approved signed URL is returned',async()=>{
+ const r=await run({direct:true,copyLink:true});
+ assert.equal(r.result.destination,destination);
+ assert.deepEqual(r.result.discovered,[provider]);
+ assert.deepEqual(r.states,['BROWSER_STARTING','RESOLVING_DOWNLOAD','VERIFYING_FILE','READY']);
+ assert.ok(!r.calls.some(u=>u.includes('download?declared=true')));
+});
+test('BZZHR copied foreign URL is rejected; it never becomes a user download',async()=>
+ assert.rejects(run({direct:true,copyLink:true,badCopy:true}),e=>e.code==='INVALID_PROVIDER_RESPONSE'));
+
 test('ordinary Cloudflare passive script does not masquerade as challenge',async()=>assert.equal((await run({cloudflareScript:true})).result.destination,destination));
 for(const [label,change,code] of [
  ['invalid file MIME',{invalidFile:true},'INVALID_FILE_RESPONSE'],['foreign final host',{invalidHost:true},'INVALID_SOURCE'],
