@@ -54,7 +54,7 @@ try {
     await button.click();
     const redirected = await redeem; assert.equal(redirected.status(), 200); assert.equal(new URL((await redirected.json()).destination).hostname, 'ts.bzzhr.to'); checks++;
     const file = await download; assert.equal(file.suggestedFilename(), 'owner-qa.txt'); assert.equal(await file.failure(), null);
-    assert.equal(readFileSync(await file.path(), 'utf8'), body); assert.equal(cdnRequests, 1); assert.equal(page.url(), base + '/download/210'); assert.equal(context.pages().length, 1); checks++;
+    assert.equal(readFileSync(await file.path(), 'utf8'), body); assert.equal(cdnRequests, 1); assert.equal(page.url(), base + '/admin/download-test/run?application_id=210'); assert.equal(context.pages().length, 1); checks++;
     const replay = await context.request.post(base + '/api/downloads/legacy/redeem', { form: fields, headers: { Origin: base }, maxRedirects: 0 }); assert.equal(replay.status(), 410); checks++;
     if (nativeGrant) {
       // Native fallback needs the download document's CSP. A Next client
