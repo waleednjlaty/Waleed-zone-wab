@@ -62,7 +62,7 @@ test('BZZHR Copy download link uses isolated Chromium clipboard; only approved s
  assert.ok(!r.calls.some(u=>u.includes('download?declared=true')));
 });
 test('BZZHR copied foreign URL is rejected; it never becomes a user download',async()=>
- assert.rejects(run({direct:true,copyLink:true,badCopy:true}),e=>e.code==='INVALID_PROVIDER_RESPONSE'));
+ assert.rejects(run({direct:true,copyLink:true,badCopy:true}),e=>e.code==='INVALID_SOURCE'));
 test('BZZHR copied signed link for a different file ID is refused',async()=>
  assert.rejects(run({direct:true,copyLink:true,wrongFileCopy:true}),e=>e.code==='INVALID_PROVIDER_RESPONSE'));
 
