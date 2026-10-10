@@ -57,6 +57,23 @@ try {
     assert.equal(readFileSync(await file.path(), 'utf8'), body); assert.equal(cdnRequests, 1); assert.equal(page.url(), base + '/download/210'); assert.equal(context.pages().length, 1); checks++;
     const replay = await context.request.post(base + '/api/downloads/legacy/redeem', { form: fields, headers: { Origin: base }, maxRedirects: 0 }); assert.equal(replay.status(), 410); checks++;
     if (nativeGrant) {
+      // Native fallback needs the download document's CSP. A Next client
+      // navigation retains the original admin document's form-action policy.
+      const documentResponse = await page.reload();
+      assert.ok(documentResponse.headers()['content-security-policy'].split('; ').find(d => d.startsWith('form-action ')).split(' ').includes('https://ts.bzzhr.to'));
+      // Playwright route() intercepts only the first request in a redirect
+      // chain. CDP Fetch covers the genuine 303 -> CDN GET hop as well.
+      await context.unroute('**/*');
+      const nativeSession = await context.newCDPSession(page);
+      nativeSession.on('Fetch.requestPaused', async ({requestId,request}) => {
+        const url = new URL(request.url);
+        if (url.origin === base) return nativeSession.send('Fetch.continueRequest', {requestId});
+        assert.equal(url.hostname, 'ts.bzzhr.to'); assert.equal(url.pathname, '/d/file-xyz'); assert.equal(request.method, 'GET'); cdnRequests++;
+        await nativeSession.send('Fetch.fulfillRequest', {requestId,responseCode:200,responseHeaders:[
+          {name:'Content-Type',value:'application/octet-stream'}, {name:'Content-Disposition',value:'attachment; filename="owner-qa.txt"'},
+        ],body:Buffer.from(body).toString('base64')});
+      });
+      await nativeSession.send('Fetch.enable', {patterns:[{urlPattern:'*',requestStage:'Request'}]});
       const remaining = Date.parse(nativeGrant.ready_at) - Date.now() + 100;
       if (remaining > 0) await page.waitForTimeout(remaining);
       const nativeResponse = page.waitForResponse(r => r.url() === base + '/api/downloads/legacy/redeem' && r.request().method() === 'POST');
@@ -66,12 +83,15 @@ try {
         for (const [name, value] of Object.entries({application_id:'210',token})) {
           const field = document.createElement('input'); field.type = 'hidden'; field.name = name; field.value = value; form.append(field);
         }
-        document.body.append(form); form.submit();
+        const button = document.createElement('button'); button.type = 'submit'; button.textContent = 'Start native QA download'; form.append(button);
+        document.body.append(form);
       }, nativeGrant.token);
+      await page.getByRole('button', {name:'Start native QA download',exact:true}).click();
       const nativeRedirect = await nativeResponse; assert.equal(nativeRedirect.status(), 303);
       assert.equal(new URL(nativeRedirect.headers().location).hostname, 'ts.bzzhr.to'); checks++;
       const nativeFile = await nativeDownload; assert.equal(await nativeFile.failure(), null);
       assert.equal(readFileSync(await nativeFile.path(), 'utf8'), body); assert.equal(cdnRequests, 2); assert.equal(context.pages().length, 1); checks++;
+      await nativeSession.send('Fetch.disable'); await nativeSession.detach();
     }
     const visitor = await browser.newContext({ ignoreHTTPSErrors: true }); const [vn, vv] = config.userCookie.split('='); await visitor.addCookies([{ name: vn, value: vv, url: base }]);
     const denied = await visitor.request.get(base + '/api/admin/downloads/cdn-test?application_id=210'); assert.equal(denied.status(), 403);
