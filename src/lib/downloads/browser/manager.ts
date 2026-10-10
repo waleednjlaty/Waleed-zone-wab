@@ -5,6 +5,9 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { providerError, ProviderFailure, ProviderDnsFailure, safeDnsCode } from '../providers/public-http';
 import type { BrowserInput, BrowserResult, BrowserState } from './engine';
+import { validateBzzhrDns } from '../providers/bzzhr';
+export const SIGNED_URL_MAX_AGE_MS=10*60*1000;
+export type SignedUrlVerifier=(url:string,signal:AbortSignal)=>Promise<string>;
 export type Runner=(input:BrowserInput,signal:AbortSignal,progress:(state:BrowserState)=>void)=>Promise<BrowserResult>;
 export function memoryAvailable() {
   try {
@@ -66,8 +69,17 @@ export const childRunner:Runner=(input,signal,progress)=>new Promise((resolve,re
   }catch{done(providerError('BROWSER_START_FAILED'));}
 });
 type Job={controller:AbortController;promise:Promise<BrowserResult>;waiters:Map<string,string>;state:BrowserState};
-export function createBrowserManager(run:Runner=childRunner,now=Date.now) {
+export function createBrowserManager(run:Runner=childRunner,now=Date.now,verify:SignedUrlVerifier=validateBzzhrDns) {
   const jobs=new Map<string,Job>(),states=new Map<string,{state:BrowserState;expires:number}>();let blockedUntil=0;
+  // Reuse only final links that Chromium already extracted and verified.
+  // Never persist signed URLs to PostgreSQL, expose them in status, or serve
+  // them after ten minutes. A stale link is re-generated on the next request.
+  const signed=new Map<string,{result:BrowserResult;expires:number}>();
+  const cacheKey=(id:number,revision:string,source:string)=>createHash('sha256').update(JSON.stringify([id,revision,source])).digest('hex');
+  function trimSigned() {
+    for(const [k,v] of signed)if(v.expires<=now())signed.delete(k);
+    while(signed.size>100)signed.delete(signed.keys().next().value!);
+  }
   // A grant identifies one user's isolated browser session. Never share a
   // provider context/cookie jar across distinct user grants.
   const key=(id:number,revision:string,source:string,tokenHash:string)=>createHash('sha256').update(JSON.stringify([id,revision,source,tokenHash])).digest('hex');
@@ -80,6 +92,25 @@ export function createBrowserManager(run:Runner=childRunner,now=Date.now) {
     status(tokenHash:string):BrowserState|null {const value=states.get(tokenHash);return value&&value.expires>now()?value.state:null;},
     async resolve(id:number,revision:string,source:string,cached:string[],tokenHash:string,signal:AbortSignal) {
       if(signal.aborted)throw providerError('PROVIDER_TIMEOUT');
+      trimSigned();
+      const sharedKey=cacheKey(id,revision,source),fresh=signed.get(sharedKey);
+      if(fresh) {
+        try {
+          // HEAD checks the signed destination before *each* grant redemption.
+          // No file body is fetched through Railway; one-use grant/source
+          // revision checks still happen in the parent delivery transaction.
+          const validated=await verify(fresh.result.destination,signal);
+          if(signal.aborted)throw providerError('PROVIDER_TIMEOUT');
+          if(new URL(validated).pathname.split('/')[2]!==new URL(fresh.result.destination).pathname.split('/')[2])
+            throw providerError('INVALID_FILE_RESPONSE');
+          return {...fresh.result,destination:validated,discovered:[...fresh.result.discovered]};
+        } catch(error) {
+          signed.delete(sharedKey);
+          if(signal.aborted)throw error;
+          // Expired/denied HEAD never returns a stale URL; try a fresh browser
+          // only if provider backoff and one-worker resource limits permit it.
+        }
+      }
       const k=key(id,revision,source,tokenHash);let job=jobs.get(k);
       if(!job) {
         if(jobs.size>=1||now()<blockedUntil)throw providerError('PROVIDER_BUSY');
@@ -87,7 +118,16 @@ export function createBrowserManager(run:Runner=childRunner,now=Date.now) {
         job={controller,waiters,state:'BROWSER_STARTING',promise:undefined as never};jobs.set(k,job);
         const owned=job;
         // Set job before scheduling run: synchronous launch errors cannot race map insertion.
-        job.promise=Promise.resolve().then(()=>run({source,cached},controller.signal,state=>{owned.state=state;for(const token of waiters.values())setState(token,state);})).catch(error=>{
+        job.promise=Promise.resolve().then(()=>run({source,cached},controller.signal,state=>{owned.state=state;for(const token of waiters.values())setState(token,state);})).then(result=>{
+          // Only successful, HEAD-verified resolutions enter the in-memory
+          // ten-minute cache. This cache never extends an upstream expiry.
+          if(!controller.signal.aborted) {
+            trimSigned();
+            signed.set(sharedKey,{result:{destination:result.destination,discovered:[...result.discovered]},expires:now()+SIGNED_URL_MAX_AGE_MS});
+            trimSigned();
+          }
+          return result;
+        }).catch(error=>{
           blockedUntil=now()+(['PROVIDER_CHALLENGE','PROVIDER_FORBIDDEN','PROVIDER_RATE_LIMITED'].includes(error?.code)?60000:10000);throw error;
         }).finally(()=>jobs.delete(k));
       }
