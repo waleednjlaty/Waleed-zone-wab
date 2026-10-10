@@ -69,7 +69,7 @@ export default function OwnerCdnTest({ initialId }: { initialId: string }) {
       {source?.owner_test && <div role="status" className={styles.panel} style={{ marginBlockStart: 20 }}>
         <strong>{source.owner_test.verification === 'verified' ? text('تم التحقق خادميًا · اختبار مالك', 'Server verified · owner test') : text('غير متحقق خادميًا · اختبار مالك فقط', 'Not server verified · owner test only')}</strong>
         <p>{text('ينتهي التخزين المؤقت عند:', 'Cache expires at:')} <time>{new Date(source.owner_test.expires_at).toLocaleTimeString(locale)}</time></p>
-        <Link className="primary-action" href={'/download/' + source.application_id}>{text('فتح صفحة التحميل الطبيعية', 'Open normal download page')} ↓</Link>
+        <Link className="primary-action" href={'/admin/download-test/run?application_id=' + source.application_id}>{text('فتح صفحة التحميل الطبيعية', 'Open normal download page')} ↓</Link>
         <button type="button" disabled={busy} onClick={() => void save(true)}>{text('حذف رابط الاختبار', 'Clear test link')}</button>
       </div>}
       {message && <p role="status" style={{ marginBlockStart: 20, overflowWrap: 'anywhere' }}>{labels[message] || message}</p>}
