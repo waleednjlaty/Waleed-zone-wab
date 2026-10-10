@@ -68,7 +68,9 @@ export const childRunner:Runner=(input,signal,progress)=>new Promise((resolve,re
 type Job={controller:AbortController;promise:Promise<BrowserResult>;waiters:Map<string,string>;state:BrowserState};
 export function createBrowserManager(run:Runner=childRunner,now=Date.now) {
   const jobs=new Map<string,Job>(),states=new Map<string,{state:BrowserState;expires:number}>();let blockedUntil=0;
-  const key=(id:number,revision:string,source:string)=>createHash('sha256').update(JSON.stringify([id,revision,source])).digest('hex');
+  // A grant identifies one user's isolated browser session. Never share a
+  // provider context/cookie jar across distinct user grants.
+  const key=(id:number,revision:string,source:string,tokenHash:string)=>createHash('sha256').update(JSON.stringify([id,revision,source,tokenHash])).digest('hex');
   function setState(tokenHash:string,state:BrowserState) {
     for(const [k,value] of states)if(value.expires<=now())states.delete(k);
     if(states.size>=1000&&!states.has(tokenHash))states.delete(states.keys().next().value!);
@@ -78,7 +80,7 @@ export function createBrowserManager(run:Runner=childRunner,now=Date.now) {
     status(tokenHash:string):BrowserState|null {const value=states.get(tokenHash);return value&&value.expires>now()?value.state:null;},
     async resolve(id:number,revision:string,source:string,cached:string[],tokenHash:string,signal:AbortSignal) {
       if(signal.aborted)throw providerError('PROVIDER_TIMEOUT');
-      const k=key(id,revision,source);let job=jobs.get(k);
+      const k=key(id,revision,source,tokenHash);let job=jobs.get(k);
       if(!job) {
         if(jobs.size>=1||now()<blockedUntil)throw providerError('PROVIDER_BUSY');
         const controller=new AbortController(),waiters=new Map<string,string>();
