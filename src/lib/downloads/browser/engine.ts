@@ -166,31 +166,66 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
         if(failure||options.signal.aborted||i===discovered.length-1||!['SOURCE_REMOVED','PROVIDER_HTTP_ERROR'].includes((error as {code?:string})?.code||''))throw error;
       }
     }
-    let endpoints:string[]=[];
-    try {endpoints=signedEndpoints(html.replace(/\bdata-hx-get\s*=/gi,'hx-get='),providerPage.url());}catch{/* Explicit final attachment links are also supported below. */}
-    const buttons=providerPage.locator('[hx-get],[data-hx-get],a[href]');let button,clickedEndpoint:string|undefined;
-    let directFile=false;
-    for(let i=0;i<Math.min(await buttons.count(),1000);i++) {
-      const node=buttons.nth(i),raw=await node.getAttribute('hx-get')||await node.getAttribute('data-hx-get')||await node.getAttribute('href');
-      if(raw&&endpoints.includes(new URL(raw,providerPage.url()).href)){button=node;clickedEndpoint=new URL(raw,providerPage.url()).href;authorizedEndpoints.add(clickedEndpoint);break;}
-      if(raw&&!endpoints.length)try {
-        authorizedDirect=signedDestination(raw,providerPage.url());button=node;directFile=true;break;
-      }catch{/* unrelated links never become file destinations */}
+    // BZZHR also exposes a public "Copy download link" control. Capture its
+    // clipboard output only after a real click in this fresh isolated context.
+    // Never read the user's OS clipboard or use copied data without validation.
+    const copy=providerPage.locator('a,button,[role="button"]').filter({hasText:/^\\s*Copy\\s+download\\s+link\\s*$/i}).first();
+    if(await copy.count()) {
+      let clipboardReady=false;
+      try {
+        await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:new URL(providerPage.url()).origin});
+        await providerPage.evaluate(async()=>{await navigator.clipboard.writeText('');});
+        clipboardReady=true;
+      }catch{/* Clipboard not supported here: preserve the normal HTMX route. */}
+      if(clipboardReady) {
+        stage='bzzhr_htmx';
+        await copy.click({timeout:3000}).catch(error=>{
+          // The copy handler may also spawn a paused advertising popup. Do not
+          // click again on a timeout or try to follow an unrelated window.
+          if((error as {name?:string})?.name!=='TimeoutError')throw error;
+        });
+        const copiedUntil=Date.now()+2000;
+        while(!destination&&!failure&&Date.now()<copiedUntil&&!options.signal.aborted) {
+          const copied=await providerPage.evaluate(()=>navigator.clipboard.readText()).catch(()=>'');
+          if(copied) {
+            // Treat clipboard contents as untrusted. Only the exact provider
+            // signed-file URL shape and approved hosts are acceptable.
+            destination=signedDestination(copied.trim(),providerPage.url());
+            break;
+          }
+          await new Promise(r=>setTimeout(r,50));
+        }
+      }
     }
-    if(!button)throw providerError('INVALID_PROVIDER_RESPONSE');
-    if(clickedEndpoint)requestedEndpoints.delete(clickedEndpoint);
-    stage='bzzhr_htmx';await button.click().catch(error=>{if(!destination)throw error;});
-    if(directFile&&authorizedDirect)destination=authorizedDirect;
-    // Prefer the real site's JS interaction. For a declarative endpoint without
-    // installed HTMX, browser-native fetch uses this context's scoped cookie jar.
-    if(!destination&&!failure&&!directFile) {
-      const nativeHtmx=await providerPage.evaluate(()=>Boolean((window as unknown as {htmx?:unknown}).htmx));
-      if(!nativeHtmx&&clickedEndpoint&&!requestedEndpoints.has(clickedEndpoint))await providerPage.evaluate(async endpoint=>{
-        await fetch(endpoint,{credentials:'same-origin',headers:{'HX-Request':'true','HX-Current-URL':location.href},redirect:'manual'});
-      },clickedEndpoint);
+    if(!destination) {
+      let endpoints:string[]=[];
+      try {endpoints=signedEndpoints(html.replace(/\bdata-hx-get\s*=/gi,'hx-get='),providerPage.url());}catch{/* Explicit final attachment links are also supported below. */}
+      const buttons=providerPage.locator('[hx-get],[data-hx-get],a[href]');let button,clickedEndpoint:string|undefined;
+      let directFile=false;
+      for(let i=0;i<Math.min(await buttons.count(),1000);i++) {
+        const node=buttons.nth(i),raw=await node.getAttribute('hx-get')||await node.getAttribute('data-hx-get')||await node.getAttribute('href');
+        if(raw&&endpoints.includes(new URL(raw,providerPage.url()).href)){button=node;clickedEndpoint=new URL(raw,providerPage.url()).href;authorizedEndpoints.add(clickedEndpoint);break;}
+        if(raw&&!endpoints.length)try {
+          authorizedDirect=signedDestination(raw,providerPage.url());button=node;directFile=true;break;
+        }catch{/* unrelated links never become file destinations */}
+      }
+      if(!button)throw providerError('INVALID_PROVIDER_RESPONSE');
+      if(clickedEndpoint)requestedEndpoints.delete(clickedEndpoint);
+      stage='bzzhr_htmx';await button.click().catch(error=>{if(!destination)throw error;});
+      if(directFile&&authorizedDirect)destination=authorizedDirect;
+      // Prefer the real site's JS interaction. For a declarative endpoint without
+      // installed HTMX, browser-native fetch uses this context's scoped cookie jar.
+      if(!destination&&!failure&&!directFile) {
+        const nativeHtmx=await providerPage.evaluate(()=>Boolean((window as unknown as {htmx?:unknown}).htmx));
+        if(!nativeHtmx&&clickedEndpoint&&!requestedEndpoints.has(clickedEndpoint))await providerPage.evaluate(async endpoint=>{
+          await fetch(endpoint,{credentials:'same-origin',headers:{'HX-Request':'true','HX-Current-URL':location.href},redirect:'manual'});
+        },clickedEndpoint);
+      }
+      const until=Date.now()+5000;
+      while(!destination&&!failure&&Date.now()<until&&!options.signal.aborted)await new Promise(r=>setTimeout(r,50));
+      if(failure)throw failure;
+
     }
-    const until=Date.now()+5000;
-    while(!destination&&!failure&&Date.now()<until&&!options.signal.aborted)await new Promise(r=>setTimeout(r,50));
     if(failure)throw failure;if(!destination)throw providerError('MISSING_HX_REDIRECT');
     stage='final_file';options.progress('VERIFYING_FILE');
     destination=await validateBzzhrDns(destination,options.signal,options.http);options.signal.throwIfAborted();
