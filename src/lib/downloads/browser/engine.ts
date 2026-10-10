@@ -190,7 +190,11 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
           if(copied) {
             // Treat clipboard contents as untrusted. Only the exact provider
             // signed-file URL shape and approved hosts are acceptable.
-            destination=signedDestination(copied.trim(),providerPage.url());
+            const copiedFile=signedDestination(copied.trim(),providerPage.url());
+            const declaredId=new URL(providerPage.url()).pathname.split('/').filter(Boolean)[0];
+            const copiedId=new URL(copiedFile).pathname.split('/').filter(Boolean)[1];
+            if(!declaredId||declaredId!==copiedId)throw providerError('INVALID_PROVIDER_RESPONSE');
+            destination=copiedFile;
             break;
           }
           await new Promise(r=>setTimeout(r,50));
