@@ -21,12 +21,15 @@
     "metadata:downloads": "node scripts/download-metadata.mjs",
     "test:metadata": "node --test tests/file-metadata.cjs",
     "migrate:delivery": "node scripts/migrate-delivery.mjs",
-    "migrate:release": "npm run migrate:downloads && npm run migrate:delivery && npm run migrate:runtime-security && npm run migrate:monetization && npm run migrate:download-processing && npm run audit:analytics:release",
+    "migrate:release": "npm run migrate:downloads && npm run migrate:delivery && npm run migrate:runtime-security && npm run migrate:monetization && npm run migrate:download-processing && npm run audit:analytics:release && npm run migrate:provider-discovery",
     "migrate:runtime-security": "node scripts/migrate-runtime-security.mjs",
     "migrate:monetization": "node scripts/migrate-monetization.mjs",
     "monetization:audit": "node scripts/monetization-audit.mjs",
     "migrate:download-processing": "node scripts/migrate-download-processing.mjs",
-    "audit:analytics:release": "node scripts/audit-analytics-release.mjs"
+    "audit:analytics:release": "node scripts/audit-analytics-release.mjs",
+    "migrate:provider-discovery": "node scripts/migrate-provider-discovery.mjs",
+    "test:browser-engine": "node --test --test-concurrency=1 tests/browser/engine.cjs",
+    "test:browser-live": "node scripts/test-browser-live.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1145.0",
@@ -37,10 +40,11 @@
     "@fontsource/tajawal": "^5.3.0",
     "drizzle-orm": "0.45.3",
     "htmlparser2": "^12.0.0",
+    "next": "15.5.27",
+    "playwright": "1.64.0",
     "postgres": "^3.4.5",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "next": "15.5.27"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

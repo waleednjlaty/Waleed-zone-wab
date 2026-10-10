@@ -1,0 +1,12 @@
+# Opt-in: select explicitly only after budget + Railway live-canary gates.
+FROM node:20.19.5-bookworm-slim
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+COPY package.json package-lock.json ./
+RUN npm ci --include=dev --no-audit --no-fund \
+    && npx playwright install --with-deps chromium --only-shell
+COPY . .
+RUN npm run build && npm prune --omit=dev --no-audit --no-fund
+USER node
+EXPOSE 8080
+CMD ["npm", "start", "--", "--hostname", "0.0.0.0"]

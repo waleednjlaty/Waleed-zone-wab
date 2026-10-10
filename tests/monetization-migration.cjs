@@ -31,9 +31,17 @@ test('005 release runner: fresh/idempotent/checksum/concurrency and existing dat
   const lock=require('postgres')(connection,{max:1});await lock`SELECT pg_advisory_lock(748031005)`;
   try{const pending=run(['scripts/migrate-monetization.mjs']);let settled=false;pending.then(()=>settled=true);await new Promise(r=>setTimeout(r,300));assert.equal(settled,false);await lock`SELECT pg_advisory_unlock(748031005)`;assert.equal((await pending).code,0);}finally{await lock.end();}
  });
- await t.test('release command includes 001/002/003/005, excludes optional 004',async()=>{
+ await t.test('release command includes 001/002/003/005/006/007, excludes optional 004',async()=>{
   const result=await new Promise(resolve=>{const child=spawn('npm',['run','migrate:release'],{env:{...process.env,DATABASE_URL:connection},stdio:['ignore','pipe','pipe']});let output='';child.stdout.on('data',d=>output+=d);child.stderr.on('data',d=>output+=d);child.on('exit',code=>resolve({code,output}));});assert.equal(result.code,0,result.output);
-  assert.deepEqual((await sql`SELECT name FROM site_schema_migrations ORDER BY name`).map(r=>r.name),['001_downloads.sql','002_delivery_sources.sql','003_runtime_security.sql','005_monetization.sql','006_download_processing.sql']);assert.equal(await snapshot(),before);
+  assert.deepEqual((await sql`SELECT name FROM site_schema_migrations ORDER BY name`).map(r=>r.name),['001_downloads.sql','002_delivery_sources.sql','003_runtime_security.sql','005_monetization.sql','006_download_processing.sql','007_provider_discovery.sql']);assert.equal(await snapshot(),before);
+ });
+ await t.test('007 cache runner verifies checksum and fails closed without changing catalog',async()=>{
+  const checksum7=createHash('sha256').update(readFileSync('migrations/007_provider_discovery.sql')).digest('hex');
+  assert.equal((await sql`SELECT sha256 FROM site_schema_migrations WHERE name='007_provider_discovery.sql'`)[0].sha256,checksum7);
+  assert.equal((await run(['scripts/migrate-provider-discovery.mjs'])).code,0);
+  await sql`UPDATE site_schema_migrations SET sha256=${'0'.repeat(64)} WHERE name='007_provider_discovery.sql'`;
+  const result=await run(['scripts/migrate-provider-discovery.mjs']);assert.notEqual(result.code,0);assert.match(result.output,/checksum mismatch/i);assert.equal(await snapshot(),before);
+  await sql`UPDATE site_schema_migrations SET sha256=${checksum7} WHERE name='007_provider_discovery.sql'`;
  });
  await t.test('audit CLI is read only, manual-only and never prints secrets/destinations',async()=>{
   const result=await run(['scripts/monetization-audit.mjs']);assert.equal(result.code,0,result.output);const report=JSON.parse(result.output);assert.equal(report.mode,'MANUAL_REVIEW_ONLY');assert.equal(report.summary.total_published,1);assert.equal(report.summary.flagged,1);assert.equal(report.summary.eligible,0);assert.equal(await snapshot(),before);assert.ok(!result.output.includes(connection)&&!result.output.includes('files_channel'));

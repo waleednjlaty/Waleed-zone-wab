@@ -76,6 +76,10 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/wz-browser" --no-audit --no-fund playwright@1.51.1
           "$RUNNER_TEMP/wz-browser/node_modules/.bin/playwright" install --with-deps chromium
           echo "WZ_BROWSER_MODULE=$RUNNER_TEMP/wz-browser/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+      - name: Install pinned background Chromium and exercise actual browser engine
+        run: |
+          npx playwright install --with-deps chromium --only-shell
+          npm run test:browser-engine
       - name: Admin UI fixture and accessibility checks
         run: |
           npm install --prefix "$RUNNER_TEMP/wz-browser" --no-audit --no-fund axe-core@4.10.3

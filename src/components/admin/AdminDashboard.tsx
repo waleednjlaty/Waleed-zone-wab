@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useLocale, useTranslateUI } from '@/components/LocaleProvider';
 
 
@@ -165,7 +166,7 @@ export default function AdminDashboard() {
   return <div className={`${styles.dashboard} shell`}>
     <header className={styles.header}>
       <div><span className={styles.eyebrow}>OWNER CONSOLE / WZ</span><h1>{t("لوحة المالك")}</h1><p>{t("إدارة الكتالوج والتحميل، مع حالة واضحة لكل خطوة.")}</p></div>
-      <div className={styles.headerActions}><Badge tone="cyan">{t("وصول المالك فقط")}</Badge><button className={styles.secondary} onClick={refresh} disabled={busy}><Icon name="refresh" />{t("تحديث الحالة")}</button></div>
+      <div className={styles.headerActions}><Link href="/admin/download-test">{t("اختبار رابط CDN")}</Link><Badge tone="cyan">{t("وصول المالك فقط")}</Badge><button className={styles.secondary} onClick={refresh} disabled={busy}><Icon name="refresh" />{t("تحديث الحالة")}</button></div>
     </header>
     <div className={styles.workspace}>
       <nav className={styles.navigation} aria-label={t("أقسام لوحة المالك")}>

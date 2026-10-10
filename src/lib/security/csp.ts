@@ -3,7 +3,7 @@ import { adRouteAllowed, manualAdConfig } from '@/lib/ads';
 export function contentSecurityPolicy(nonce: string, env: NodeJS.ProcessEnv, download: boolean, path = ''): string {
   const dev=env.NODE_ENV==='development';
   const ads=Boolean(manualAdConfig(env)) && !download && adRouteAllowed(path);
-  const hosts=['t.me','bzzhr.to','bzzhr.co','buzzheavier.com','www.bzzhr.to','www.bzzhr.co','www.buzzheavier.com','fafda.to',...(env.LEGACY_DOWNLOAD_ALLOWED_HOSTS||'devuploads.com,shrinkme.io,shrinkme.site').split(','),
+  const hosts=['t.me','bzzhr.to','bzzhr.co','buzzheavier.com','www.bzzhr.to','www.bzzhr.co','www.buzzheavier.com','fafda.to','ts.buzzheavier.com','ts.bzzhr.to','ts.bzzhr.co',...(env.LEGACY_DOWNLOAD_ALLOWED_HOSTS||'devuploads.com,shrinkme.io,shrinkme.site').split(','),
     ...(env.DOWNLOAD_ALLOWED_DELIVERY_HOSTS||'').split(',')].map(s=>s.trim()).filter(s=>/^[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]{2,}$/.test(s));
   return ["default-src 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'",
     `script-src 'self' 'nonce-${nonce}'${dev?" 'unsafe-eval'":''}${ads?' https://pagead2.googlesyndication.com https://www.googletagservices.com https://googleads.g.doubleclick.net':''}`,

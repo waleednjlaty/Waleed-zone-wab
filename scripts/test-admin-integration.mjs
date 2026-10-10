@@ -38,6 +38,7 @@ try {
   await sql`INSERT INTO site_download_versions(id,application_id,version_label,release_key) VALUES('11111111-1111-4111-8111-111111111111',201,'QA draft','qa-draft')`;
   await sql`INSERT INTO site_download_files(id,version_id,variant_key,size_bytes,mime_type,download_filename,sha256,storage_backend,storage_key,scan_status,verified_at) VALUES('22222222-2222-4222-8222-222222222222','11111111-1111-4111-8111-111111111111','universal',24,'application/vnd.android.package-archive','qa.apk',${'a'.repeat(64)},'railway-s3',${`artifacts/22222222-2222-4222-8222-222222222222/${'a'.repeat(64)}.apk`},'verified',NOW())`;
   await sql`UPDATE site_download_settings SET enabled=true`;
+  await sql`INSERT INTO applications(id,name,description,version,size,category,platform,devupload_url,active,published,created_at) VALUES(210,'Authorized owner QA','Tiny authorized fixture','1','38 B','ألعاب','PC','https://bzzhr.to/file-xyz',true,true,NOW())`;
   const config={base,statsToken:randomBytes(32).toString('hex'),secrets:['QA_STORAGE_SECRET_SENTINEL'],fixture:'native-postgresql-https'};
   for(const [id,key] of [['owner-qa','ownerCookie'],['visitor-qa','userCookie']]){
     await sql`INSERT INTO site_users(id,name,email,password_hash) VALUES(${id},'QA user',${id+'@example.test'},'intentionally-disabled-test-login')`;
@@ -53,7 +54,7 @@ try {
   execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',key,'-out',cert,'-days','1','-subj','/CN=127.0.0.1','-addext','subjectAltName=IP:127.0.0.1'],{stdio:'ignore'});
   const safeEnv={...process.env};
   for(const name of Object.keys(safeEnv))if(/(?:DATABASE|PGHOST|PGPORT|PGUSER|PGPASSWORD|PGDATABASE|STORAGE|AWS_|S3_|RAILWAY_|DIRECT_DOWNLOAD|ADSENSE)/.test(name))delete safeEnv[name];
-  Object.assign(safeEnv,{NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',DATABASE_URL:connection,NEXT_PUBLIC_SITE_URL:base,OWNER_USER_ID:'owner-qa',WEBSITE_STATS_TOKEN:config.statsToken,DIRECT_DOWNLOADS_ENABLED:'false',DOWNLOAD_STORAGE_PROVIDER_VERIFIED:'false',DOWNLOAD_INGRESS_VERIFIED:'false',DOWNLOAD_STORAGE_SECRET_ACCESS_KEY:'QA_STORAGE_SECRET_SENTINEL',NODE_OPTIONS:`--require=${resolve('tests/admin/network-guard.cjs')}`,NODE_EXTRA_CA_CERTS:cert,WZ_TEST_CONFIG:configPath,WZ_ADMIN_CONTRACT_STRICT:'1'});
+  Object.assign(safeEnv,{NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',DATABASE_URL:connection,NEXT_PUBLIC_SITE_URL:base,OWNER_USER_ID:'owner-qa',WEBSITE_STATS_TOKEN:config.statsToken,DIRECT_DOWNLOADS_ENABLED:'false',DOWNLOAD_STORAGE_PROVIDER_VERIFIED:'false',DOWNLOAD_INGRESS_VERIFIED:'false',DOWNLOAD_STORAGE_SECRET_ACCESS_KEY:'QA_STORAGE_SECRET_SENTINEL',NODE_OPTIONS:`--require=${resolve('tests/providers/runtime-fixture.cjs')}`,OWNER_CDN_TEST_ENABLED:'true',LEGACY_DOWNLOAD_SIGNING_KEY:'qa-only-owner-cdn-signing-key-01234567890123456789',NODE_EXTRA_CA_CERTS:cert,WZ_TEST_CONFIG:configPath,WZ_ADMIN_CONTRACT_STRICT:'1'});
   await sql.end(); // Setup is complete; no seed connection is needed during HTTP tests.
   server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(backendPort)],{env:safeEnv,stdio:'inherit'});
   proxy=https.createServer({key:readFileSync(key),cert:readFileSync(cert)},(req,res)=>{
@@ -68,7 +69,7 @@ try {
     await new Promise(resolve=>setTimeout(resolve,500));
   }
   assert.ok(ready,'Build first; fixture failed to start.');
-  for(const args of [['--test','tests/admin-regression.cjs'],['tests/admin-security-browser.mjs'],['tests/admin-real-browser.mjs']]){
+  for(const args of [['--test','tests/admin-regression.cjs'],['tests/admin-security-browser.mjs'],['tests/admin-real-browser.mjs'],['tests/owner-cdn-browser.mjs']]){
     const code=await new Promise((resolve,reject)=>{const child=spawn(process.execPath,args,{env:safeEnv,stdio:'inherit'});child.on('error',reject);child.on('exit',code=>resolve(code??1));});
     assert.equal(code,0,'Real Admin integration release gate failed.');
   }

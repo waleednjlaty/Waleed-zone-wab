@@ -50,6 +50,8 @@ test('CSP permits framework nonce and exact form hosts; blocks inline handlers a
  assert.match(p,/script-src 'self' 'nonce-qaNonce'/);assert.match(p,/script-src-attr 'none'/);
  assert.ok(!p.includes('unsafe-eval')&&!/script-src [^;]*unsafe-inline/.test(p));
  assert.match(p,/frame-ancestors 'none'/);assert.match(p,/form-action 'self' https:\/\/t.me/);
+ for(const host of ['ts.bzzhr.to','ts.bzzhr.co','ts.buzzheavier.com'])assert.ok(p.split('; ').find(d=>d.startsWith('form-action ')).split(' ').includes('https://'+host));
+ assert.ok(!p.includes('*.bzzhr')&&!p.includes('https://ts.bzzhr.to.evil.test'));
  assert.ok(!contentSecurityPolicy('qaNonce',env,false).match(/form-action[^;]*t.me/));
  assert.ok(!p.includes('api.telegram.org'));
 });

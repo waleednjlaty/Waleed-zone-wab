@@ -19,7 +19,7 @@ const csp = [
 ].join('; ');
 
 // Only exact configured hostnames can be used by native download form redirects.
-const downloadFormHosts = ['t.me','bzzhr.to','bzzhr.co','buzzheavier.com','www.bzzhr.to','www.bzzhr.co','www.buzzheavier.com','fafda.to','ts.buzzheavier.com', ...(process.env.LEGACY_DOWNLOAD_ALLOWED_HOSTS || 'devuploads.com,shrinkme.io,shrinkme.site').split(','),
+const downloadFormHosts = ['t.me','bzzhr.to','bzzhr.co','buzzheavier.com','www.bzzhr.to','www.bzzhr.co','www.buzzheavier.com','fafda.to','ts.buzzheavier.com','ts.bzzhr.to','ts.bzzhr.co', ...(process.env.LEGACY_DOWNLOAD_ALLOWED_HOSTS || 'devuploads.com,shrinkme.io,shrinkme.site').split(','),
   ...(process.env.DOWNLOAD_ALLOWED_DELIVERY_HOSTS || '').split(',')]
   .map(host => host.trim()).filter(host => /^[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]{2,}$/.test(host));
 const downloadCsp = csp.replace("form-action 'self'", `form-action 'self' ${[...new Set(downloadFormHosts)].map(host => 'https://' + host).join(' ')}`);
@@ -43,6 +43,7 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  serverExternalPackages: ['playwright','playwright-core'],
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   async headers() {

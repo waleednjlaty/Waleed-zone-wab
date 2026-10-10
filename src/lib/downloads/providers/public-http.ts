@@ -6,9 +6,22 @@ import { DownloadError } from '../rules';
 
 export const providerError = (code = 'PROVIDER_UNAVAILABLE') => new DownloadError(503, code, new Date(Date.now() + 10000));
 export type ProviderStage = 'steamrip' | 'bzzhr_page' | 'bzzhr_htmx' | 'final_file';
+const DNS_CODES = ['EAI_AGAIN','ENOTFOUND','ENODATA','ETIMEOUT','ECONNREFUSED','ESERVFAIL','EREFUSED','ECANCELLED'] as const;
+export function safeDnsCode(value: unknown): string | undefined {
+  return typeof value === 'string' && DNS_CODES.includes(value as typeof DNS_CODES[number]) ? value : undefined;
+}
+export class ProviderDnsFailure extends DownloadError {
+  readonly dnsCode: string | undefined;
+  constructor(error: unknown) {
+    super(503,'PROVIDER_DNS_FAILED',new Date(Date.now()+10000));
+    this.dnsCode=safeDnsCode((error as {code?:unknown} | null)?.code);
+  }
+}
 export class ProviderFailure extends DownloadError {
+  readonly dnsCode: string | undefined;
   constructor(error: DownloadError, public stage: ProviderStage, public host: string, public upstreamStatus?: number) {
     super(error.status,error.code,error.retryAt,error.serverTime);
+    this.dnsCode=safeDnsCode((error as {dnsCode?:unknown}).dnsCode);
   }
 }
 /** Only finite host/stage/status metadata leaves this boundary; never raw URLs/errors. */
@@ -55,7 +68,7 @@ export async function vettedAddresses(host: string, signal: AbortSignal, lookup:
     })]);
     if (!rows.length || rows.some(row=>!globalAddress(row.address) || row.family!==isIP(row.address))) throw providerError('INVALID_SOURCE');
     return rows;
-  } catch(error) { throw error instanceof DownloadError?error:providerError('PROVIDER_DNS_FAILED'); }
+  } catch(error) { throw error instanceof DownloadError?error:new ProviderDnsFailure(error); }
   finally { clearTimeout(timer); if(abort)signal.removeEventListener('abort',abort); }
 }
 export type ProviderCookie = { host:string; path:string; pair:string; expires:number };
@@ -70,7 +83,7 @@ function receiveCookies(jar: ProviderCookie[], raw: string, rows: string[]) {
     if(row.length>4096 || /[\r\n\x00]/.test(row))throw providerError('INVALID_PROVIDER_RESPONSE');
     const [pair,...attributes]=row.split(';'),separator=pair.indexOf('=');
     if(separator<1 || !/^[!#$%&'*+.^_`|~A-Za-z0-9-]+$/.test(pair.slice(0,separator)))continue;
-    let path=url.pathname.slice(0,url.pathname.lastIndexOf('/')+1)||'/',expires=Infinity,domain=url.hostname;
+    let path=url.pathname.slice(0,url.pathname.lastIndexOf('/'))||'/',expires=Infinity,domain=url.hostname;
     for(const attribute of attributes){const [key,...parts]=attribute.trim().split('='),value=parts.join('=');
       if(key.toLowerCase()==='path'&&value.startsWith('/'))path=value;
       if(key.toLowerCase()==='domain')domain=value.toLowerCase().replace(/^\./,'');
@@ -85,12 +98,13 @@ function receiveCookies(jar: ProviderCookie[], raw: string, rows: string[]) {
   }
 }
 export type PublicResponse = { status: number; headers: Record<string,string>; body: string; url: string; cookies?:ProviderCookie[] };
-export type PublicHttp = (url: string, hosts: readonly string[], signal: AbortSignal, headers?: Record<string,string>, follow?: boolean, method?: 'GET' | 'HEAD') => Promise<PublicResponse>;
+export type PublicHttp = (url: string, hosts: readonly string[], signal: AbortSignal, headers?: Record<string,string>, follow?: boolean, method?: 'GET' | 'HEAD', sessionJar?: ProviderCookie[]) => Promise<PublicResponse>;
 /** One fresh, TLS-verified socket pinned to vetted DNS. No environment proxy, pooled socket or second DNS lookup. */
-export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=true,method='GET') => {
+export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=true,method='GET',sessionJar) => {
   let url=publicUrl(raw,hosts);
   const visited=new Set<string>();
-  const jar:ProviderCookie[]=[];
+  const jar:ProviderCookie[]=sessionJar??[];
+  if(sessionJar)headers=Object.fromEntries(Object.entries(headers).filter(([k])=>k.toLowerCase()!=='cookie'));
   const scope=AbortSignal.any([signal,AbortSignal.timeout(10000)]);
   for(let redirects=0;redirects<=3;redirects++) {
     if(visited.has(url.href))throw providerError('PROVIDER_REDIRECT_LOOP');visited.add(url.href);
@@ -132,13 +146,20 @@ export const publicHttp: PublicHttp = async (raw,hosts,signal,headers={},follow=
   throw providerError('INVALID_PROVIDER_RESPONSE');
 };
 export function requireProviderSuccess(result: PublicResponse) {
-  if (result.headers['cf-mitigated']==='challenge' || /cf-chl-|challenge-platform|cf-turnstile|just a moment|verify you are human/i.test(result.body)) throw providerError('PROVIDER_CHALLENGE');
+  if (humanChallenge(result.status,result.headers,result.body)) throw providerError('PROVIDER_CHALLENGE');
   if(result.status===404 || result.status===410)throw new DownloadError(404,'SOURCE_REMOVED');
   if(result.status===401)throw providerError('PROVIDER_AUTH_REQUIRED');
   if(result.status===403)throw providerError('PROVIDER_FORBIDDEN');
   if(result.status===429)throw providerError('PROVIDER_RATE_LIMITED');
   if(result.status>=500)throw providerError('PROVIDER_HTTP_ERROR');
   if(![200,204].includes(result.status))throw providerError();
+}
+/** Passive Cloudflare JS appears on ordinary pages too; it is not an access barrier. */
+export function humanChallenge(status:number,headers:Record<string,string>,html:string) {
+  return Object.entries(headers).some(([key,value])=>key.toLowerCase()==='cf-mitigated'&&value.toLowerCase()==='challenge')
+    || /<title[^>]*>\s*(?:just a moment|attention required)/i.test(html)
+    || /(?:id=["'](?:challenge-form|cf-chl-widget)|class=["'][^"']*cf-turnstile|window\._cf_chl_opt\s*=)/i.test(html)
+    || (status===403 && /cf-chl-|challenge-platform|verify you are human/i.test(html));
 }
 export function requireStageSuccess(result: PublicResponse, stage: ProviderStage) {
   try { requireProviderSuccess(result); } catch(error) {

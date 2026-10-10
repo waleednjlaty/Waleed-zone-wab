@@ -2,9 +2,9 @@ import 'server-only';
 import { htmlAttributes } from './html';
 import { publicHttp, publicUrl, providerError, providerStage, requireStageSuccess, cookieHeader, type PublicHttp } from './public-http';
 export const BZZHR_HOSTS=['bzzhr.to','bzzhr.co','buzzheavier.com','www.bzzhr.to','www.bzzhr.co','www.buzzheavier.com'] as const;
-// ts.buzzheavier.com observed on an authorized 89-byte live download, 2026-10-08.
-// Keep exact hosts: provider HTML cannot expand the SSRF allowlist.
-export const BZZHR_FILE_HOSTS=[...BZZHR_HOSTS,'fafda.to','ts.buzzheavier.com'] as const;
+// Exact CDN hosts observed on authorized tiny-file QA (ts.buzzheavier.com)
+// and user-supplied copied BZZHR links (ts.bzzhr.to). Do not allow wildcard subdomains.
+export const BZZHR_FILE_HOSTS=[...BZZHR_HOSTS,'fafda.to','ts.buzzheavier.com','ts.bzzhr.co','ts.bzzhr.to'] as const;
 export function signedEndpoints(html: string, page: string) {
   const base=publicUrl(page,BZZHR_HOSTS);
   const found=htmlAttributes(html,'hx-get',value=>{
@@ -25,6 +25,8 @@ export function signedEndpoint(html: string,page: string) {return signedEndpoint
 export function signedDestination(raw: string, base: string) {
   // Validate raw headers before URL normalization can discard CR/LF or whitespace.
   if(/[\s\p{Cc}\p{Cf}\\]/u.test(raw)||raw.includes('#'))throw providerError('INVALID_PROVIDER_RESPONSE');
+  if(/^https?:\/\//i.test(raw))publicUrl(raw,BZZHR_FILE_HOSTS);
+  else if(raw.startsWith('//'))publicUrl('https:'+raw,BZZHR_FILE_HOSTS);
   const url=publicUrl(new URL(raw,base).href,BZZHR_FILE_HOSTS);
   let decoded: string;try{decoded=decodeURIComponent(url.pathname+url.search);}catch{throw providerError('INVALID_PROVIDER_RESPONSE');}
   if(!/^\/d\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.%()-]+)*$/.test(url.pathname) || !url.searchParams.get('v')
@@ -41,16 +43,16 @@ export async function resolveBzzhr(page: string, signal: AbortSignal, http: Publ
   let lastError: unknown;
   for(const endpoint of endpoints)try {return await providerStage('bzzhr_htmx',endpoint,async()=>{
     const session=result.cookies?cookieHeader(result.cookies,endpoint):cookie;
-    const response=await http(endpoint,BZZHR_HOSTS,signal,{'HX-Request':'true','HX-Current-URL':result.url,Referer:result.url,...(session?{Cookie:session}: {})},false);
-    if(![200,204,301,302,303,307,308].includes(response.status))requireStageSuccess(response,'bzzhr_htmx');
+    const response=await http(endpoint,BZZHR_HOSTS,signal,{'HX-Request':'true','HX-Current-URL':result.url,Referer:result.url,...(session?{Cookie:session}: {})},false,'GET',result.cookies);
+    if(![301,302,303,307,308].includes(response.status))requireStageSuccess(response,'bzzhr_htmx');
     const raw=response.headers['hx-redirect']||response.headers.location;if(!raw)throw providerError('MISSING_HX_REDIRECT');
     const destination=signedDestination(raw,endpoint);
-    await validateBzzhrDns(destination,signal,http);return destination;
+    return validateBzzhrDns(destination,signal,http);
   });}catch(error){
     lastError=error;
     // Alternate buttons are public provider-declared mirrors, not challenge bypass.
     if(signal.aborted || (error && typeof error==='object' && 'code' in error &&
-      ['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_RATE_LIMITED','INVALID_SOURCE'].includes(String(error.code))))throw error;
+      ['PROVIDER_CHALLENGE','PROVIDER_AUTH_REQUIRED','PROVIDER_RATE_LIMITED','PROVIDER_FORBIDDEN','INVALID_SOURCE'].includes(String(error.code))))throw error;
   }
   throw lastError;
 }
@@ -59,9 +61,14 @@ export async function validateBzzhrDns(destination: string, signal: AbortSignal,
   // Header-only request: never relay/download file bytes through Railway.
   return providerStage('final_file',destination,async()=>{
     const result=await http(destination,BZZHR_FILE_HOSTS,signal,{},true,'HEAD');
+    if([405,501].includes(result.status))throw providerError('HEAD_UNAVAILABLE');
     requireStageSuccess(result,'final_file');
+    if(result.status!==200)throw providerError('INVALID_FILE_RESPONSE');
     const type=result.headers['content-type']||'';
     if(/(?:text\/html|application\/(?:xhtml\+xml|json))/i.test(type))throw providerError('INVALID_FILE_RESPONSE');
     if(!type && !result.headers['content-disposition'])throw providerError('INVALID_FILE_RESPONSE');
+    const final=signedDestination(result.url,destination);
+    if(new URL(final).pathname.split('/')[2]!==new URL(destination).pathname.split('/')[2])throw providerError('INVALID_FILE_RESPONSE');
+    return final;
   });
 }

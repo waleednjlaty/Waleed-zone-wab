@@ -59,6 +59,18 @@ test('redirect loop bounded at four requests',async t=>{const h=await transport(
 for(const headers of [{'content-length':'1048577'},{'content-encoding':'gzip'}])test('oversized/encoded response fails closed '+JSON.stringify(headers),async t=>{await transport(t,[{headers}]);await assert.rejects(http.publicHttp(page,bzzhr.BZZHR_HOSTS,signal()),error('INVALID_PROVIDER_RESPONSE'));});
 test('streamed oversized body is bounded',async t=>{await transport(t,[{body:'x'.repeat(1048577)}]);await assert.rejects(http.publicHttp(page,bzzhr.BZZHR_HOSTS,signal()));});
 test('DNS cancellation bounded',async()=>{const controller=new AbortController();controller.abort();await assert.rejects(http.vettedAddresses('bzzhr.to',controller.signal,()=>new Promise(()=>{})),error('PROVIDER_TIMEOUT'));});
+test('DNS failures retain only finite safe resolver codes, never raw errors',async()=>{
+ for(const code of ['EAI_AGAIN','ENOTFOUND','ECONNREFUSED','secret URL/token']) {
+  await assert.rejects(http.vettedAddresses('buzzheavier.com',signal(),async()=>{throw {code,message:'sensitive upstream details'};}),e=>{
+   assert.equal(e.code,'PROVIDER_DNS_FAILED');assert.equal(e.dnsCode,http.safeDnsCode(code));
+   const wrapped=new http.ProviderFailure(e,'bzzhr_page','buzzheavier.com');assert.equal(wrapped.dnsCode,e.dnsCode);
+   assert.ok(!JSON.stringify(wrapped).includes('sensitive'));assert.ok(!JSON.stringify(wrapped).includes('secret'));return true;
+  });
+ }
+});
+test('DNS family mismatch and empty answers fail closed independently from resolver failure',async()=>{
+ for(const rows of [[],[{address:'8.8.8.8',family:6}],[{address:'2606:4700:4700::1111',family:4}]])await assert.rejects(http.vettedAddresses('buzzheavier.com',signal(),async()=>rows),error('INVALID_SOURCE'));
+});
 test('resolution deduplication, two-operation cap, revision binding and no completed cache',async()=>{
  let calls=0,releases=[];const resolver=steam.createSteamripResolver(async()=>{calls++;await new Promise(r=>releases.push(r));return destination;},async()=>{});
  const a=resolver(1,'rev',source),b=resolver(1,'rev',source),c=resolver(2,'rev',source);
@@ -84,9 +96,15 @@ test('real href wins over a link mentioned inside quoted title text',()=>assert.
 test('HTML tag work is bounded',()=>assert.throws(()=>steam.steamripBzzhr('<div></div>'.repeat(10001),source),error('INVALID_PROVIDER_RESPONSE')));
 test('quoted HTMX mention cannot replace the real signed endpoint',()=>assert.equal(bzzhr.signedEndpoint(`<button title='hx-get="/file-xyz/download?t=wrong"' hx-get="${endpoint}">Download</button>`,page),endpoint));
 
-test('live observed ts CDN is accepted, arbitrary CDN subdomains remain denied',()=>{
+test('exact copied CDN hosts are accepted, but wildcard CDN subdomains remain denied',()=>{
  assert.equal(bzzhr.signedDestination('https://ts.buzzheavier.com/d/724hyjkckpyu?v=redacted',endpoint),'https://ts.buzzheavier.com/d/724hyjkckpyu?v=redacted');
- assert.throws(()=>bzzhr.signedDestination('https://evil.buzzheavier.com/d/file?v=x',endpoint),error('INVALID_SOURCE'));
+ for(const token of ['fixture-A','fixture-B']) {
+  const copied='https://ts.bzzhr.to/d/s3iizg6ph861?v='+token;
+  assert.equal(bzzhr.signedDestination(copied,endpoint),copied);
+ }
+ for(const invalid of ['https://evil.buzzheavier.com/d/file?v=x','https://evil.ts.bzzhr.to/d/file?v=x','https://ts.bzzhr.to.evil.test/d/file?v=x','http://ts.bzzhr.to/d/file?v=x']) {
+  assert.throws(()=>bzzhr.signedDestination(invalid,endpoint),error('INVALID_SOURCE'));
+ }
 });
 test('provider-declared alternate path/query and malformed HTML are parsed without constructing an endpoint',()=>{
  assert.equal(bzzhr.signedEndpoint('<BUTTON data-hx-get="/fake" HX-GET="file-xyz/fetch?signature=a&amp;alt=true">', page),page+'/fetch?signature=a&alt=true');
@@ -127,4 +145,23 @@ test('page redirect cookies retain same-host session; path and mirror boundaries
  assert.equal(http.cookieHeader(result.cookies,page+'/download?t=x'),'session=secret');
  assert.equal(http.cookieHeader(result.cookies,'https://bzzhr.co/file-xyz/download?t=x'),'');
  assert.equal(http.cookieHeader(result.cookies,'https://bzzhr.to/file-xyzz/download?t=x'),'');
+});
+
+test('HTMX deletes session cookie before a second declared action; copied header is not replayed',async t=>{
+ const jar=[{host:'bzzhr.to',path:'/file-xyz',pair:'session=old',expires:Date.now()+60000}];
+ const h=await transport(t,[{status:302,headers:{location:page+'/next','set-cookie':['session=; Max-Age=0; Path=/file-xyz']}},{}]);
+ await http.publicHttp(page,bzzhr.BZZHR_HOSTS,signal(),{Cookie:'session=old'},true,'GET',jar);
+ assert.equal(h.headerRecords[0].Cookie,'session=old');assert.equal(h.headerRecords[1].Cookie,undefined);assert.equal(jar.length,0);
+});
+test('expired shared session cookie is not resurrected by explicit copied Cookie header',async t=>{
+ const jar=[{host:'bzzhr.to',path:'/',pair:'session=old',expires:Date.now()-1}];
+ const h=await transport(t,[{}]);
+ await http.publicHttp(page,bzzhr.BZZHR_HOSTS,signal(),{Cookie:'session=old'},false,'GET',jar);
+ assert.equal(h.headerRecords[0].Cookie,undefined);
+});
+test('cookie default path follows RFC directory boundary including directory itself',async t=>{
+ await transport(t,[{headers:{'set-cookie':['session=ok; Secure']}}]);
+ const result=await http.publicHttp(page+'/fetch',bzzhr.BZZHR_HOSTS,signal());
+ assert.equal(http.cookieHeader(result.cookies,page),'session=ok');
+ assert.equal(http.cookieHeader(result.cookies,page+'-other'),'');
 });
