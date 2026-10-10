@@ -68,7 +68,8 @@ export const childRunner:Runner=(input,signal,progress)=>new Promise((resolve,re
     child.send({type:'resolve',input});
   }catch{done(providerError('BROWSER_START_FAILED'));}
 });
-type Job={controller:AbortController;promise:Promise<BrowserResult>;waiters:Map<string,string>;state:BrowserState};
+type ManagedResult=BrowserResult&{assertCurrent?:()=>void};
+type Job={controller:AbortController;promise:Promise<ManagedResult>;waiters:Map<string,string>;state:BrowserState};
 export function createBrowserManager(run:Runner=childRunner,now=Date.now,verify:SignedUrlVerifier=validateBzzhrDns) {
   const jobs=new Map<string,Job>(),states=new Map<string,{state:BrowserState;expires:number}>();let blockedUntil=0;
   // Reuse only final links that Chromium already extracted and verified.
@@ -76,6 +77,11 @@ export function createBrowserManager(run:Runner=childRunner,now=Date.now,verify:
   // them after ten minutes. A stale link is re-generated on the next request.
   const signed=new Map<string,{result:BrowserResult;expires:number}>();
   const cacheKey=(id:number,revision:string,source:string)=>createHash('sha256').update(JSON.stringify([id,revision,source])).digest('hex');
+  function managedResult(k:string,entry:{result:BrowserResult;expires:number},destination=entry.result.destination):ManagedResult {
+    return {destination,discovered:[...entry.result.discovered],assertCurrent:()=>{
+      if(signed.get(k)!==entry||entry.expires<=now())throw providerError('SIGNED_LINK_EXPIRED');
+    }};
+  }
   function trimSigned() {
     for(const [k,v] of signed)if(v.expires<=now())signed.delete(k);
     while(signed.size>100)signed.delete(signed.keys().next().value!);
@@ -102,9 +108,9 @@ export function createBrowserManager(run:Runner=childRunner,now=Date.now,verify:
           if(signal.aborted)throw providerError('PROVIDER_TIMEOUT');
           if(new URL(validated).pathname.split('/')[2]!==new URL(fresh.result.destination).pathname.split('/')[2])
             throw providerError('INVALID_FILE_RESPONSE');
-          if (fresh.expires <= now()) throw providerError('OWNER_LINK_EXPIRED');
+          if (fresh.expires <= now()) throw providerError('SIGNED_LINK_EXPIRED');
           setState(tokenHash, 'USING_CACHED_LINK');
-          return {...fresh.result,destination:validated,discovered:[...fresh.result.discovered]};
+          return managedResult(sharedKey,fresh,validated);
         } catch(error) {
           signed.delete(sharedKey);
           if(signal.aborted)throw error;
@@ -122,12 +128,11 @@ export function createBrowserManager(run:Runner=childRunner,now=Date.now,verify:
         job.promise=Promise.resolve().then(()=>run({source,cached},controller.signal,state=>{owned.state=state;for(const token of waiters.values())setState(token,state);})).then(result=>{
           // Only successful, HEAD-verified resolutions enter the in-memory
           // ten-minute cache. This cache never extends an upstream expiry.
-          if(!controller.signal.aborted) {
-            trimSigned();
-            signed.set(sharedKey,{result:{destination:result.destination,discovered:[...result.discovered]},expires:now()+SIGNED_URL_MAX_AGE_MS});
-            trimSigned();
-          }
-          return result;
+          if(controller.signal.aborted)throw providerError('PROVIDER_TIMEOUT');
+          trimSigned();
+          const entry={result:{destination:result.destination,discovered:[...result.discovered]},expires:now()+SIGNED_URL_MAX_AGE_MS};
+          signed.set(sharedKey,entry);trimSigned();
+          return managedResult(sharedKey,entry);
         }).catch(error=>{
           blockedUntil=now()+(['PROVIDER_CHALLENGE','PROVIDER_FORBIDDEN','PROVIDER_RATE_LIMITED'].includes(error?.code)?60000:10000);throw error;
         }).finally(()=>jobs.delete(k));

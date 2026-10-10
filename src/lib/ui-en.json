@@ -615,5 +615,6 @@
   "اختبار مالك فقط: لم يُتحقق من رابط CDN خادميًا وقد ينتهي قبل 10 دقائق.": "Owner test only: CDN link was not verified by the server and may expire before 10 minutes.",
   "جارٍ استخدام رابط محفوظ صالح": "Using a valid cached link",
   "انتهت صلاحية رابط الاختبار. أضف رابطًا جديدًا من لوحة المالك.": "Test link expired. Add a fresh link in the owner dashboard.",
-  "لا يسمح CDN بالتحقق عبر HEAD. لم يبدأ التحميل.": "CDN does not allow HEAD verification. Download did not start."
+  "لا يسمح CDN بالتحقق عبر HEAD. لم يبدأ التحميل.": "CDN does not allow HEAD verification. Download did not start.",
+  "انتهت صلاحية الرابط المحفوظ. أعد المحاولة للحصول على رابط جديد.": "The cached link expired. Retry to obtain a fresh link."
 }

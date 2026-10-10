@@ -67,6 +67,7 @@ export async function downloadBody(request: Request, form = false, maxBytes = 20
   } finally { clearTimeout(timer); reader.releaseLock(); }
 }
 const providerMessages:Record<string,string>={
+  SIGNED_LINK_EXPIRED:'انتهت صلاحية الرابط المحفوظ. أعد المحاولة للحصول على رابط جديد.',
   OWNER_LINK_EXPIRED:'انتهت صلاحية رابط الاختبار. أضف رابطًا جديدًا من لوحة المالك.',
   HEAD_UNAVAILABLE:'لا يسمح CDN بالتحقق عبر HEAD. لم يبدأ التحميل.',
   BROWSER_START_FAILED:'تعذر تشغيل متصفح المعالجة. لم يبدأ التحميل.',

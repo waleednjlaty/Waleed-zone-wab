@@ -10,8 +10,10 @@ test('independent grants share only one verified result, with bounded ten-minute
  await assert.rejects(m.resolve(1,'new',source,[],'bad',new AbortController().signal),e=>e.code==='PROVIDER_BUSY');release();await Promise.all([...requests,follower]);
  const reused=await m.resolve(1,'rev',source,[],'fresh',new AbortController().signal);
  assert.equal(reused.destination,destination);assert.equal(calls,1);assert.equal(verified,1);
+ reused.assertCurrent();
  assert.ok(!JSON.stringify(m.status('fresh')).includes('SECRET'));
  time+=SIGNED_URL_MAX_AGE_MS;
+ assert.throws(()=>reused.assertCurrent(),e=>e.code==='SIGNED_LINK_EXPIRED','TTL is checked again at grant consumption, after network verification');
  const next=m.resolve(1,'rev',source,[],'after-ten-minutes',new AbortController().signal);
  await new Promise(r=>setImmediate(r));assert.equal(calls,2);release();await next;
  assert.equal(verified,1,'expired links never go back through the cached HEAD path');

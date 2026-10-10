@@ -97,6 +97,7 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', 
       let discovered:string[]|undefined;
       let destination=source.destination;
       let ownerResult:Awaited<ReturnType<typeof testCache.resolve>> = null;
+      let assertBrowserCurrent:(()=>void)|undefined;
       if(source.provider==='steamrip') {
         if (ownerScope && ownerTest) {
           ownerResult = await testCache.resolve(ownerScope, Number(appId), source.revision, source.destination,
@@ -108,6 +109,7 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', 
           const result=await manager.resolve(Number(appId),source.revision,source.destination,cached,hash,
             AbortSignal.any([request.signal,AbortSignal.timeout(Math.max(1,Math.min(45000,payload.expires_at-(dependencies?.now??Date.now)())))]));
           destination=result.destination;discovered=result.discovered;
+          assertBrowserCurrent=result.assertCurrent;
         } else destination=await (dependencies?.resolve??resolveSteamrip)(Number(appId),source.revision,source.destination);
       }
       await sql.begin('isolation level read committed',async tx=>{
@@ -122,12 +124,14 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', 
         if(current.revision!==source.revision)throw new DownloadError(409,'SOURCE_CHANGED');
         countdown.redeem(body.token,Number(appId),current.revision,client);
         ownerResult?.assertCurrent();
+        assertBrowserCurrent?.();
         if(discovered)await discoveryCache(tx as unknown as Sql).write(Number(appId),source.revision,source.destination,discovered);
         const consumed=await tx`UPDATE site_legacy_download_grants SET consumed_at=${new Date((dependencies?.now??Date.now)()).toISOString()}::timestamptz
           WHERE token_hash=${hash} AND consumed_at IS NULL RETURNING token_hash`;
         if(!consumed.length)throw new DownloadError(410,'TOKEN_USED');
       });
       ownerResult?.assertCurrent();
+      assertBrowserCurrent?.();
       scheduleMetrics([{metric:'download_redeem',id:Number(appId)},
         {metric:source.provider==='telegram'?'telegram_redirect':'external_download_redirect',id:Number(appId)}],request.headers);
       // SAME route, only after the grant is atomically consumed; no file proxy.
