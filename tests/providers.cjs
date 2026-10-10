@@ -146,3 +146,22 @@ test('page redirect cookies retain same-host session; path and mirror boundaries
  assert.equal(http.cookieHeader(result.cookies,'https://bzzhr.co/file-xyz/download?t=x'),'');
  assert.equal(http.cookieHeader(result.cookies,'https://bzzhr.to/file-xyzz/download?t=x'),'');
 });
+
+test('HTMX deletes session cookie before a second declared action; copied header is not replayed',async t=>{
+ const jar=[{host:'bzzhr.to',path:'/file-xyz',pair:'session=old',expires:Date.now()+60000}];
+ const h=await transport(t,[{status:302,headers:{location:page+'/next','set-cookie':['session=; Max-Age=0; Path=/file-xyz']}},{}]);
+ await http.publicHttp(page,bzzhr.BZZHR_HOSTS,signal(),{Cookie:'session=old'},true,'GET',jar);
+ assert.equal(h.headerRecords[0].Cookie,'session=old');assert.equal(h.headerRecords[1].Cookie,undefined);assert.equal(jar.length,0);
+});
+test('expired shared session cookie is not resurrected by explicit copied Cookie header',async t=>{
+ const jar=[{host:'bzzhr.to',path:'/',pair:'session=old',expires:Date.now()-1}];
+ const h=await transport(t,[{}]);
+ await http.publicHttp(page,bzzhr.BZZHR_HOSTS,signal(),{Cookie:'session=old'},false,'GET',jar);
+ assert.equal(h.headerRecords[0].Cookie,undefined);
+});
+test('cookie default path follows RFC directory boundary including directory itself',async t=>{
+ await transport(t,[{headers:{'set-cookie':['session=ok; Secure']}}]);
+ const result=await http.publicHttp(page+'/fetch',bzzhr.BZZHR_HOSTS,signal());
+ assert.equal(http.cookieHeader(result.cookies,page),'session=ok');
+ assert.equal(http.cookieHeader(result.cookies,page+'-other'),'');
+});

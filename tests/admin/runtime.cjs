@@ -71,6 +71,6 @@ async function createFixture(t, options={}) {
     (SELECT jsonb_agg(b) FROM site_download_budget b) AS budget,
     (SELECT jsonb_agg(a ORDER BY id) FROM applications a) AS apps`)).rows);
   const boot=await call('session');if(boot.status!==200)throw Error('Owner session positive control failed: '+boot.status);csrf=(await boot.json()).csrf_token;
-  return {call,db,sql,snapshot,sessions,origin,get csrf(){return csrf;},setFault(name,value){if(name==='sql')sqlFault=value;else if(name==='service')serviceFault=value;else authFault=value;}};
+  return {call,db,sql,snapshot,sessions,origin,withRequest(request,fn){context=request;return fn();},get csrf(){return csrf;},setFault(name,value){if(name==='sql')sqlFault=value;else if(name==='service')serviceFault=value;else authFault=value;}};
 }
 module.exports={createFixture,routePaths};

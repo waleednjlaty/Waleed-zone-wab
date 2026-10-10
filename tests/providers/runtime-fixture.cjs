@@ -3,7 +3,7 @@
 // Mock only the finite provider fixture URLs; all other non-loopback connections fail.
 const dns=require('node:dns/promises'),https=require('node:https'),{EventEmitter}=require('node:events'),{PassThrough}=require('node:stream');
 const actualLookup=dns.lookup,actualRequest=https.request;
-const hosts=new Set(['steamrip.com','bzzhr.to','fafda.to']);
+const hosts=new Set(['steamrip.com','bzzhr.to','fafda.to','ts.bzzhr.to']);
 dns.lookup=async(host,options)=>hosts.has(host)?[{address:'8.8.8.8',family:4}]:actualLookup(host,options);
 https.request=(url,options,callback)=>{
  const u=url instanceof URL?url:new URL(url);
@@ -17,6 +17,8 @@ https.request=(url,options,callback)=>{
   else if(u.href==='https://bzzhr.to/file-xyz')body='<a hx-get="/file-xyz/download?t=fixture">Download</a>';
   else if(u.href==='https://bzzhr.to/file-xyz/download?t=fixture')res.headers['hx-redirect']='https://fafda.to/d/file-xyz?v=QA_BROWSER_SECRET';
   else if(u.href==='https://fafda.to/d/file-xyz?v=QA_BROWSER_SECRET' && options.method==='HEAD')res.headers['content-type']='application/octet-stream';
+  else if(u.href==='https://ts.bzzhr.to/d/file-xyz?v=QA_OWNER_BROWSER_SECRET' && options.method==='HEAD')res.headers['content-type']='application/octet-stream';
+  else if(u.href==='https://ts.bzzhr.to/d/file-xyz?v=QA_OWNER_HEAD_BLOCKED' && options.method==='HEAD'){res.statusCode=403;}
   else{res.statusCode=404;}
   callback(res);res.end(body);req.emit('close');
  });return req;

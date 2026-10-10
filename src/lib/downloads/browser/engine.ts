@@ -3,7 +3,7 @@ import { chromium, type Browser, type Page, type BrowserContext, type LaunchOpti
 import { BZZHR_HOSTS, BZZHR_FILE_HOSTS, signedDestination, signedEndpoints, validateBzzhrDns } from '../providers/bzzhr';
 import { STEAMRIP_HOSTS } from '../providers/steamrip';
 import { publicUrl, vettedAddresses, requireStageSuccess, providerError, ProviderFailure, type Lookup, type PublicHttp } from '../providers/public-http';
-export const BROWSER_STATES=['BROWSER_STARTING','OPENING_SOURCE','FINDING_BZZHR','RESOLVING_DOWNLOAD','VERIFYING_FILE','READY','PROVIDER_CHALLENGE','FAILED'] as const;
+export const BROWSER_STATES=['USING_CACHED_LINK','BROWSER_STARTING','OPENING_SOURCE','FINDING_BZZHR','RESOLVING_DOWNLOAD','VERIFYING_FILE','READY','PROVIDER_CHALLENGE','FAILED'] as const;
 export type BrowserState=typeof BROWSER_STATES[number];
 const PAGE_HOSTS=[...STEAMRIP_HOSTS,...BZZHR_HOSTS];
 // Only HTMX assets; never advertising, CAPTCHA, analytics or arbitrary CDN scripts.

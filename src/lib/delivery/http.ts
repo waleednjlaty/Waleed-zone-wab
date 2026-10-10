@@ -13,6 +13,7 @@ import { ProviderFailure } from '@/lib/downloads/providers/public-http';
 import { browserManager } from '@/lib/downloads/browser/manager';
 import { discoveryCache } from '@/lib/downloads/browser/cache';
 import { consumeWindow, requestNetwork } from '@/lib/security/limits';
+import { ownerCdnCache, ownerCdnScope } from '@/lib/downloads/owner-cdn';
 
 /** Only stable, explicitly allowed provider landing pages may leave the error boundary. */
 function safeManualSource(raw:string):string|null {
@@ -30,7 +31,7 @@ function safeManualSource(raw:string):string|null {
 // Bounded per-process load shedding; no fake trusted IP from forwarding headers.
 // This guards metadata APIs, not traffic to Telegram. Direct-download quotas remain unchanged.
 let minute = 0, count = 0;
-export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', dependencies?: { sql: Sql; env: NodeJS.ProcessEnv; now?: () => number; resolve?: typeof resolveSteamrip; browser?: typeof browserManager }) {
+export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', dependencies?: { sql: Sql; env: NodeJS.ProcessEnv; now?: () => number; resolve?: typeof resolveSteamrip; browser?: typeof browserManager; ownerScope?: typeof ownerCdnScope; ownerCache?: typeof ownerCdnCache }) {
   return async (request: Request) => {
     let retry: {id:number;token:unknown;source:string;revision:string}|undefined;
     try {
@@ -59,6 +60,10 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', 
         || !await consumeWindow(sql,`legacy:${operation}:client:${client}`,operation==='prepare'?30:operation==='status'?40:60,60))
         throw new DownloadError(429,'RATE_LIMITED',new Date(Date.now()+60000));
       const source = await legacyDelivery(sql,Number(appId),env);
+      const ownerScope = source.provider === 'steamrip' && env.OWNER_CDN_TEST_ENABLED === 'true'
+        ? await (dependencies?.ownerScope ?? ownerCdnScope)(request, env) : null;
+      const testCache = dependencies?.ownerCache ?? ownerCdnCache;
+      const ownerTest = ownerScope ? testCache.peek(ownerScope, Number(appId), source.revision, source.destination) : null;
       if (!form) {
         const prepared=countdown.prepare(Number(appId),source.revision,client);
         const hash=createHash('sha256').update(prepared.token).digest('hex');
@@ -66,7 +71,7 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', 
         // Bounded cleanup through indexed expiry, never a full-table scan.
         await sql`DELETE FROM site_legacy_download_grants WHERE token_hash IN (SELECT token_hash FROM site_legacy_download_grants WHERE expires_at<clock_timestamp() ORDER BY expires_at LIMIT 100)`;
         scheduleMetrics([{metric:'download_prepare',id:Number(appId)}],request.headers);
-        return Response.json(prepared,{ headers:{ ...downloadHeaders,
+        return Response.json({...prepared,...(ownerTest ? {owner_test:ownerTest} : {})},{ headers:{ ...downloadHeaders,
         'Set-Cookie': `${name}=${client}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${env.NODE_ENV==='production'?'; Secure':''}` } });
       }
       const payload=countdown.redeem(body.token,Number(appId),source.revision,client);
@@ -91,8 +96,14 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', 
       retry={id:Number(appId),token:body.token,source:source.destination,revision:source.revision};
       let discovered:string[]|undefined;
       let destination=source.destination;
+      let ownerResult:Awaited<ReturnType<typeof testCache.resolve>> = null;
       if(source.provider==='steamrip') {
-        if(env.BACKGROUND_BROWSER_ENABLED==='true'&&!dependencies?.resolve) {
+        if (ownerScope && ownerTest) {
+          ownerResult = await testCache.resolve(ownerScope, Number(appId), source.revision, source.destination,
+            AbortSignal.any([request.signal, AbortSignal.timeout(12000)]));
+          if (!ownerResult) throw new DownloadError(409, 'OWNER_LINK_EXPIRED');
+          destination = ownerResult.destination;
+        } else if(env.BACKGROUND_BROWSER_ENABLED==='true'&&!dependencies?.resolve) {
           const cache=discoveryCache(sql),cached=await cache.read(Number(appId),source.revision,source.destination);
           const result=await manager.resolve(Number(appId),source.revision,source.destination,cached,hash,
             AbortSignal.any([request.signal,AbortSignal.timeout(Math.max(1,Math.min(45000,payload.expires_at-(dependencies?.now??Date.now)())))]));
@@ -110,11 +121,13 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', 
         const current=await legacyDelivery(tx as unknown as Sql,Number(appId),env);
         if(current.revision!==source.revision)throw new DownloadError(409,'SOURCE_CHANGED');
         countdown.redeem(body.token,Number(appId),current.revision,client);
+        ownerResult?.assertCurrent();
         if(discovered)await discoveryCache(tx as unknown as Sql).write(Number(appId),source.revision,source.destination,discovered);
         const consumed=await tx`UPDATE site_legacy_download_grants SET consumed_at=${new Date((dependencies?.now??Date.now)()).toISOString()}::timestamptz
           WHERE token_hash=${hash} AND consumed_at IS NULL RETURNING token_hash`;
         if(!consumed.length)throw new DownloadError(410,'TOKEN_USED');
       });
+      ownerResult?.assertCurrent();
       scheduleMetrics([{metric:'download_redeem',id:Number(appId)},
         {metric:source.provider==='telegram'?'telegram_redirect':'external_download_redirect',id:Number(appId)}],request.headers);
       // SAME route, only after the grant is atomically consumed; no file proxy.

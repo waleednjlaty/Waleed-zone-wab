@@ -80,9 +80,8 @@ export function createBrowserManager(run:Runner=childRunner,now=Date.now,verify:
     for(const [k,v] of signed)if(v.expires<=now())signed.delete(k);
     while(signed.size>100)signed.delete(signed.keys().next().value!);
   }
-  // A grant identifies one user's isolated browser session. Never share a
-  // provider context/cookie jar across distinct user grants.
-  const key=(id:number,revision:string,source:string,tokenHash:string)=>createHash('sha256').update(JSON.stringify([id,revision,source,tokenHash])).digest('hex');
+  // One autonomous job per source; waiters share only the verified result.
+  // No visitor cookies are imported into or exported from its fresh context.
   function setState(tokenHash:string,state:BrowserState) {
     for(const [k,value] of states)if(value.expires<=now())states.delete(k);
     if(states.size>=1000&&!states.has(tokenHash))states.delete(states.keys().next().value!);
@@ -103,6 +102,8 @@ export function createBrowserManager(run:Runner=childRunner,now=Date.now,verify:
           if(signal.aborted)throw providerError('PROVIDER_TIMEOUT');
           if(new URL(validated).pathname.split('/')[2]!==new URL(fresh.result.destination).pathname.split('/')[2])
             throw providerError('INVALID_FILE_RESPONSE');
+          if (fresh.expires <= now()) throw providerError('OWNER_LINK_EXPIRED');
+          setState(tokenHash, 'USING_CACHED_LINK');
           return {...fresh.result,destination:validated,discovered:[...fresh.result.discovered]};
         } catch(error) {
           signed.delete(sharedKey);
@@ -111,7 +112,7 @@ export function createBrowserManager(run:Runner=childRunner,now=Date.now,verify:
           // only if provider backoff and one-worker resource limits permit it.
         }
       }
-      const k=key(id,revision,source,tokenHash);let job=jobs.get(k);
+      const k=sharedKey;let job=jobs.get(k);
       if(!job) {
         if(jobs.size>=1||now()<blockedUntil)throw providerError('PROVIDER_BUSY');
         const controller=new AbortController(),waiters=new Map<string,string>();

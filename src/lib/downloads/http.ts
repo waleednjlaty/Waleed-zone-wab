@@ -67,6 +67,8 @@ export async function downloadBody(request: Request, form = false, maxBytes = 20
   } finally { clearTimeout(timer); reader.releaseLock(); }
 }
 const providerMessages:Record<string,string>={
+  OWNER_LINK_EXPIRED:'انتهت صلاحية رابط الاختبار. أضف رابطًا جديدًا من لوحة المالك.',
+  HEAD_UNAVAILABLE:'لا يسمح CDN بالتحقق عبر HEAD. لم يبدأ التحميل.',
   BROWSER_START_FAILED:'تعذر تشغيل متصفح المعالجة. لم يبدأ التحميل.',
   BROWSER_FAILED:'توقفت معالجة المصدر داخل المتصفح. لم يبدأ التحميل.',
   BROWSER_RESOURCE_LIMIT:'موارد المعالجة مشغولة حاليًا. أعد المحاولة لاحقًا.',

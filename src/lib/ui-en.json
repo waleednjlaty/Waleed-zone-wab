@@ -608,5 +608,12 @@
   "تعذر تشغيل متصفح المعالجة. لم يبدأ التحميل.": "The background browser could not start. The download has not started.",
   "توقفت معالجة المصدر داخل المتصفح. لم يبدأ التحميل.": "Source processing stopped in the browser. The download has not started.",
   "موارد المعالجة مشغولة حاليًا. أعد المحاولة لاحقًا.": "Processing resources are busy. Try again later.",
-  "تجاوز المصدر حد طلبات المعالجة. أوقفنا الطلب.": "The source exceeded the processing request limit. The request was stopped."
+  "تجاوز المصدر حد طلبات المعالجة. أوقفنا الطلب.": "The source exceeded the processing request limit. The request was stopped.",
+  "اختبار رابط CDN": "CDN link test",
+  "إدارة رابط الاختبار": "Manage test link",
+  "اختبار مالك: رابط CDN متحقق خادميًا.": "Owner test: CDN link verified by the server.",
+  "اختبار مالك فقط: لم يُتحقق من رابط CDN خادميًا وقد ينتهي قبل 10 دقائق.": "Owner test only: CDN link was not verified by the server and may expire before 10 minutes.",
+  "جارٍ استخدام رابط محفوظ صالح": "Using a valid cached link",
+  "انتهت صلاحية رابط الاختبار. أضف رابطًا جديدًا من لوحة المالك.": "Test link expired. Add a fresh link in the owner dashboard.",
+  "لا يسمح CDN بالتحقق عبر HEAD. لم يبدأ التحميل.": "CDN does not allow HEAD verification. Download did not start."
 }

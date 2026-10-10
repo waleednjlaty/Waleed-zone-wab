@@ -3,11 +3,11 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),Module=re
 const load=Module._load;Module._load=function(n,...a){return n==='server-only'?{}:load.call(this,n,...a);};
 const {createBrowserManager,SIGNED_URL_MAX_AGE_MS}=require('../src/lib/downloads/browser/manager.ts'),{providerError}=require('../src/lib/downloads/providers/public-http.ts');Module._load=load;
 const source='https://steamrip.com/qa/',destination='https://fafda.to/d/file?v=SECRET';
-test('one grant deduplicates, signed links are reused for only 10m, and fresh browser sessions are per grant',async()=>{
+test('independent grants share only one verified result, with bounded ten-minute cache',async()=>{
  let time=0,calls=0,verified=0,release;const m=createBrowserManager(async(input,signal,progress)=>{calls++;progress('FINDING_BZZHR');await new Promise(r=>release=r);return {destination,discovered:['https://buzzheavier.com/file']};},()=>time,async url=>{verified++;return url;});
  const requests=Array.from({length:20},()=>m.resolve(1,'rev',source,[],'one-user-grant',new AbortController().signal));await new Promise(r=>setImmediate(r));assert.equal(calls,1);assert.equal(m.status('one-user-grant'),'FINDING_BZZHR');
- await assert.rejects(m.resolve(1,'rev',source,[],'different-user-grant',new AbortController().signal),e=>e.code==='PROVIDER_BUSY');
- await assert.rejects(m.resolve(1,'new',source,[],'bad',new AbortController().signal),e=>e.code==='PROVIDER_BUSY');release();await Promise.all(requests);
+ const follower=m.resolve(1,'rev',source,[],'different-user-grant',new AbortController().signal);assert.equal(m.status('different-user-grant'),'FINDING_BZZHR');
+ await assert.rejects(m.resolve(1,'new',source,[],'bad',new AbortController().signal),e=>e.code==='PROVIDER_BUSY');release();await Promise.all([...requests,follower]);
  const reused=await m.resolve(1,'rev',source,[],'fresh',new AbortController().signal);
  assert.equal(reused.destination,destination);assert.equal(calls,1);assert.equal(verified,1);
  assert.ok(!JSON.stringify(m.status('fresh')).includes('SECRET'));
