@@ -24,7 +24,7 @@ async function run(change={}) {
     if(url==='https://buzzheavier.com/alternate-file')return route.fulfill({contentType:'text/html',body:`<button hx-get="/alternate-file/download">Download</button>`});
     if(url==='https://buzzheavier.com/alternate-file/download')return route.fulfill({status:204,headers:{'HX-Redirect':destination}});
     if(url===provider)return route.fulfill({status:change.providerStatus||200,headers:change.forgedDocumentHeader?{'HX-Redirect':'https://ts.buzzheavier.com/d/unrelated?v=fixture-only'}:{},contentType:'text/html',body:change.copyLink
-      ? '<a href="#" onclick=\'event.preventDefault();navigator.clipboard.writeText(' + JSON.stringify(change.badCopy?'https://evil.test/d/trap?v=bad':destination) + ')\'>Copy download link</a>'
+      ? '<a href="#" onclick=\'event.preventDefault();navigator.clipboard.writeText(' + JSON.stringify(change.badCopy?'https://evil.test/d/trap?v=bad':change.wrongFileCopy?'https://ts.buzzheavier.com/d/other-file?v=fixture-only':destination) + ')\'>Copy download link</a>'
       : change.directFile?`<a href="${destination}" ${change.directPopup?'target="_blank"':''}>Download file</a>`:`<button ${change.dataHx?'data-hx-get':'hx-get'}="/file-xyz/download?declared=true" onclick="window.clicked=(window.clicked||0)+1; fetch(this.getAttribute('hx-get')||this.getAttribute('data-hx-get'),{headers:{'HX-Request':'true'}})">Download</button>`});
     if(url===provider+'/endpoint-final')return route.fulfill({status:change.redirectStatus||204,headers:{'HX-Redirect':destination}});
     if(url===provider+'/download?declared=true') {
@@ -63,6 +63,8 @@ test('BZZHR Copy download link uses isolated Chromium clipboard; only approved s
 });
 test('BZZHR copied foreign URL is rejected; it never becomes a user download',async()=>
  assert.rejects(run({direct:true,copyLink:true,badCopy:true}),e=>e.code==='INVALID_PROVIDER_RESPONSE'));
+test('BZZHR copied signed link for a different file ID is refused',async()=>
+ assert.rejects(run({direct:true,copyLink:true,wrongFileCopy:true}),e=>e.code==='INVALID_PROVIDER_RESPONSE'));
 
 test('ordinary Cloudflare passive script does not masquerade as challenge',async()=>assert.equal((await run({cloudflareScript:true})).result.destination,destination));
 for(const [label,change,code] of [
