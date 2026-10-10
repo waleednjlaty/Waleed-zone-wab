@@ -6,7 +6,7 @@ const config=JSON.parse(readFileSync(process.env.WZ_TEST_CONFIG,'utf8')),base=co
 assert.equal(new URL(base).hostname,'127.0.0.1');
 const {chromium}=await import(pathToFileURL(process.env.WZ_BROWSER_MODULE).href);
 const browser=await chromium.launch({headless:true,args:['--no-sandbox'],...(process.env.WZ_BROWSER_EXECUTABLE?{executablePath:process.env.WZ_BROWSER_EXECUTABLE}:{})});
-const routes=['/','/apps','/games','/?q=WhatsApp','/category/'+encodeURIComponent('تواصل'),'/apps/whatsapp-201','/games/grand-theft-auto-208','/download/501','/download/210','/login','/register','/account','/about','/privacy','/terms','/copyright','/contact','/admin','/not-a-page'];
+const routes=['/','/apps','/games','/?q=WhatsApp','/category/'+encodeURIComponent('تواصل'),'/apps/whatsapp-201','/games/grand-theft-auto-208','/download/501','/admin/download-test/run?application_id=210','/login','/register','/account','/about','/privacy','/terms','/copyright','/contact','/admin','/not-a-page'];
 let checks=0;mkdirSync('tests/screenshots',{recursive:true});
 try{
  for(const width of [360,768,1440]){
@@ -51,7 +51,7 @@ try{
         if(locale==='en')assert.ok(!/[\u0600-\u06ff]/.test(await page.locator('#main-content h2').innerText()));
       }
     }
-    if(route==='/download/501'||route==='/download/210'){
+    if(route==='/download/501'||route==='/admin/download-test/run?application_id=210'){
       await page.getByRole('button',{name:locale==='en'?'Prepare download link':'تجهيز رابط التحميل',exact:true}).click();await page.getByRole('timer').waitFor();
       assert.equal(await page.locator('[data-download-state]').getAttribute('data-download-state'),'COUNTDOWN');
       assert.equal(await page.getByRole('progressbar',{name:locale==='en'?'Link preparation progress':'تقدم تجهيز الرابط'}).count(),1);
@@ -59,6 +59,10 @@ try{
     }
     if(['/','/apps/whatsapp-201','/privacy','/admin'].includes(route))await page.screenshot({path:`tests/screenshots/i18n-${locale}-${width}-${route.replace(/\W/g,'')||'home'}.png`,fullPage:true});
    }
+   const steamRedirect=await context.request.get(base+'/download/210',{maxRedirects:0});
+   assert.equal(steamRedirect.status(),307,'public SteamRIP page must hand off to Telegram');
+   assert.equal(steamRedirect.headers().location,'https://t.me/WaleedZone_bot?start=app_210');
+   checks++;
    assert.equal((await context.cookies()).find(c=>c.name===name)?.value,value);
   }
   assert.deepEqual(errors,[]);await context.close();
