@@ -1,6 +1,9 @@
 import 'server-only';
 import { getSql } from '@/lib/db';
 import { DownloadService } from '@/lib/downloads/service';
+import { publicUrl } from '@/lib/downloads/providers/public-http';
+import { STEAMRIP_HOSTS } from '@/lib/downloads/providers/steamrip';
+import { BZZHR_HOSTS } from '@/lib/downloads/providers/bzzhr';
 
 /** Fail closed when migration/config/storage is absent. IDs are never fabricated. */
 export async function getDownloadAvailability(applicationId: number) {
@@ -37,9 +40,6 @@ export async function isSteamRipBotDownload(applicationId:number):Promise<boolea
     const [app]=await sql`SELECT devupload_url,shrankme_url FROM applications
       WHERE id=${applicationId} AND active=TRUE AND published=TRUE`;
     if(!app)return false;
-    const { publicUrl }=await import('@/lib/downloads/providers/public-http');
-    const { STEAMRIP_HOSTS }=await import('@/lib/downloads/providers/steamrip');
-    const { BZZHR_HOSTS }=await import('@/lib/downloads/providers/bzzhr');
     const sources=[app.devupload_url,app.shrankme_url].filter((v):v is string=>typeof v==='string'&&v.length>0);
     return sources.some(value=>{
       try {publicUrl(value,STEAMRIP_HOSTS);return true;}catch{/* not SteamRIP */}
