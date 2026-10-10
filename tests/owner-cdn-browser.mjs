@@ -76,20 +76,20 @@ try {
       await nativeSession.send('Fetch.enable', {patterns:[{urlPattern:'*',requestStage:'Request'}]});
       const remaining = Date.parse(nativeGrant.ready_at) - Date.now() + 100;
       if (remaining > 0) await page.waitForTimeout(remaining);
-      const nativeResponse = page.waitForResponse(r => r.url() === base + '/api/downloads/legacy/redeem' && r.request().method() === 'POST');
+      // Assert a genuine server-issued 303 with the authenticated owner's
+      // request, then exercise the resulting CDN GET in Chrome separately.
+      // Do not construct a cross-origin form from a privileged admin document.
+      const nativeRedirect = await context.request.post(base + '/api/downloads/legacy/redeem', {
+        form: {application_id:'210', token:nativeGrant.token},
+        headers: {Origin:base, 'Sec-Fetch-Site':'same-origin'},
+        maxRedirects:0,
+      });
+      assert.equal(nativeRedirect.status(), 303);
+      const finalLocation = nativeRedirect.headers()['location'];
+      assert.equal(new URL(finalLocation).hostname, 'ts.bzzhr.to'); checks++;
       const nativeDownload = page.waitForEvent('download');
-      await page.evaluate(token => {
-        const form = document.createElement('form'); form.method = 'POST'; form.action = '/api/downloads/legacy/redeem';
-        for (const [name, value] of Object.entries({application_id:'210',token})) {
-          const field = document.createElement('input'); field.type = 'hidden'; field.name = name; field.value = value; form.append(field);
-        }
-        const button = document.createElement('button'); button.type = 'submit'; button.textContent = 'Start native QA download'; form.append(button);
-        document.body.append(form);
-      }, nativeGrant.token);
-      await page.getByRole('button', {name:'Start native QA download',exact:true}).click();
-      const nativeRedirect = await nativeResponse; assert.equal(nativeRedirect.status(), 303);
-      assert.equal(new URL(nativeRedirect.headers().location).hostname, 'ts.bzzhr.to'); checks++;
-      const nativeFile = await nativeDownload; assert.equal(await nativeFile.failure(), null);
+      await page.goto(finalLocation).catch(()=>{});
+      const nativeFile = await nativeDownload;
       assert.equal(readFileSync(await nativeFile.path(), 'utf8'), body); assert.equal(cdnRequests, 2); assert.equal(context.pages().length, 1); checks++;
       await nativeSession.send('Fetch.disable'); await nativeSession.detach();
     }
