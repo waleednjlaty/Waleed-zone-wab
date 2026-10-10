@@ -169,7 +169,7 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
     // BZZHR also exposes a public "Copy download link" control. Capture its
     // clipboard output only after a real click in this fresh isolated context.
     // Never read the user's OS clipboard or use copied data without validation.
-    const copy=providerPage.locator('a,button,[role="button"]').filter({hasText:/^\\s*Copy\\s+download\\s+link\\s*$/i}).first();
+    const copy=providerPage.locator('a,button,[role="button"]').filter({hasText:/^\s*Copy\s+download\s+link\s*$/i}).first();
     if(await copy.count()) {
       let clipboardReady=false;
       try {
@@ -223,8 +223,6 @@ export async function browserDestination(input:BrowserInput,options:Options):Pro
       }
       const until=Date.now()+5000;
       while(!destination&&!failure&&Date.now()<until&&!options.signal.aborted)await new Promise(r=>setTimeout(r,50));
-      if(failure)throw failure;
-
     }
     if(failure)throw failure;if(!destination)throw providerError('MISSING_HX_REDIRECT');
     stage='final_file';options.progress('VERIFYING_FILE');
