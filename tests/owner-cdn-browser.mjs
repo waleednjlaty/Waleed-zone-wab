@@ -41,6 +41,7 @@ try {
     const preparation = page.waitForResponse(r => r.url() === base + '/api/downloads/legacy/prepare');
     await page.getByRole('button', { name: en ? 'Prepare download link' : 'تجهيز رابط التحميل', exact: true }).click();
     const prepared = await (await preparation).json();
+    const nativeGrant = !en ? await (await context.request.post(base + '/api/downloads/legacy/prepare', { data: { application_id: 210 }, headers: { Origin: base } })).json() : null;
     await page.locator('[data-download-state="COUNTDOWN"]').waitFor();
     const fields = {application_id:'210', token:prepared.token};
     assert.ok(!JSON.stringify(prepared).includes('QA_OWNER_'));
@@ -55,6 +56,23 @@ try {
     const file = await download; assert.equal(file.suggestedFilename(), 'owner-qa.txt'); assert.equal(await file.failure(), null);
     assert.equal(readFileSync(await file.path(), 'utf8'), body); assert.equal(cdnRequests, 1); assert.equal(page.url(), base + '/download/210'); assert.equal(context.pages().length, 1); checks++;
     const replay = await context.request.post(base + '/api/downloads/legacy/redeem', { form: fields, headers: { Origin: base }, maxRedirects: 0 }); assert.equal(replay.status(), 410); checks++;
+    if (nativeGrant) {
+      const remaining = Date.parse(nativeGrant.ready_at) - Date.now() + 100;
+      if (remaining > 0) await page.waitForTimeout(remaining);
+      const nativeResponse = page.waitForResponse(r => r.url() === base + '/api/downloads/legacy/redeem' && r.request().method() === 'POST');
+      const nativeDownload = page.waitForEvent('download');
+      await page.evaluate(token => {
+        const form = document.createElement('form'); form.method = 'POST'; form.action = '/api/downloads/legacy/redeem';
+        for (const [name, value] of Object.entries({application_id:'210',token})) {
+          const field = document.createElement('input'); field.type = 'hidden'; field.name = name; field.value = value; form.append(field);
+        }
+        document.body.append(form); form.submit();
+      }, nativeGrant.token);
+      const nativeRedirect = await nativeResponse; assert.equal(nativeRedirect.status(), 303);
+      assert.equal(new URL(nativeRedirect.headers().location).hostname, 'ts.bzzhr.to'); checks++;
+      const nativeFile = await nativeDownload; assert.equal(await nativeFile.failure(), null);
+      assert.equal(readFileSync(await nativeFile.path(), 'utf8'), body); assert.equal(cdnRequests, 2); assert.equal(context.pages().length, 1); checks++;
+    }
     const visitor = await browser.newContext({ ignoreHTTPSErrors: true }); const [vn, vv] = config.userCookie.split('='); await visitor.addCookies([{ name: vn, value: vv, url: base }]);
     const denied = await visitor.request.get(base + '/api/admin/downloads/cdn-test?application_id=210'); assert.equal(denied.status(), 403);
     const ordinary = await visitor.request.post(base + '/api/downloads/legacy/prepare', { data: { application_id: 210 }, headers: { Origin: base } }); assert.equal(ordinary.status(), 200); assert.ok(!(await ordinary.text()).includes('owner_test')); checks++;
