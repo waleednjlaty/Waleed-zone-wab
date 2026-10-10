@@ -96,9 +96,15 @@ test('real href wins over a link mentioned inside quoted title text',()=>assert.
 test('HTML tag work is bounded',()=>assert.throws(()=>steam.steamripBzzhr('<div></div>'.repeat(10001),source),error('INVALID_PROVIDER_RESPONSE')));
 test('quoted HTMX mention cannot replace the real signed endpoint',()=>assert.equal(bzzhr.signedEndpoint(`<button title='hx-get="/file-xyz/download?t=wrong"' hx-get="${endpoint}">Download</button>`,page),endpoint));
 
-test('live observed ts CDN is accepted, arbitrary CDN subdomains remain denied',()=>{
+test('exact copied CDN hosts are accepted, but wildcard CDN subdomains remain denied',()=>{
  assert.equal(bzzhr.signedDestination('https://ts.buzzheavier.com/d/724hyjkckpyu?v=redacted',endpoint),'https://ts.buzzheavier.com/d/724hyjkckpyu?v=redacted');
- assert.throws(()=>bzzhr.signedDestination('https://evil.buzzheavier.com/d/file?v=x',endpoint),error('INVALID_SOURCE'));
+ for(const token of ['fixture-A','fixture-B']) {
+  const copied='https://ts.bzzhr.to/d/s3iizg6ph861?v='+token;
+  assert.equal(bzzhr.signedDestination(copied,endpoint),copied);
+ }
+ for(const invalid of ['https://evil.buzzheavier.com/d/file?v=x','https://evil.ts.bzzhr.to/d/file?v=x','https://ts.bzzhr.to.evil.test/d/file?v=x','http://ts.bzzhr.to/d/file?v=x']) {
+  assert.throws(()=>bzzhr.signedDestination(invalid,endpoint),error('INVALID_SOURCE'));
+ }
 });
 test('provider-declared alternate path/query and malformed HTML are parsed without constructing an endpoint',()=>{
  assert.equal(bzzhr.signedEndpoint('<BUTTON data-hx-get="/fake" HX-GET="file-xyz/fetch?signature=a&amp;alt=true">', page),page+'/fetch?signature=a&alt=true');
