@@ -46,17 +46,30 @@ export default async function Home({ searchParams }: Props) {
   const page = parsePage(first(params?.page));
   const browse = first(params?.browse) === 'all';
   const filtered = Boolean(q || category || page > 1 || browse);
-  return <div className="shell homepage">
-    {!filtered && <JsonLd data={websiteStructuredData(locale)} />}
-    <section className="catalog-intro" aria-labelledby="discover-title">
-      <div className="intro-copy"><p className="eyebrow" lang="en" dir="ltr">Waleed Zone</p><h1 id="discover-title">{english ? 'Waleed Zone — Apps & Games' : 'وليد زون — تطبيقات وألعاب'}<span className="intro-dot">.</span></h1><p className="intro-description">{english ? 'Search, explore and check release details before downloading.' : 'ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.'}</p><nav className="mt-4 flex flex-wrap gap-4 text-sm" aria-label={english ? 'Waleed Zone library' : 'مكتبة وليد زون'}><a className="view-all" href="/apps">{english ? 'Waleed Zone Apps →' : 'تطبيقات وليد زون ←'}</a><a className="view-all" href="/games">{english ? 'Waleed Zone Games →' : 'ألعاب وليد زون ←'}</a></nav></div>
-      <div className="intro-search"><Suspense fallback={<SearchSkeleton />}><SearchBar /></Suspense><p className="search-help">{english ? 'Search in Arabic or English by name, developer or category.' : 'بالعربية أو الإنجليزية، بالاسم أو المطوّر أو التصنيف.'}</p></div>
-    </section>
+  
+  return (
+    <div className="shell homepage">
+      {/* BEGIN AADS AD UNIT 2458212 */}
+      <div id="frame" style={{ width: '100%', margin: 'auto', position: 'relative', zIndex: 99998 }}>
+        <iframe 
+          data-aa='2458212' 
+          src='//acceptable.a-ads.com/2458212/?size=Adaptive'
+          style={{ border: 0, padding: 0, width: '70%', height: 'auto', overflow: 'hidden', display: 'block', margin: 'auto' }}
+        />
+      </div>
+      {/* END AADS AD UNIT 2458212 */}
 
-    <Suspense key={`${q}:${category}:${page}:${browse}`} fallback={filtered ? <SearchResultsSkeleton /> : <CatalogSkeleton contentOnly />}>
-      <CatalogContent q={q} category={category} page={page} browse={browse} filtered={filtered} locale={locale} />
-    </Suspense>
-  </div>;
+      {!filtered && <JsonLd data={websiteStructuredData(locale)} />}
+      <section className="catalog-intro" aria-labelledby="discover-title">
+        <div className="intro-copy"><p className="eyebrow" lang="en" dir="ltr">Waleed Zone</p><h1 id="discover-title">{english ? 'Waleed Zone — Apps & Games' : 'وليد زون — تطبيقات وألعاب'}<span className="intro-dot">.</span></h1><p className="intro-description">{english ? 'Search, explore and check release details before downloading.' : 'ابحث، استكشف، واعرف تفاصيل الإصدار قبل التحميل.'}</p><nav className="mt-4 flex flex-wrap gap-4 text-sm" aria-label={english ? 'Waleed Zone library' : 'مكتبة وليد زون'}><a className="view-all" href="/apps">{english ? 'Waleed Zone Apps →' : 'تطبيقات وليد زون ←'}</a><a className="view-all" href="/games">{english ? 'Waleed Zone Games →' : 'ألعاب وليد زون ←'}</a></nav></div>
+        <div className="intro-search"><Suspense fallback={<SearchSkeleton />}><SearchBar /></Suspense><p className="search-help">{english ? 'Search in Arabic or English by name, developer or category.' : 'بالعربية أو الإنجليزية، بالاسم أو المطوّر أو التصنيف.'}</p></div>
+      </section>
+
+      <Suspense key={`${q}:${category}:${page}:${browse}`} fallback={filtered ? <SearchResultsSkeleton /> : <CatalogSkeleton contentOnly />}>
+        <CatalogContent q={q} category={category} page={page} browse={browse} filtered={filtered} locale={locale} />
+      </Suspense>
+    </div>
+  );
 }
 
 async function CatalogContent({ q, category, page, browse, filtered, locale }: { q: string; category: string; page: number; browse: boolean; filtered: boolean; locale: 'ar' | 'en' }) {
