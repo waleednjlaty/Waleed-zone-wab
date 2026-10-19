@@ -8,8 +8,7 @@ import { getDownloadPresentation, getFallbackDelivery } from '@/components/downl
 import { appName } from '@/components/catalog/presentation';
 import { appHref } from '@/lib/catalog/routes';
 import { getAppById } from '@/lib/queries';
-import TelegramBridgeBanner from '@/components/download/TelegramBridgeBanner';
-
+import TelegramBridgeBanner from '../TelegramBridgeBanner';
 export const dynamic = 'force-dynamic';
 export async function generateMetadata() {
   const locale = await getLocale(), t = (text: string) => translateUI(locale, text);
