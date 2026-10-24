@@ -30,11 +30,11 @@ export async function legacyDelivery(sql: Sql, applicationId: number, env: NodeJ
   const hosts = (env.LEGACY_DOWNLOAD_ALLOWED_HOSTS || 'devuploads.com,shrinkme.io,shrinkme.site').split(',').map(v=>v.trim().toLowerCase()).filter(Boolean);
   // Explicit custom/manual link has priority. An invalid configured link fails closed.
   if(app.shrankme_url) {
-    try {return delivery(publicUrl(app.shrankme_url,BZZHR_HOSTS).href,'steamrip');}catch{/* approved manual link */}
+    try {return delivery(publicUrl(app.shrankme_url,BZZHR_HOSTS).href,'external');}catch{/* approved manual link */}
     try { return delivery(publicUrl(app.shrankme_url,hosts).href,'external'); } catch { throw fail(); }
   }
   if(typeof app.devupload_url!=='string' || app.devupload_url.length>2000)throw fail();
-  try {return delivery(publicUrl(app.devupload_url,BZZHR_HOSTS).href,'steamrip');}catch{/* SteamRIP/legacy source */}
+  try {return delivery(publicUrl(app.devupload_url,BZZHR_HOSTS).href,'external');}catch{/* BZZHR is a normal external source, never a SteamRIP extraction input. */}
   try {return delivery(publicUrl(app.devupload_url,STEAMRIP_HOSTS).href,'steamrip');}catch{/* then approved legacy source */}
   try {return delivery(publicUrl(app.devupload_url,hosts).href,'external');}catch{throw fail();}
 }
