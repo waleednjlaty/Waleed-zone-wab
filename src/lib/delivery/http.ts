@@ -43,7 +43,12 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', 
       if (++count > 1200) throw new DownloadError(429,'RATE_LIMITED',new Date(Date.now()+60000));
       const form = operation !== 'prepare', body = await downloadBody(request,form);
       const allowed = form ? ['application_id','token'] : ['application_id'];
-      if (Object.keys(body).length !== allowed.length || allowed.some(k=>!Object.hasOwn(body,k))) throw new DownloadError(400,'INVALID_REQUEST');
+      const optionalAllowed = operation === 'redeem' ? ['handoff_token'] : [];
+      if (Object.keys(body).length < allowed.length || allowed.some(k=>!Object.hasOwn(body,k))
+        || Object.keys(body).some(k=>!allowed.includes(k)&&!optionalAllowed.includes(k))) throw new DownloadError(400,'INVALID_REQUEST');
+      const handoffToken = body.handoff_token;
+      if (handoffToken !== undefined && (operation !== 'redeem' || typeof handoffToken !== 'string' || !/^[A-Za-z0-9_-]{22}$/.test(handoffToken)))
+        throw new DownloadError(400,'INVALID_HANDOFF');
       const appId = form && typeof body.application_id === 'string' && /^[1-9][0-9]{0,9}$/.test(body.application_id) ? Number(body.application_id) : body.application_id;
       if (!Number.isSafeInteger(appId) || Number(appId)<1 || Number(appId)>2147483647) throw new DownloadError(400,'INVALID_REQUEST');
       const name = env.NODE_ENV === 'production' ? '__Host-wz_legacy_client' : 'wz_legacy_client';
@@ -60,6 +65,12 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', 
         || !await consumeWindow(sql,`legacy:${operation}:client:${client}`,operation==='prepare'?30:operation==='status'?40:60,60))
         throw new DownloadError(429,'RATE_LIMITED',new Date(Date.now()+60000));
       const source = await legacyDelivery(sql,Number(appId),env);
+      if (handoffToken) {
+        const [pending] = await sql`SELECT token FROM pending_downloads WHERE token=${handoffToken}
+          AND app_id=${Number(appId)} AND status='pending'
+          AND created_at > clock_timestamp() - interval '20 minutes'`;
+        if (!pending) throw new DownloadError(410,'HANDOFF_EXPIRED');
+      }
       const ownerScope = source.provider === 'steamrip' && env.OWNER_CDN_TEST_ENABLED === 'true'
         ? await (dependencies?.ownerScope ?? ownerCdnScope)(request, env) : null;
       const testCache = dependencies?.ownerCache ?? ownerCdnCache;
@@ -126,6 +137,12 @@ export function createLegacyHandler(operation: 'prepare' | 'redeem' | 'status', 
         ownerResult?.assertCurrent();
         assertBrowserCurrent?.();
         if(discovered)await discoveryCache(tx as unknown as Sql).write(Number(appId),source.revision,source.destination,discovered);
+        if (handoffToken) {
+          const linked = await tx`UPDATE pending_downloads SET status='resolved', download_url=${destination}, resolved_at=clock_timestamp()
+            WHERE token=${handoffToken} AND app_id=${Number(appId)} AND status='pending'
+              AND created_at > clock_timestamp() - interval '20 minutes' RETURNING token`;
+          if (!linked.length) throw new DownloadError(410,'HANDOFF_EXPIRED');
+        }
         const consumed=await tx`UPDATE site_legacy_download_grants SET consumed_at=${new Date((dependencies?.now??Date.now)()).toISOString()}::timestamptz
           WHERE token_hash=${hash} AND consumed_at IS NULL RETURNING token_hash`;
         if(!consumed.length)throw new DownloadError(410,'TOKEN_USED');
