@@ -13,7 +13,14 @@ try {
   const [name,value]=config.ownerCookie.split('=');
   await context.addCookies([{name,value,url:base,secure:true,httpOnly:true,sameSite:'Lax'}]);
   const external=[];
-  await context.route('**/*',route=>{if(new URL(route.request().url()).origin===base)return route.continue();external.push(route.request().url());return route.abort();});
+  await context.route('**/*',route=>{
+   const url=new URL(route.request().url());
+   if(url.origin===base)return route.continue();
+   // Homepage embeds one deliberate A-Ads frame; abort it to keep the test isolated,
+   // but do not count that known frame as an unexpected external dependency.
+   if(url.origin==='https://acceptable.a-ads.com')return route.abort('blockedbyclient');
+   external.push(route.request().url());return route.abort();
+  });
   const session=await context.request.get(base+'/api/admin/session').then(r=>r.json());
   const headers={Origin:base,'X-CSRF-Token':session.csrf_token};
   const payload='<script>window.PHASE8_XSS=1</script><img src=x onerror="window.PHASE8_XSS=2"><svg onload="window.PHASE8_XSS=3"></svg>';
