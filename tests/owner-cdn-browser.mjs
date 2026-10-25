@@ -28,6 +28,7 @@ try {
     const page = await context.newPage(), errors = []; page.on('pageerror', error => errors.push(error.message));
     await page.goto(base + '/admin/download-test?application_id=210');
     await page.getByRole('button', { name: en ? 'Load source' : 'تحميل بيانات المصدر', exact: true }).click();
+    await page.getByLabel(en ? 'BZZHR file page matching this game' : 'صفحة ملف BZZHR المطابقة للعبة', { exact: true }).fill('https://bzzhr.to/file-xyz');
     await page.getByLabel(en ? 'Signed URL from Copy download link' : 'الرابط الموقّع من Copy download link', { exact: true }).fill('https://ts.bzzhr.to/d/file-xyz?v=' + (en ? 'QA_OWNER_HEAD_BLOCKED' : 'QA_OWNER_BROWSER_SECRET'));
     await page.getByLabel(en ? 'I confirm this file belongs to the selected game and its current version.' : 'أؤكد أن الملف يخص اللعبة المحددة وإصدارها الحالي.', { exact: true }).check();
     if (en) await page.getByLabel('Allow an owner test when HEAD is blocked. This exception is unavailable to visitors.', { exact: true }).check();
