@@ -16,11 +16,17 @@ export async function generateMetadata() {
 
 export default async function DownloadPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ token?: string | string[] }>;
 }) {
   const locale = await getLocale();
   const { id } = await params;
+  const query = searchParams ? await searchParams : {};
+  const rawHandoffToken = query.token;
+  const handoffToken = typeof rawHandoffToken === 'string' && /^[A-Za-z0-9_-]{20,64}$/.test(rawHandoffToken)
+    ? rawHandoffToken : undefined;
 
   if (!/^[1-9]\d{0,9}$/.test(id) || Number(id) > 2147483647) notFound();
   const app = await getAppById(Number(id));
@@ -33,7 +39,7 @@ export default async function DownloadPage({
   return (
     <>
       {fallback ? (
-        <LegacyDownloadExperience app={summary} provider={fallback} />
+        <LegacyDownloadExperience app={summary} provider={fallback} handoffToken={handoffToken} />
       ) : (
         <DownloadExperience app={summary} file={file} />
       )}
