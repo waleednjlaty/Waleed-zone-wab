@@ -22,7 +22,7 @@ export default async function DownloadPage({
   const locale = await getLocale();
   const { id } = await params;
 
-  if (!/^[1-9]\\d{0,9}$/.test(id) || Number(id) > 2147483647) notFound();
+  if (!/^[1-9]\d{0,9}$/.test(id) || Number(id) > 2147483647) notFound();
   const app = await getAppById(Number(id));
   if (!app) notFound();
   const file = await getDownloadPresentation(app.id);
