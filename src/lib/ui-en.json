@@ -616,5 +616,8 @@
   "جارٍ استخدام رابط محفوظ صالح": "Using a valid cached link",
   "انتهت صلاحية رابط الاختبار. أضف رابطًا جديدًا من لوحة المالك.": "Test link expired. Add a fresh link in the owner dashboard.",
   "لا يسمح CDN بالتحقق عبر HEAD. لم يبدأ التحميل.": "CDN does not allow HEAD verification. Download did not start.",
-  "انتهت صلاحية الرابط المحفوظ. أعد المحاولة للحصول على رابط جديد.": "The cached link expired. Retry to obtain a fresh link."
+  "انتهت صلاحية الرابط المحفوظ. أعد المحاولة للحصول على رابط جديد.": "The cached link expired. Retry to obtain a fresh link.",
+  "تم تجهيز الرابط، ارجع إلى Telegram لاستلامه": "The link is ready. Return to Telegram to receive it.",
+  "تم تجهيز الرابط. استخدم زر العودة إلى Telegram لاستلام الرابط.": "The link is ready. Use the return-to-Telegram button to receive it.",
+  "العودة إلى Telegram لاستلام الرابط": "Return to Telegram to receive the link"
 }
