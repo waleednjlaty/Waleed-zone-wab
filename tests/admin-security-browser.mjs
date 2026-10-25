@@ -34,6 +34,9 @@ try {
     await context.route('**/*',route=>{
       const url=new URL(route.request().url());
       if(url.origin===config.base)return route.continue();
+      // The site intentionally embeds one homepage ad iframe. Keep it blocked in hermetic tests,
+      // but do not report its expected blocked request as an accidental network dependency.
+      if(url.origin==='https://acceptable.a-ads.com')return route.abort('blockedbyclient');
       blockedRequests.push(url.origin);return route.abort('blockedbyclient');
     });
     const page=await context.newPage(),errors=[];

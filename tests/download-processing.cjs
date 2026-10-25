@@ -64,7 +64,7 @@ test('SteamRIP route contract: countdown → fresh mocked provider → atomic 30
   const p=await prepare();now=Date.parse(p.grant.ready_at);const rs=await Promise.all([redeem(p),redeem(p)]);assert.deepEqual(rs.map(r=>r.status).sort(),[303,410]);
  });
  await t.test('inline JSON contains a destination only after successful atomic redeem, replay denied',async()=>{
-  await h.sql`UPDATE applications SET active=true,published=true,shrankme_url=NULL,devupload_url='https://buzzheavier.com/file-xyz' WHERE id=201`;
+  await h.sql`UPDATE applications SET active=true,published=true,shrankme_url=NULL,devupload_url='https://steamrip.com/qa-game/' WHERE id=201`;
   const p=await prepare();now=Date.parse(p.grant.ready_at)-1;
   assert.equal((await redeem(p,'application/json')).status,425);now++;
   // Injected resolver asserts the app/revision and handles a direct provider source too.

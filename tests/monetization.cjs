@@ -26,6 +26,11 @@ test('SDK CSP restricted to canonical detail pages, never download/admin/account
     assert.equal(adRouteAllowed(path),false);
     const csp=contentSecurityPolicy('test',enabled,false,path);assert.ok(!csp.includes('googlesyndication'));assert.ok(!csp.includes('connect-src \'self\' https:'));
   }
+  const homeCsp=contentSecurityPolicy('test',enabled,false,'/');
+  assert.match(homeCsp,/frame-src https:\/\/acceptable\.a-ads\.com(?:;|$)/);
+  assert.ok(!homeCsp.includes('googleads.g.doubleclick.net'),'Homepage exception must not enable AdSense SDK');
+  assert.match(contentSecurityPolicy('test',enabled,false,'/admin'),/frame-src 'none'/);
+  assert.ok(!contentSecurityPolicy('test',enabled,false,'/apps/test-201').includes('acceptable.a-ads.com'),'A-Ads frame must stay homepage-only');
   for(const path of ['/apps/test-201','/games/لعبة-202']){
     assert.equal(adRouteAllowed(path),true);assert.match(contentSecurityPolicy('test',enabled,false,path),/pagead2/);
     assert.ok(!contentSecurityPolicy('test',enabled,true,path).includes('googlesyndication'));

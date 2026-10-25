@@ -42,7 +42,7 @@ test('owner endpoint and normal download route enforce actual sessions, CSRF, co
  const original=Module._load;Module._load=function(n,...a){if(n==='server-only')return {};if(n==='@/lib/analytics/schedule')return {scheduleMetrics:()=>{}};return original.call(this,n,...a);};
  const {createOwnerCdnHandler}=require('../src/lib/admin/owner-cdn-http.ts'),{createLegacyHandler}=require('../src/lib/delivery/http.ts');Module._load=original;
  const env={...process.env,OWNER_CDN_TEST_ENABLED:'true',LEGACY_DOWNLOAD_SIGNING_KEY:'x'.repeat(64)};
- await h.sql`UPDATE applications SET shrankme_url=NULL,devupload_url=${page} WHERE id=201`;
+ await h.sql`UPDATE applications SET shrankme_url=NULL,devupload_url='https://steamrip.com/qa-game/' WHERE id=201`;
  const invoke=(fn,path,body,{actor='owner',csrf=h.csrf,origin=h.origin,method='POST',extraCookie='',contentType='application/json',accept='application/json'}={})=>{
   const request=new Request(h.origin+path,{method,headers:{origin,'sec-fetch-site':'same-origin',cookie:(h.sessions[actor]?'__Host-wz_session='+h.sessions[actor]+'; ':'')+extraCookie,'x-csrf-token':csrf||'','content-type':contentType,accept},...(method==='GET'?{}:{body:contentType==='application/json'?JSON.stringify(body):new URLSearchParams(body)})});
   return h.withRequest(request,()=>fn(request));

@@ -38,7 +38,7 @@ try {
   await sql`INSERT INTO site_download_versions(id,application_id,version_label,release_key) VALUES('11111111-1111-4111-8111-111111111111',201,'QA draft','qa-draft')`;
   await sql`INSERT INTO site_download_files(id,version_id,variant_key,size_bytes,mime_type,download_filename,sha256,storage_backend,storage_key,scan_status,verified_at) VALUES('22222222-2222-4222-8222-222222222222','11111111-1111-4111-8111-111111111111','universal',24,'application/vnd.android.package-archive','qa.apk',${'a'.repeat(64)},'railway-s3',${`artifacts/22222222-2222-4222-8222-222222222222/${'a'.repeat(64)}.apk`},'verified',NOW())`;
   await sql`UPDATE site_download_settings SET enabled=true`;
-  await sql`INSERT INTO applications(id,name,description,version,size,category,platform,devupload_url,active,published,created_at) VALUES(210,'Authorized owner QA','Tiny authorized fixture','1','38 B','ألعاب','PC','https://bzzhr.to/file-xyz',true,true,NOW())`;
+  await sql`INSERT INTO applications(id,name,description,version,size,category,platform,devupload_url,active,published,created_at) VALUES(210,'Authorized owner QA','Tiny authorized fixture','1','38 B','ألعاب','PC','https://steamrip.com/qa-game/',true,true,NOW())`;
   const config={base,statsToken:randomBytes(32).toString('hex'),secrets:['QA_STORAGE_SECRET_SENTINEL'],fixture:'native-postgresql-https'};
   for(const [id,key] of [['owner-qa','ownerCookie'],['visitor-qa','userCookie']]){
     await sql`INSERT INTO site_users(id,name,email,password_hash) VALUES(${id},'QA user',${id+'@example.test'},'intentionally-disabled-test-login')`;
