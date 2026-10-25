@@ -70,10 +70,19 @@ try {
   }
   const search=await context.request.get(base+'/api/search?q=WhatsApp');
   assert.equal(search.status(),200);assert.ok(Array.isArray((await search.json()).items));
-  for(const route of ['/api/admin/analytics','/api/admin/catalog','/api/admin/downloads/status']) {
-    const response=await context.request.get(base+route);
-    assert.ok([401,403].includes(response.status()),'anonymous API access denied');
-  }
+  
+for (const route of ['/api/admin/analytics', '/api/admin/catalog', '/api/admin/downloads/status']) {
+  const response = await context.request.get(base + route);
+  const status = response.status();
+
+  console.log(`Anonymous API check: ${route} -> HTTP ${status}`);
+
+  assert.ok(
+    [401, 403].includes(status),
+    `Anonymous API access denied: ${route} returned HTTP ${status}`
+  );
+}
+  
   assert.deepEqual(errors,[],'production JavaScript or console error');
   await context.close();
  }
