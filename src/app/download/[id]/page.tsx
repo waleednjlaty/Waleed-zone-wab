@@ -8,7 +8,6 @@ import { getDownloadPresentation, getFallbackDelivery } from '@/components/downl
 import { appName } from '@/components/catalog/presentation';
 import { appHref } from '@/lib/catalog/routes';
 import { getAppById } from '@/lib/queries';
-import TelegramBridgeBanner from './TelegramBridgeBanner';
 export const dynamic = 'force-dynamic';
 export async function generateMetadata() {
   const locale = await getLocale(), t = (text: string) => translateUI(locale, text);
@@ -17,17 +16,13 @@ export async function generateMetadata() {
 
 export default async function DownloadPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ token?: string }>;
 }) {
-  const locale = await getLocale(), t = (text: string, ...values: unknown[]) => translateUI(locale, text, ...values);
-
+  const locale = await getLocale();
   const { id } = await params;
-  const { token } = await searchParams;
 
-  if (!/^[1-9]\d{0,9}$/.test(id) || Number(id) > 2147483647) notFound();
+  if (!/^[1-9]\\d{0,9}$/.test(id) || Number(id) > 2147483647) notFound();
   const app = await getAppById(Number(id));
   if (!app) notFound();
   const file = await getDownloadPresentation(app.id);
@@ -37,7 +32,6 @@ export default async function DownloadPage({
 
   return (
     <>
-      {token && <TelegramBridgeBanner token={token} appId={app.id} />}
       {fallback ? (
         <LegacyDownloadExperience app={summary} provider={fallback} />
       ) : (
