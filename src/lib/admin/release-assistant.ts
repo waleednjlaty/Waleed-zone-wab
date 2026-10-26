@@ -1,12 +1,12 @@
 import 'server-only';
 
-type Candidate = {
+export type ReleaseSuggestionReleaseSuggestionCandidate = {
   id: number; name: string; description: string | null; version: string | null; size: string | null;
   category: string | null; platform: string | null; developer: string | null; image_url: string | null;
   active: boolean; published: boolean;
 };
 type Input = { name: string; version: string; platform: string };
-type Match = Candidate & { confidence: number; reason: string; duplicateVersion: boolean };
+type Match = ReleaseSuggestionCandidate & { confidence: number; reason: string; duplicateVersion: boolean };
 type Provider = 'openai' | 'similarity';
 
 function clean(value: unknown) {
@@ -43,14 +43,14 @@ function similarity(left: string, right: string) {
   const bigramDice = 2 * [...ga].filter(x => gb.has(x)).length / Math.max(1, ga.size + gb.size);
   return Math.max(tokenDice, bigramDice * 0.92);
 }
-function heuristicScore(input: Input, candidate: Candidate) {
+function heuristicScore(input: Input, candidate: ReleaseSuggestionCandidate) {
   const wantedPlatform = platformKey(input.platform), gotPlatform = platformKey(candidate.platform);
   if (wantedPlatform !== 'unspecified' && gotPlatform !== 'unspecified' && wantedPlatform !== gotPlatform) return 0;
   const nameScore = similarity(clean(input.name), clean(candidate.name));
   const platformBoost = wantedPlatform === gotPlatform ? 0.04 : 0;
   return Math.min(1, nameScore * 0.96 + platformBoost);
 }
-async function aiRank(input: Input, candidates: Candidate[], env: NodeJS.ProcessEnv) {
+async function aiRank(input: Input, candidates: ReleaseSuggestionCandidate[], env: NodeJS.ProcessEnv) {
   const key = env.OPENAI_API_KEY;
   if (!key || !candidates.length) return null;
   const controller = new AbortController();
@@ -103,7 +103,7 @@ async function aiRank(input: Input, candidates: Candidate[], env: NodeJS.Process
  * Read-only, owner-triggered release suggestions. The model can rank only supplied
  * catalog IDs and cannot create, edit, publish, or link any application.
  */
-export async function suggestApplicationReleases(candidates: Candidate[], input: Input, env: NodeJS.ProcessEnv = process.env) {
+export async function suggestApplicationReleases(candidates: ReleaseSuggestionCandidate[], input: Input, env: NodeJS.ProcessEnv = process.env) {
   const byId = new Map(candidates.map(candidate => [candidate.id, candidate]));
   const shortlisted = [...byId.values()]
     .map(candidate => ({ candidate, score: heuristicScore(input, candidate) }))
