@@ -5,7 +5,7 @@ import FavoriteButton from '@/components/FavoriteButton';
 import type { DownloadFile } from '@/components/download/types';
 import { useLocale } from '@/components/LocaleProvider';
 interface Props {allowSticky?:boolean;name:string;appId:number;imageUrl:string|null;size:string|null;href:string;steamripUrl?:string|null;external:boolean;initialSaved:boolean;signedIn:boolean;directFile?:DownloadFile|null;directConfigured?:boolean;deliveryAvailable?:boolean;}
-export default function DownloadActions({allowSticky=true,name,appId,imageUrl,size,href,external,initialSaved,signedIn,directFile,directConfigured,deliveryAvailable}:Props) {
+export default function DownloadActions({allowSticky=true,name,appId,imageUrl,size,href,steamripUrl,external,initialSaved,signedIn,directFile,directConfigured,deliveryAvailable}:Props) {
   const locale=useLocale(),english=locale==='en';
   const anchor=useRef<HTMLAnchorElement>(null),[sticky,setSticky]=useState(false);
   useEffect(()=>{
