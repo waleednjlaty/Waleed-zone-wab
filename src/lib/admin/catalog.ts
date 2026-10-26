@@ -110,6 +110,15 @@ export class OwnerCatalogService {
     if (operation === 'catalog') {
       fields(body,['metadata']); const data = metadata(body.metadata);
       return this.tx(async tx => {
+        const candidates = await tx<Array<{id: number; name: string; version: string | null; platform: string | null}>>`SELECT id,name,version,platform FROM applications
+          WHERE lower(trim(coalesce(version,''))) = lower(trim(coalesce(${data.version},'')))`;
+        const targetName = releaseIdentity(rootApplicationName(data.name));
+        const targetPlatform = releasePlatformKey(data.platform);
+        const duplicate = candidates.find(candidate =>
+          releaseIdentity(rootApplicationName(candidate.name)) === targetName
+          && releasePlatformKey(candidate.platform) === targetPlatform
+        );
+        if (duplicate) throw new AdminError(409, 'DUPLICATE_RELEASE');
         const [row] = await tx`INSERT INTO applications(name,description,version,size,category,platform,developer,image_url,
           active,published,downloads,views,created_at,search_text)
           VALUES(${data.name},${data.description},${data.version},${data.size},${data.category},${data.platform},${data.developer},${data.image_url},
