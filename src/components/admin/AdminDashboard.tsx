@@ -19,7 +19,7 @@ import styles from './admin.module.css';
 const sections: { id: Section; label: string; english: string; icon: IconName }[] = [
   { id: 'overview', label: 'نظرة عامة', english: 'Overview', icon: 'grid' },
   { id: 'applications', label: 'التطبيقات', english: 'Applications', icon: 'apps' },
-  { id: 'release-review', label: 'مراجعة الإصدارات', english: 'AI release review', icon: 'refresh' },
+  { id: 'release-review', label: 'المطابقة الذكية', english: 'AI release review', icon: 'refresh' },
   { id: 'configuration', label: 'إعداد التحميل', english: 'Download configuration', icon: 'menu' },
   { id: 'versions', label: 'الإصدارات', english: 'Versions', icon: 'refresh' },
   { id: 'files', label: 'الملفات', english: 'Files', icon: 'arrow' },
