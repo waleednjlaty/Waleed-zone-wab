@@ -203,7 +203,8 @@ function validateAIResponse(raw: unknown, rows: ReleaseReviewRow[]): ReleaseRevi
 }
 
 async function requestOpenAI(rows: ReleaseReviewRow[], apiKey: string, model: string): Promise<ReleaseReviewGroup[]> {
-  const payload = rows.slice(0, 220).map(row => ({
+  const reviewedRows = rows.slice(0, 220);
+  const payload = reviewedRows.map(row => ({
     id: row.id,
     name: String(row.name || '').slice(0, 160),
     version: String(row.version || '').slice(0, 60),
@@ -231,7 +232,7 @@ async function requestOpenAI(rows: ReleaseReviewRow[], apiKey: string, model: st
   const data = await response.json() as { choices?: { message?: { content?: string | null } }[] };
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error('AI_EMPTY');
-  return validateAIResponse(JSON.parse(content), rows);
+  return validateAIResponse(JSON.parse(content), reviewedRows);
 }
 
 export async function suggestReleaseGroups(rows: ReleaseReviewRow[], env: NodeJS.ProcessEnv) {
