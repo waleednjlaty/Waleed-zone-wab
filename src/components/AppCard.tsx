@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { appHref } from '@/lib/catalog/routes';
 import CoverImage from '@/components/CoverImage';
 import Icon from '@/components/Icon';
@@ -17,9 +16,10 @@ export default async function AppCard({ app, variant = 'compact', rank }: AppCar
   const name = appName(app, locale);
   const metadata = appMetadata(app);
   const isMod = /\bmod\b|معدل[ةه]?/i.test(name);
+  const steamripUrl = steamripPageUrl(app.devuploadUrl);
 
   return <article className={`app-card app-card--${variant}`}>
-    <a href={steamripUrl || undefined} target={steamripUrl ? "_blank" : undefined} rel={steamripUrl ? "noopener noreferrer nofollow" : undefined} className="app-card-link" aria-label={steamripUrl ? (english ? `Open ${name} on SteamRIP` : `فتح ${name} على SteamRIP`) : (english ? `Details for ${name}` : `تفاصيل ${name}`)} style={steamripUrl ? undefined : undefined}>
+    <a href={steamripUrl || appHref(app)} target={steamripUrl ? "_blank" : undefined} rel={steamripUrl ? "noopener noreferrer nofollow" : undefined} className="app-card-link" aria-label={steamripUrl ? (english ? `Open ${name} on SteamRIP` : `فتح ${name} على SteamRIP`) : (english ? `Details for ${name}` : `تفاصيل ${name}`)}>
       {variant === 'featured' && <div className="featured-art"><CoverImage src={app.imageUrl} priority={rank===1} alt="" aspectClassName="aspect-[16/8]" imgClassName="featured-art-image" /></div>}
       <div className="app-card-body">
         {rank && <span className="app-rank" aria-label={english ? `Rank ${rank}` : `الترتيب ${rank}`}>{String(rank).padStart(2, '0')}</span>}
