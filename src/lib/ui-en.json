@@ -672,5 +672,6 @@
   "تغيّرت بيانات أحد السجلات. أعد فحص الاقتراح قبل الموافقة.": "A record changed. Scan suggestions again before approving.",
   "تم تخطي هذا الاقتراح لهذه الجلسة فقط؛ لم تتغير قاعدة البيانات.": "This suggestion was skipped for this session only; the database was not changed.",
   "الموافقة تغيّر الاسم وتستخرج رقم الإصدار من الاسم فقط إذا كان حقل الإصدار فارغًا. لن تُنقل الملفات أو تُحذف السجلات أو تُنشر المسودات تلقائيًا.": "Approval changes the name and extracts a version only when the version field is empty. Files are not moved, records are not deleted, and drafts are not published automatically.",
-  "رجوع": "Back"
+  "رجوع": "Back",
+  "المطابقة الذكية": "Smart matching"
 }
