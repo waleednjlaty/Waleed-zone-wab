@@ -193,3 +193,4 @@ export const getCategorySummaries = cache(async (): Promise<CategorySummary[]> =
   return [...categories.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([category, items]) => ({
     category, count: latestPerApplication(items).length,
   }));
+});
