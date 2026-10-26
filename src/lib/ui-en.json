@@ -631,5 +631,6 @@
   "سجل إصدار في الصفحة": "release records on this page",
   "تعديل الإصدار / التطبيق #{0}": "Edit app / release #{0}",
   "بيانات الإصدار الجديد": "New release details",
-  "إنشاء الإصدار الجديد": "Create new release"
+  "إنشاء الإصدار الجديد": "Create new release",
+  "إنشاء إصدار جديد من {0}. أدخل رقم إصدار جديدًا؛ الإصدار القديم سيبقى كما هو.": "Create a new release of {0}. Enter the new version; the existing release will remain unchanged."
 }
