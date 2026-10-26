@@ -12,11 +12,11 @@ import { AdminError, pagination } from './validation';
 import { consumeWindow } from '@/lib/security/limits';
 import { logFailure } from '@/lib/security/logging';
 
-type Operation = AdminOperation | 'session' | 'catalog-record' | 'delivery-source' | 'monetization' | 'monetization-record' | 'analytics';
+type Operation = AdminOperation | 'session' | 'catalog-record' | 'delivery-source' | 'release-review' | 'monetization' | 'monetization-record' | 'analytics';
 type Dependencies = { service: OwnerAdminService; env: NodeJS.ProcessEnv;
   authorize: typeof authorizeOwnerRequest; owner: typeof requireOwner };
 const methods: Record<Operation, string[]> = {
-  analytics:['GET'], monetization: ['GET'], 'monetization-record': ['GET', 'PUT'], session: ['GET'], catalog: ['GET', 'POST'], 'catalog-record': ['GET','PATCH'], 'delivery-source': ['PUT'], versions: ['GET', 'POST'], version: ['GET', 'PATCH'],
+  analytics:['GET'], monetization: ['GET'], 'monetization-record': ['GET', 'PUT'], session: ['GET'], catalog: ['GET', 'POST'], 'catalog-record': ['GET','PATCH'], 'delivery-source': ['PUT'], 'release-review': ['GET', 'POST'], versions: ['GET', 'POST'], version: ['GET', 'PATCH'],
   files: ['GET', 'POST'], file: ['GET', 'PATCH'], config: ['GET', 'PUT'], status: ['GET'], control: ['GET', 'POST'],
 };
 export function adminErrorResponse(error: unknown) {
@@ -56,9 +56,9 @@ export function createAdminHandler(operation: Operation, dependencies?: Dependen
       if(sql && !await consumeWindow(sql,`admin:${write?'write':'read'}:${owner.id}`,write?60:300,60))
         throw new AdminError(429,'RATE_LIMITED');
       if(window)return Response.json(await new OwnerAnalyticsService(sql!).read(window.days,window.limit),{headers:downloadHeaders});
-      const service = dependencies?.service ?? (operation.startsWith('monetization') ? new OwnerMonetizationService(sql!,env) : ['catalog-record','delivery-source'].includes(operation) || operation === 'catalog' && write
+      const service = dependencies?.service ?? (operation.startsWith('monetization') ? new OwnerMonetizationService(sql!,env) : ['catalog-record','delivery-source','release-review'].includes(operation) || operation === 'catalog' && write
         ? new OwnerCatalogService(sql!,env) : new OwnerAdminService(sql!, env));
-      const data = write ? await service.write(operation as AdminOperation, await downloadBody(request,false,['catalog','catalog-record'].includes(operation)?8192:operation.startsWith('monetization')?6144:2048), owner.id, recordId)
+      const data = write ? await service.write(operation as AdminOperation, await downloadBody(request,false,['catalog','catalog-record','release-review'].includes(operation)?8192:operation.startsWith('monetization')?6144:2048), owner.id, recordId)
         : await service.read(operation as AdminOperation, recordId, page);
       return Response.json(data, { headers: downloadHeaders });
     } catch (error) { return adminErrorResponse(error); }
