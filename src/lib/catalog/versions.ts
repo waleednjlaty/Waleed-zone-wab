@@ -20,7 +20,7 @@ function normalizePlatform(value: string | null | undefined): string {
   if (!raw) return "unspecified";
   if (raw.includes("android")) return "android";
   if (raw.includes("windows") || raw === "win32" || raw === "win64" || raw === "pc") return "windows";
-  if (raw === "ios" || raw === "iphone" || raw === "ipad") return "ios";
+  if (raw.startsWith("ios") || raw === "iphone" || raw === "ipad") return "ios";
   if (raw.includes("macos") || raw.includes("macosx") || raw === "mac") return "macos";
   if (raw.includes("linux")) return "linux";
   return raw;
