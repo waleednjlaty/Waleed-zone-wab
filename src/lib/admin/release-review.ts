@@ -59,7 +59,7 @@ function normalizeIdentity(value: string | null | undefined): string {
   return normalizeTitle(rootApplicationName(value));
 }
 
-function normalizePlatform(value: string | null | undefined): string {
+export function releasePlatformKey(value: string | null | undefined): string {
   const raw = String(value || '').normalize('NFKC').toLocaleLowerCase('en-US').replace(/[^\p{L}\p{N}]/gu, '');
   if (!raw) return 'unspecified';
   if (raw.includes('android')) return 'android';
@@ -123,7 +123,7 @@ export function heuristicReleaseGroups(rows: ReleaseReviewRow[]): ReleaseReviewG
     const leftBase = normalizeIdentity(left.name);
     for (let j = i + 1; j < ordered.length; j++) {
       const right = ordered[j];
-      if (normalizePlatform(left.platform) !== normalizePlatform(right.platform)) continue;
+      if (releasePlatformKey(left.platform) !== releasePlatformKey(right.platform)) continue;
       const rightFull = normalizeTitle(right.name);
       const rightBase = normalizeIdentity(right.name);
       const embeddedVersion = Boolean(extractEmbeddedVersion(left.name) || extractEmbeddedVersion(right.name));
@@ -181,7 +181,7 @@ function validateAIResponse(raw: unknown, rows: ReleaseReviewRow[]): ReleaseRevi
     const ids = group.ids.filter((id): id is number => Number.isSafeInteger(id));
     if (ids.length !== group.ids.length || new Set(ids).size !== ids.length || ids.some(id => claimed.has(id) || !byId.has(id))) continue;
     const selected = ids.map(id => byId.get(id)!);
-    if (new Set(selected.map(item => normalizePlatform(item.platform))).size !== 1) continue;
+    if (new Set(selected.map(item => releasePlatformKey(item.platform))).size !== 1) continue;
     const roots = selected.map(item => rootApplicationName(item.name)).filter(Boolean);
     const proposed = typeof group.canonical_name === 'string' ? rootApplicationName(group.canonical_name).trim() : '';
     const confidence = typeof group.confidence === 'number' && Number.isFinite(group.confidence)
