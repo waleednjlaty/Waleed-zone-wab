@@ -10,15 +10,30 @@ export function isGame(app: Pick<Application, 'category'>) {
 }
 
 export function appName(app: Pick<Application, 'name' | 'id'>, locale: Locale = 'ar') {
-  return app.name?.trim().replace(/\.(apk|xapk|apks|zip|exe)$/i, '').replace(/_/g, ' ') || (locale === 'en' ? `App ${app.id}` : `تطبيق ${app.id}`);
+  const cleaned = (app.name || '')
+    .trim()
+    .replace(/\.(apk|xapk|apks|aab|zip|exe|msi|dmg|ipa)$/i, '')
+    .replace(/^\s*#?\d{1,3}[\s.)_-]+(?=[^\W\d_])/u, '')
+    .replace(/(?:^|[\s_-])v?\d+(?:\.\d+){1,5}(?:[-+][\w.-]+)?(?=$|[\s_-])/gi, ' ')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned || (locale === 'en' ? `App ${app.id}` : `تطبيق ${app.id}`);
 }
 
-export function appMetadata(app: Pick<Application, 'version' | 'size' | 'platform'>) {
+export function appVersion(app: Pick<Application, 'name' | 'version'>) {
+  const explicit = app.version?.trim();
+  if (explicit && !/^[-–—.]+$/.test(explicit)) return explicit;
+  const match = (app.name || '').match(/(?:^|[\s_-])v?(\d+(?:\.\d+){1,5}(?:[-+][\w.-]+)?)(?=$|[\s_-])/i);
+  return match?.[1] || null;
+}
+
+export function appMetadata(app: Pick<Application, 'name' | 'version' | 'size' | 'platform'>) {
   const available = (value: string | null) => {
     const text = value?.trim();
     return text && !/^[-–—.]+$/.test(text) ? text : null;
   };
-  const version = available(app.version);
+  const version = available(appVersion(app));
   return [version ? (/^\d/.test(version) ? `v${version}` : version) : null, available(app.size), available(app.platform)].filter(Boolean).join(' · ');
 }
 
