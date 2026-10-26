@@ -52,7 +52,7 @@ function duplicateVersionExists(input: Input, candidate: ReleaseSuggestionCandid
 }
 function heuristicScore(input: Input, candidate: ReleaseSuggestionCandidate) {
   const wantedPlatform = platformKey(input.platform), gotPlatform = platformKey(candidate.platform);
-  if (wantedPlatform !== 'unspecified' && gotPlatform !== 'unspecified' && wantedPlatform !== gotPlatform) return 0;
+  if (wantedPlatform !== 'unspecified' && wantedPlatform !== gotPlatform) return 0;
   const nameScore = similarity(clean(input.name), clean(candidate.name));
   const platformBoost = wantedPlatform === gotPlatform ? 0.04 : 0;
   return Math.min(1, nameScore * 0.96 + platformBoost);
