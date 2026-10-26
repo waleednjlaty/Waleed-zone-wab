@@ -40,6 +40,8 @@ function decimal(value: unknown) {
 function app(value: unknown): AdminApp {
   const row = object(value);
   return { id: number(row.id, 1), name: text(row.name, 300), icon: null,
+    ...(row.version === null || typeof row.version === 'string' ? { version: row.version as string | null } : (() => { throw invalid(); })()),
+    ...(row.platform === null || typeof row.platform === 'string' ? { platform: row.platform as string | null } : (() => { throw invalid(); })()),
     mode: null, currentVersionId: null, active: boolean(row.active), published: boolean(row.published) };
 }
 function version(value: unknown): Version {
