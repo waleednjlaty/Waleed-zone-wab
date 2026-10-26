@@ -616,5 +616,9 @@
   "جارٍ استخدام رابط محفوظ صالح": "Using a valid cached link",
   "انتهت صلاحية رابط الاختبار. أضف رابطًا جديدًا من لوحة المالك.": "Test link expired. Add a fresh link in the owner dashboard.",
   "لا يسمح CDN بالتحقق عبر HEAD. لم يبدأ التحميل.": "CDN does not allow HEAD verification. Download did not start.",
-  "انتهت صلاحية الرابط المحفوظ. أعد المحاولة للحصول على رابط جديد.": "The cached link expired. Retry to obtain a fresh link."
+  "انتهت صلاحية الرابط المحفوظ. أعد المحاولة للحصول على رابط جديد.": "The cached link expired. Retry to obtain a fresh link.",
+  "إصدارات التطبيق": "App versions",
+  "اختر الإصدار المطلوب؛ لكل إصدار ملفه ورابط تحميله الخاص.": "Choose a release; each version has its own file and download link.",
+  "الإصدار المعروض": "Current release",
+  "عرض الإصدار": "View release"
 }
