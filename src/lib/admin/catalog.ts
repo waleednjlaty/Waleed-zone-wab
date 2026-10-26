@@ -54,8 +54,8 @@ export class OwnerCatalogService {
     if (operation === 'catalog-suggestions') {
       fields(body,['name','version','platform']);
       const input = { name: text(body.name,255), version: text(body.version,50), platform: text(body.platform,50) };
-      const candidates = await this.tx(async tx => await tx<ReleaseSuggestionCandidate[]>\`SELECT id,name,description,version,size,category,platform,developer,image_url,active,published
-        FROM applications WHERE active=true ORDER BY created_at DESC,id DESC LIMIT 500\`);
+      const candidates = await this.tx(async tx => await tx<ReleaseSuggestionCandidate[]>`SELECT id,name,description,version,size,category,platform,developer,image_url,active,published
+        FROM applications WHERE active=true ORDER BY created_at DESC,id DESC LIMIT 500`);
       return suggestApplicationReleases(candidates, input, this.env);
     }
     if (operation === 'catalog') {
