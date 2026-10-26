@@ -32,6 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
     verification: {
       google: 'WieAa828zHp-9pQGdlDCsAk9hWj1toB3ulo0Rh8v_bs',
       other: {
+        'monetag': 'e288169a18e39ae42fc88115f5a6f2f3',
         ...(process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
           ? { 'msvalidate.01': process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION }
           : {}),
