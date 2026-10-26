@@ -49,7 +49,7 @@ export function homeCollections(apps: Application[], locale: Locale = 'ar') {
   return {
     trending: ranked.slice(0, 6),
     trendingLabel: locale === 'en' ? (hasDownloads ? 'Most downloaded among recent additions' : hasViews ? 'Most viewed among recent additions' : 'Discover the latest additions') : (hasDownloads ? 'الأكثر تحميلًا من آخر الإضافات' : hasViews ? 'الأكثر مشاهدة من آخر الإضافات' : 'اكتشف أحدث الإضافات'),
-    latest: apps.filter(app => app.version).slice(0, 6),
+    latest: apps.filter(app => appVersion(app)).slice(0, 6),
     games: apps.filter(isGame).slice(0, 3),
     apps: apps.filter(app => !isGame(app)).slice(0, 6),
   };
