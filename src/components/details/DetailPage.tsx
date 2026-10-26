@@ -17,7 +17,7 @@ import { getDownloadAvailability, getFallbackDelivery } from '@/components/downl
 import Screenshots from './Screenshots';
 import Versions from './Versions';
 import ApplicationReleases from './ApplicationReleases';
-import { appName, isGame } from '@/components/catalog/presentation';
+import { appName, isGame, steamripPageUrl } from '@/components/catalog/presentation';
 import { getApplicationVersions, getRelatedApps } from '@/lib/queries';
 import { authDb, ensureAuthTables, getCurrentUser } from '@/lib/auth';
 import { getCatalogDetails } from '@/lib/catalog/metadata';
@@ -38,6 +38,7 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
   const nonce=adEligible ? (await headers()).get('x-nonce') || undefined : undefined;
   let saved=false;
   if(user){await ensureAuthTables();const sql=authDb();const [row]=await sql`SELECT 1 FROM site_favorites WHERE user_id=${user.id} AND application_id=${app.id} LIMIT 1`;saved=Boolean(row);}
+  const steamripUrl=steamripPageUrl(app.devuploadUrl);
   const direct=safeExternalUrl(app.downloadUrl),download=direct||telegramDownloadUrl(app.id),url=SITE_URL+appHref(app);
   const categoryPath=app.category?`/category/${encodeURIComponent(app.category)}`:null;
   const technical=[[t("الإصدار"),app.version],[t("حجم الملف"),app.size],[t("متطلبات Android"),details.android],[t("المعمارية"),details.architecture],[t("اسم الحزمة"),details.packageName],[t("نوع الملف"),details.fileType],[t("المنصة"),app.platform],[t("آخر تحديث"),formatDate(details.updatedAt, locale)],[t("تاريخ الإضافة"),formatDate(app.createdAt, locale)],[t("المطور"),app.developer],[t("التصنيف"),app.category]].filter((row):row is [string,string]=>Boolean(available(row[1])));
@@ -56,7 +57,7 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
       <header className="detail-summary">
         <div className="detail-identity"><span className="detail-icon"><CoverImage priority src={app.imageUrl} alt={t("أيقونة {0}", name)} aspectClassName="aspect-square"/></span><div className="detail-name"><p className="eyebrow">{kind==='games'?t("لعبة"):t("تطبيق")}{app.category?` · ${app.category}`:''}</p><h1 dir="auto">{name}</h1>{available(app.developer)&&<p className="detail-developer" dir="auto">{app.developer}</p>}</div></div>
         <div className="detail-primary-meta">{available(app.version)&&<span><small>{t("الإصدار")}</small><strong dir="auto">{app.version}</strong></span>}{available(app.size)&&<span><small>{t("حجم الملف")}</small><strong dir="auto">{app.size}</strong></span>}{available(details.android)&&<span><small>Android</small><strong dir="auto">{details.android}</strong></span>}{typeof app.downloads==='number'&&app.downloads>0&&<span><small>{t("التحميلات")}</small><strong>{new Intl.NumberFormat(locale).format(app.downloads)}</strong></span>}</div>
-        <div className="detail-download-area"><DownloadActions allowSticky={!adEligible} name={name} appId={app.id} imageUrl={app.imageUrl} size={available(app.size)} href={download} external={Boolean(direct)} initialSaved={saved} signedIn={Boolean(user)} deliveryAvailable={Boolean(fallbackDelivery)} directFile={downloadAvailability.file} directConfigured={downloadAvailability.mode!=='legacy'}/>{direct&&!fallbackDelivery&&downloadAvailability.mode==='legacy'&&<a className="detail-alternate-download" href={telegramDownloadUrl(app.id)} rel="noopener noreferrer">{t("التحميل عبر البوت ↗")}</a>}</div>
+        <div className="detail-download-area"><DownloadActions allowSticky={!adEligible} name={name} appId={app.id} imageUrl={app.imageUrl} size={available(app.size)} href={download} steamripUrl={steamripUrl} external={Boolean(direct)} initialSaved={saved} signedIn={Boolean(user)} deliveryAvailable={Boolean(fallbackDelivery)} directFile={downloadAvailability.file} directConfigured={downloadAvailability.mode!=='legacy'}/>{direct&&!fallbackDelivery&&downloadAvailability.mode==='legacy'&&<a className="detail-alternate-download" href={telegramDownloadUrl(app.id)} rel="noopener noreferrer">{t("التحميل عبر البوت ↗")}</a>}</div>
       </header>
       <div className="detail-content-grid"><div className="detail-main">
         {Boolean(details.screenshots?.length)&&<Screenshots images={details.screenshots!} name={name}/>}
