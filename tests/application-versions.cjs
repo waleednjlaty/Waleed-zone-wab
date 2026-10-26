@@ -46,6 +46,7 @@ test('when metadata version is empty, title version determines the latest releas
 
 test('stable release outranks the matching prerelease and recent metadata breaks ties', () => {
   assert.ok(compareApplicationVersions(row(9, 'CapCut', '2.0'), row(10, 'CapCut', '2.0-beta')) > 0);
+  assert.ok(compareApplicationVersions(row(11, 'CapCut', '19.8.0'), row(12, 'CapCut', '19.8.0-beta.2')) > 0);
   assert.ok(compareApplicationVersions(row(4, 'CapCut', '1.2', 'Android', '2026-02-01T00:00:00Z'), row(3, 'CapCut', '1.2')) > 0);
 });
 
