@@ -4,6 +4,7 @@ import type { Sql, TransactionSql } from 'postgres';
 import { telegramReference } from '@/lib/delivery/telegram';
 import { safeExternalUrl } from '@/lib/utils';
 import { AdminError, fields, id, invalid, object, revision, text, choice } from './validation';
+import { suggestApplicationReleases, type ReleaseSuggestionCandidate } from './release-assistant';
 
 const columns = ['name','description','version','size','category','platform','developer','image_url'];
 const limits = [255,1000,50,50,100,50,255,500];
@@ -50,6 +51,13 @@ export class OwnerCatalogService {
     });
   }
   async write(operation: string, body: Record<string,unknown>, _owner: string, recordId?: string) {
+    if (operation === 'catalog-suggestions') {
+      fields(body,['name','version','platform']);
+      const input = { name: text(body.name,255), version: text(body.version,50), platform: text(body.platform,50) };
+      const candidates = await this.tx(async tx => await tx<ReleaseSuggestionCandidate[]>\`SELECT id,name,description,version,size,category,platform,developer,image_url,active,published
+        FROM applications WHERE active=true ORDER BY created_at DESC,id DESC LIMIT 500\`);
+      return suggestApplicationReleases(candidates, input, this.env);
+    }
     if (operation === 'catalog') {
       fields(body,['metadata']); const data = metadata(body.metadata);
       return this.tx(async tx => {
