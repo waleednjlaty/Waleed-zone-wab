@@ -129,10 +129,15 @@ export function heuristicReleaseGroups(rows: ReleaseReviewRow[]): ReleaseReviewG
       const rightFull = normalizeTitle(right.name);
       const rightBase = normalizeIdentity(right.name);
       const embeddedVersion = Boolean(extractEmbeddedVersion(left.name) || extractEmbeddedVersion(right.name));
-      const similarRoot = nameSimilarity(leftBase, rightBase) >= 0.9;
-      if ((leftBase && leftBase === rightBase && (embeddedVersion || leftFull !== rightFull)) || (similarRoot && leftBase !== rightBase)) {
+      if (leftBase && leftBase === rightBase && (embeddedVersion || leftFull !== rightFull)) {
         join(left.id, right.id);
+        continue;
       }
+      // Avoid quadratic dynamic-programming work for unrelated titles in a large catalog.
+      if (!leftBase || !rightBase || leftBase === rightBase || leftBase[0] !== rightBase[0]) continue;
+      const longer = Math.max(leftBase.length, rightBase.length);
+      if (longer > 0 && Math.abs(leftBase.length - rightBase.length) / longer > 0.1) continue;
+      if (nameSimilarity(leftBase, rightBase) >= 0.9) join(left.id, right.id);
     }
   }
   const clusters = new Map<number, ReleaseReviewRow[]>();
