@@ -6,10 +6,16 @@ export type VersionedApplication = {
   createdAt?: Date | string | null;
 };
 
+function embeddedVersion(name: string | null | undefined): string {
+  const match = (name || "").match(/(?:^|[\s_-])v?(\d+(?:\.\d+){1,5}(?:[-+][\w.-]+)?)(?=$|[\s_-])/i);
+  return match?.[1] || "";
+}
+
 function normalizeIdentity(value: string | null | undefined): string {
   return (value || "")
     .normalize("NFKC")
     .replace(/\.(apk|xapk|apks|aab|zip|exe|msi|dmg|ipa)$/i, "")
+    .replace(/(?:^|[\s_-])v?\d+(?:\.\d+){1,5}(?:[-+][\w.-]+)?(?=$|[\s_-])/gi, " ")
     .replace(/_/g, " ")
     .toLocaleLowerCase("en-US")
     .replace(/[^\p{L}\p{N}]/gu, "");
@@ -26,7 +32,7 @@ function normalizePlatform(value: string | null | undefined): string {
   return raw;
 }
 
-/** Same app title + operating-system track forms a release family. */
+/** Same normalized title + operating-system track forms a release family. */
 export function applicationFamilyKey(app: Pick<VersionedApplication, "name" | "platform"> & { id?: number }): string {
   const name = normalizeIdentity(app.name);
   return name ? name + "::" + normalizePlatform(app.platform) : "id::" + String(app.id ?? "");
@@ -39,7 +45,8 @@ function timestamp(value: Date | string | null | undefined): number {
 }
 
 function releaseNumbers(version: string | null | undefined): number[] {
-  return (version || "").match(/\d+/g)?.slice(0, 12).map(Number) || [];
+  const core = (version || "").split(/[-+]/, 1)[0];
+  return core.match(/\d+/g)?.slice(0, 12).map(Number) || [];
 }
 
 function isPrerelease(version: string | null | undefined): boolean {
@@ -48,7 +55,8 @@ function isPrerelease(version: string | null | undefined): boolean {
 
 /** Positive means a is newer than b. Numeric versions beat date-only guesses. */
 export function compareApplicationVersions(a: VersionedApplication, b: VersionedApplication): number {
-  const av = (a.version || "").trim(), bv = (b.version || "").trim();
+  const av = (a.version || "").trim() || embeddedVersion(a.name);
+  const bv = (b.version || "").trim() || embeddedVersion(b.name);
   const an = releaseNumbers(av), bn = releaseNumbers(bv);
   if (an.length && bn.length) {
     const length = Math.max(an.length, bn.length);

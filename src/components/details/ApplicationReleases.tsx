@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getLocale } from '@/lib/locale-server';
 import { translateUI } from '@/lib/ui-translations';
 import { appHref } from '@/lib/catalog/routes';
-import { appName } from '@/components/catalog/presentation';
+import { appName, appVersion } from '@/components/catalog/presentation';
 import type { Application } from '@/lib/queries';
 
 export default async function ApplicationReleases({ items, currentId }: { items: Application[]; currentId: number }) {
@@ -16,7 +16,7 @@ export default async function ApplicationReleases({ items, currentId }: { items:
     <ul className="versions-list">
       {items.map((release) => {
         const current = release.id === currentId;
-        const version = release.version?.trim() || (english ? "Version not specified" : "إصدار غير محدد");
+        const version = appVersion(release) || (english ? "Version not specified" : "إصدار غير محدد");
         const metadata = [release.platform, release.size].filter(value => value?.trim()).join(" · ");
         return <li key={release.id}>
           <div>
