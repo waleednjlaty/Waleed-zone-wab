@@ -45,7 +45,8 @@ function timestamp(value: Date | string | null | undefined): number {
 }
 
 function releaseNumbers(version: string | null | undefined): number[] {
-  return (version || "").match(/\d+/g)?.slice(0, 12).map(Number) || [];
+  const core = (version || "").split(/[-+]/, 1)[0];
+  return core.match(/\d+/g)?.slice(0, 12).map(Number) || [];
 }
 
 function isPrerelease(version: string | null | undefined): boolean {
