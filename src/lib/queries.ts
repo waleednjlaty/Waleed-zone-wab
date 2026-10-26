@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { applicationFamilyKey, latestPerApplication, sortApplicationVersions } from '@/lib/catalog/versions';
 import { cache } from 'react';
 import { applications } from '@/lib/db/schema';
@@ -62,7 +62,15 @@ export const getApps = cache(
       ));
       const byId=new Map(rows.map(row=>[row.id,row]));
       const ordered=ranked.map(item=>byId.get(item.id)).filter((item):item is Application=>Boolean(item));
-      const unique=latestPerApplication(ordered);
+      const familyKeys=[] as string[], familySeen=new Set<string>();
+      for (const item of ordered) { const key=applicationFamilyKey(item); if(!familySeen.has(key)){familySeen.add(key);familyKeys.push(key);} }
+      const allFamilyRows=familyKeys.length ? await db.select().from(applications).where(and(
+        eq(applications.active,true),eq(applications.published,true),
+        ...(category?.trim()?[eq(applications.category,category.trim())]:[]),
+      )) : [];
+      const latestRows=latestPerApplication(allFamilyRows.filter(item=>familySeen.has(applicationFamilyKey(item))));
+      const latestByFamily=new Map(latestRows.map(item=>[applicationFamilyKey(item),item]));
+      const unique=familyKeys.map(key=>latestByFamily.get(key)).filter((item):item is Application=>Boolean(item));
       const total=unique.length,totalPages=Math.max(1,Math.ceil(total/safeLimit)),currentPage=Math.min(rawPage,totalPages);
       return {items:unique.slice((currentPage-1)*safeLimit,currentPage*safeLimit),total,totalPages,currentPage};
     }
