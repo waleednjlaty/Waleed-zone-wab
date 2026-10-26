@@ -1,6 +1,6 @@
 import 'server-only';
 
-export type ReleaseSuggestionReleaseSuggestionCandidate = {
+export type ReleaseSuggestionCandidate = {
   id: number; name: string; description: string | null; version: string | null; size: string | null;
   category: string | null; platform: string | null; developer: string | null; image_url: string | null;
   active: boolean; published: boolean;
@@ -10,8 +10,8 @@ type Match = ReleaseSuggestionCandidate & { confidence: number; reason: string; 
 type Provider = 'openai' | 'similarity';
 
 function clean(value: unknown) {
-  return String(value ?? '').normalize('NFKC').toLocaleLowerCase().replace(/(?:^|[\\s_-])v?\\d+(?:\\.\\d+){1,5}(?:[-+][\\w.-]+)?(?=$|[\\s_-])/giu, ' ')
-    .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+  return String(value ?? '').normalize('NFKC').toLocaleLowerCase().replace(/(?:^|[\s_-])v?\d+(?:\.\d+){1,5}(?:[-+][\w.-]+)?(?=$|[\s_-])/giu, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
 }
 function platformKey(value: unknown) {
   const p = clean(value).replace(/ /g, '');
