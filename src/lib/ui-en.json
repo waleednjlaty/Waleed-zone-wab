@@ -632,5 +632,20 @@
   "تعديل الإصدار / التطبيق #{0}": "Edit app / release #{0}",
   "بيانات الإصدار الجديد": "New release details",
   "إنشاء الإصدار الجديد": "Create new release",
-  "إنشاء إصدار جديد من {0}. أدخل رقم إصدار جديدًا؛ الإصدار القديم سيبقى كما هو.": "Create a new release of {0}. Enter the new version; the existing release will remain unchanged."
+  "إنشاء إصدار جديد من {0}. أدخل رقم إصدار جديدًا؛ الإصدار القديم سيبقى كما هو.": "Create a new release of {0}. Enter the new version; the existing release will remain unchanged.",
+  "أدخل اسم التطبيق والإصدار والنظام أولًا للحصول على اقتراحات دقيقة.": "Enter the app name, version, and platform first for accurate suggestions.",
+  "راجع الاقتراحات واختر التطبيق الصحيح يدويًا؛ لن تُحفظ أي بيانات قبل موافقتك.": "Review the suggestions and manually choose the correct app. Nothing is saved until you confirm.",
+  "لم أجد تطبيقًا قريبًا بما يكفي. يمكنك إكمال الإضافة يدويًا.": "No sufficiently similar app was found. You can continue manually.",
+  "هذا الإصدار مسجّل بالفعل. افتح السجل الموجود لتعديله بدل إنشاء نسخة مكررة.": "This version is already registered. Open the existing record to edit it instead of creating a duplicate.",
+  "تم اعتماد اقتراح التطبيق #{0}؛ راجع الاسم والنظام ورقم الإصدار ثم احفظ. السجل القديم سيبقى دون تغيير.": "App suggestion #{0} selected. Review the name, platform, and version before saving. The old record will remain unchanged.",
+  "مساعد التعرّف على التطبيق": "App identity assistant",
+  "يقارن الاسم والنظام والإصدار ويقترح سجلات قريبة. القرار النهائي لك، ولا يتم أي ربط تلقائي.": "Compares the name, platform, and version to suggest similar catalog records. You decide; no automatic linking occurs.",
+  "جارٍ تحليل الكتالوج…": "Analyzing catalog…",
+  "🤖 اقتراح تطبيق مطابق": "🤖 Suggest matching app",
+  "تم ترتيب النتائج بالذكاء الاصطناعي. يلزم تأكيدك دائمًا.": "Results ranked by AI. Your confirmation is always required.",
+  "مفتاح الذكاء الاصطناعي غير مهيأ؛ هذه اقتراحات تشابه للاسم والنظام وليست قرارًا آليًا.": "AI key is not configured; these are name/platform similarity suggestions, not an automated decision.",
+  "تشابه": "similarity",
+  "نعم، هذا هو التطبيق الصحيح": "Yes, this is the correct app",
+  "لا، تطبيق مختلف": "No, a different app",
+  "رقم الإصدار نفسه موجود؛ لن ننشئ نسخة مكررة.": "The same version number already exists; no duplicate release will be created."
 }
