@@ -620,5 +620,16 @@
   "إصدارات التطبيق": "App versions",
   "اختر الإصدار المطلوب؛ لكل إصدار ملفه ورابط تحميله الخاص.": "Choose a release; each version has its own file and download link.",
   "الإصدار المعروض": "Current release",
-  "عرض الإصدار": "View release"
+  "عرض الإصدار": "View release",
+  "إضافة إصدار جديد لهذا التطبيق": "Add a new release for this app",
+  "تُنشأ نسخة إصدار جديدة كسجل مستقل؛ لا يتغير ملف الإصدار الأصلي ولا رابط تنزيله.": "A new release is created as a separate record; the original file and download link stay unchanged.",
+  "الإصدار الأساسي": "Source release",
+  "إصدار غير محدد": "Version not specified",
+  "نظام غير محدد": "Platform not specified",
+  "تعديل تطبيق / إصدار": "Edit app / release",
+  "اختر تطبيقًا وإصدارًا": "Choose an app and release",
+  "سجل إصدار في الصفحة": "release records on this page",
+  "تعديل الإصدار / التطبيق #{0}": "Edit app / release #{0}",
+  "بيانات الإصدار الجديد": "New release details",
+  "إنشاء الإصدار الجديد": "Create new release"
 }
