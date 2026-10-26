@@ -42,6 +42,8 @@ export function rootApplicationName(name: string | null | undefined): string {
   return String(name || '')
     .normalize('NFKC')
     .replace(FILE_SUFFIX, '')
+    // Strip catalog-number labels, but keep legitimate names such as "7-Zip".
+    .replace(/^\s*(?:#?\d{1,3})[\s.)_]+(?=[\p{L}])/u, '')
     .replace(VERSION_SUFFIX, '')
     .replace(/[()[\]]/g, ' ')
     .replace(/[_-]+/g, ' ')
@@ -239,8 +241,11 @@ export async function suggestReleaseGroups(rows: ReleaseReviewRow[], env: NodeJS
   const apiKey = env.OPENAI_API_KEY?.trim();
   if (apiKey) {
     try {
-      const groups = await requestOpenAI(rows, apiKey, env.CATALOG_AI_MODEL?.trim() || 'gpt-4o-mini');
-      return { provider: 'openai' as const, scanned: rows.length, groups: groups.length ? groups : heuristicReleaseGroups(rows) };
+      const aiGroups = await requestOpenAI(rows, apiKey, env.CATALOG_AI_MODEL?.trim() || 'gpt-4o-mini');
+      const fallbackGroups = heuristicReleaseGroups(rows);
+      const aiIds = new Set(aiGroups.flatMap(group => group.items.map(item => item.id)));
+      const nonOverlappingFallback = fallbackGroups.filter(group => !group.items.some(item => aiIds.has(item.id)));
+      return { provider: 'openai' as const, scanned: rows.length, groups: [...aiGroups, ...nonOverlappingFallback] };
     } catch {
       // A transient model error must never block catalog administration.
     }
