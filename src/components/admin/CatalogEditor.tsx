@@ -23,9 +23,9 @@ export default function CatalogEditor({onChange}:{onChange:()=>void}){
   function startNewRelease(){
     if(!row)return;
     setCopyFrom(row.id);
-    setValues(Object.fromEntries(Object.keys(labels).map(k=>[k,k==='version'?'':String(row[k]??'')])));
+    setValues(Object.fromEntries(Object.keys(labels).map(k=>[k,k==='version'||k==='size'?'':String(row[k]??'')])));
     setRow(null);setUrl('');setChannel('');setMessage('');
-    setNotice(`إنشاء إصدار جديد من ${String(row.name)}. أدخل رقم إصدار جديدًا؛ الإصدار القديم سيبقى كما هو.`);
+    setNotice(t("إنشاء إصدار جديد من {0}. أدخل رقم إصدار جديدًا؛ الإصدار القديم سيبقى كما هو.", String(row.name)));
   }
   async function run(action:()=>Promise<void>){if(lock.current)return;lock.current=true;setBusy(true);setNotice('');try{await action();}catch(e){
     if(e instanceof AdminApiError&&e.status===409){if(row){try{await load(row.id);}catch{setRow(null);setValues(empty());}}setNotice('تعارض في التعديل: أُعيدت قراءة النسخة الحالية. راجعها ثم احفظ مجددًا.');}
