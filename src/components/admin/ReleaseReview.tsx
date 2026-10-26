@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslateUI } from '@/components/LocaleProvider';
 import { adminApi, apiErrorMessage, request } from './api';
 import styles from './admin.module.css';
@@ -54,7 +54,7 @@ export default function ReleaseReview({ onChange }: { onChange: () => void }) {
   const [confirmIndex, setConfirmIndex] = useState<number | null>(null);
   const [canonicalName, setCanonicalName] = useState('');
   
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setBusy(true);
     setError('');
     setNotice('');
@@ -66,9 +66,9 @@ export default function ReleaseReview({ onChange }: { onChange: () => void }) {
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function approve(group: ReviewGroup) {
     if (busy || !canonicalName.trim()) return;
