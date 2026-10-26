@@ -152,4 +152,6 @@ button.danger:hover { background: #f58b8b22; }
 @media(max-width:600px) { .formGrid { grid-template-columns: minmax(0,1fr); } }
 .form input, .form textarea, .form select { min-height: 44px; padding: 10px 12px; color: var(--text); background: var(--bg); border: 1px solid #3a4654; border-radius: 9px; font-size: .875rem; }
 .form textarea { min-height: 100px; resize: vertical; }
+.formActions > label { display: grid; flex: 1 1 220px; min-width: 0; max-width: 100%; gap: 8px; overflow: hidden; }
+.formActions > label select { display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; text-overflow: ellipsis; }
 .formActions select { max-width: 100%; min-width: 0; color: var(--text); background: var(--bg); padding: 8px; }

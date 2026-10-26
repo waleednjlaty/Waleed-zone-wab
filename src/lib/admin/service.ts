@@ -12,7 +12,7 @@ type File = { id: string; version_id: string; variant_key: string; artifact_type
   active: boolean; retired_at: Date | null; created_at: Date };
 type Config = { application_id: number; mode: string; current_version_id: string | null; updated_at: Date };
 type Page = { limit: number; after: number | string | null; parent: number | string | null };
-export type AdminOperation = 'catalog' | 'versions' | 'version' | 'files' | 'file' | 'config' | 'status' | 'control';
+export type AdminOperation = 'catalog' | 'catalog-suggestions' | 'versions' | 'version' | 'files' | 'file' | 'config' | 'status' | 'control';
 const missing = () => new AdminError(404, 'RECORD_NOT_FOUND');
 const conflict = (code = 'STATE_CONFLICT') => new AdminError(409, code);
 const hash = (row: unknown) => createHash('sha256').update(JSON.stringify(row)).digest('hex');

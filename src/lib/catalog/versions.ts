@@ -10,6 +10,9 @@ function normalizeIdentity(value: string | null | undefined): string {
   return (value || "")
     .normalize("NFKC")
     .replace(/\.(apk|xapk|apks|aab|zip|exe|msi|dmg|ipa)$/i, "")
+    // Catalog numbers such as "01 CAPCUT PRO" are labels, not part of the app identity.
+    .replace(/^\s*(?:#?\d{1,3})[\s.)_]+(?=[\p{L}])/u, "")
+    .replace(/(?:^|[\s_-])v?\d+(?:\.\d+){1,5}(?:[-+][\p{L}\p{N}.-]+)?(?=$|[\s_-])/giu, " ")
     .replace(/_/g, " ")
     .toLocaleLowerCase("en-US")
     .replace(/[^\p{L}\p{N}]/gu, "");

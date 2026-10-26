@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 're
 import CatalogEditor from './CatalogEditor';
 import Analytics from './Analytics';
 import MonetizationReview from './MonetizationReview';
+import ReleaseReview from './ReleaseReview';
 import CoverImage from '@/components/CoverImage';
 import Icon, { type IconName } from '@/components/Icon';
 import { adminApi, AdminApiError, apiErrorMessage } from './api';
@@ -18,6 +19,7 @@ import styles from './admin.module.css';
 const sections: { id: Section; label: string; english: string; icon: IconName }[] = [
   { id: 'overview', label: 'نظرة عامة', english: 'Overview', icon: 'grid' },
   { id: 'applications', label: 'التطبيقات', english: 'Applications', icon: 'apps' },
+  { id: 'release-review', label: 'المطابقة الذكية', english: 'AI release review', icon: 'refresh' },
   { id: 'configuration', label: 'إعداد التحميل', english: 'Download configuration', icon: 'menu' },
   { id: 'versions', label: 'الإصدارات', english: 'Versions', icon: 'refresh' },
   { id: 'files', label: 'الملفات', english: 'Files', icon: 'arrow' },
@@ -64,7 +66,7 @@ function ScanBadges({ status, active, retired }: { status: string; active: boole
 function AppIdentity({ app }: { app: AdminApp }) {
   const t = useTranslateUI();
 
-  return <div className={styles.identity}><span className={styles.appIcon}><CoverImage src={app.icon} alt="" aspectClassName="aspect-square" /></span><span><strong dir="auto">{app.name}</strong><small>{t("تطبيق #")}{app.id}</small></span></div>;
+  return <div className={styles.identity}><span className={styles.appIcon}><CoverImage src={app.icon} alt="" aspectClassName="aspect-square" /></span><span><strong dir="auto">{app.name}</strong><small>{t("تطبيق #")}{app.id}{app.version ? ` · ${app.version}` : ''}{app.platform ? ` · ${app.platform}` : ''}</small></span></div>;
 }
 function Gate({ label, ready }: { label: string; ready: boolean }) {
   const t = useTranslateUI();
@@ -198,19 +200,20 @@ export default function AdminDashboard() {
         </>}
 
         {section === 'applications' && <CatalogEditor onChange={() => setRevision(v=>v+1)} />}
+        {section === 'release-review' && <ReleaseReview onChange={() => setRevision(v=>v+1)} />}
         {section === 'applications' && <Panel title={t("كتالوج التطبيقات")} description={t("اختر تطبيقًا لإدارة إعدادات التحميل المتقدم.")}>
           {catalogError ? <State title={t("تعذر قراءة الكتالوج")} error>{t(catalogError)}</State> : !catalog ? <Loading label={t("جارٍ قراءة التطبيقات…")} /> : catalog.items.length === 0 ? <State title={t("لا توجد تطبيقات في هذه الصفحة")}>{t("أضف التطبيقات عبر مسار الكتالوج المعتمد.")}</State> : <>
             <div className={styles.appList}>{catalog.items.map(app => <button key={app.id} className={styles.appRow} onClick={() => selectApp(app.id)} disabled={busy} aria-label={t("إدارة {0}", app.name)}>
               <AppIdentity app={app} /><Badge tone={app.mode === 'disabled' ? 'danger' : app.mode === 'direct' ? 'cyan' : 'neutral'}>{app.mode ? modeLabels[app.mode] : t("افتح إعداد التحميل لقراءة الوضع")}</Badge><Icon name="chevron" /></button>)}</div>
-            <div className={styles.pagination}><button className={styles.secondary} disabled={page === 1 || busy} onClick={() => setCursors(v => v.slice(0, -1))}>{t("السابق")}</button><span>{t("صفحة")} {page} · {catalog.items.length}  {t("تطبيق في الصفحة")}</span><button className={styles.secondary} disabled={catalog.nextAfter === null || busy} onClick={() => { if (catalog.nextAfter !== null) setCursors(v => [...v, catalog.nextAfter]); }}>{t("التالي")}</button></div>
+            <div className={styles.pagination}><button className={styles.secondary} disabled={page === 1 || busy} onClick={() => setCursors(v => v.slice(0, -1))}>{t("السابق")}</button><span>{t("صفحة")} {page} · {catalog.items.length}  {t("سجل إصدار في الصفحة")}</span><button className={styles.secondary} disabled={catalog.nextAfter === null || busy} onClick={() => { if (catalog.nextAfter !== null) setCursors(v => [...v, catalog.nextAfter]); }}>{t("التالي")}</button></div>
           </>}
         </Panel>}
 
         {(['configuration', 'versions', 'files'] as Section[]).includes(section) && <>
           <Panel title={t("التطبيق المحدد")}>
             <Field label={t("اختيار تطبيق من الصفحة الحالية")}>{id => <select id={id} value={selectedId || ''} disabled={busy || !catalog} onChange={e => { setSelectedId(e.target.value ? Number(e.target.value) : null); setNotice(''); }}>
-              <option value="">{t("اختر تطبيقًا")}</option>{selectedId && !catalog?.items.some(a => a.id === selectedId) && <option value={selectedId}>{detail?.app.name || t("تطبيق #{0}", selectedId)}</option>}
-              {catalog?.items.map(app => <option key={app.id} value={app.id}>{app.name}</option>)}
+              <option value="">{t("اختر تطبيقًا")}</option>{selectedId && !catalog?.items.some(a => a.id === selectedId) && <option value={selectedId}>{detail?.app.name ? `${detail.app.name} · ${detail.app.version || t("إصدار غير محدد")} · #${selectedId}` : t("تطبيق #{0}", selectedId)}</option>}
+              {catalog?.items.map(app => <option key={app.id} value={app.id}>{app.name} · {app.version || t("إصدار غير محدد")} · {app.platform || t("نظام غير محدد")} · #{app.id}</option>)}
             </select>}</Field>
             {detail && <div className={styles.selectedApp}><AppIdentity app={detail.app} /><div className={styles.badges}><Badge tone="cyan">{t(modeLabels[detail.app.mode])}</Badge><Badge>{t("الإصدار الحالي:")} {currentVersion?.label || t("لم يُحدّد")}</Badge></div>
               {currentVersion && <VersionBadges active={currentVersion.active} published={currentVersion.published} />}
