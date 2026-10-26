@@ -43,6 +43,13 @@ function similarity(left: string, right: string) {
   const bigramDice = 2 * [...ga].filter(x => gb.has(x)).length / Math.max(1, ga.size + gb.size);
   return Math.max(tokenDice, bigramDice * 0.92);
 }
+function duplicateVersionExists(input: Input, candidate: ReleaseSuggestionCandidate, allCandidates: ReleaseSuggestionCandidate[]) {
+  return allCandidates.some(row =>
+    clean(row.name) === clean(candidate.name)
+    && platformKey(row.platform) === platformKey(candidate.platform)
+    && String(row.version ?? '').trim().toLocaleLowerCase() === input.version.trim().toLocaleLowerCase()
+  );
+}
 function heuristicScore(input: Input, candidate: ReleaseSuggestionCandidate) {
   const wantedPlatform = platformKey(input.platform), gotPlatform = platformKey(candidate.platform);
   if (wantedPlatform !== 'unspecified' && gotPlatform !== 'unspecified' && wantedPlatform !== gotPlatform) return 0;
@@ -112,12 +119,12 @@ export async function suggestApplicationReleases(candidates: ReleaseSuggestionCa
     .slice(0, 18)
     .map(item => item.candidate);
   const ai = await aiRank(input, shortlisted, env);
-  if (ai !== null) return { provider: 'openai' as Provider, items: ai.slice(0, 5) };
+  if (ai !== null) return { provider: 'openai' as Provider, items: ai.slice(0, 5).map(item => ({ ...item, duplicateVersion: duplicateVersionExists(input, item, candidates) })) };
   const items: Match[] = shortlisted.map(candidate => ({
     ...candidate,
     confidence: heuristicScore(input, candidate),
     reason: clean(input.name) === clean(candidate.name) ? 'الاسم مطابق بعد توحيد الكتابة، مع فحص النظام والإصدار.' : 'تشابه في اسم التطبيق؛ تأكد بنفسك قبل اعتماد الاقتراح.',
-    duplicateVersion: String(candidate.version ?? '').trim().toLocaleLowerCase() === input.version.trim().toLocaleLowerCase()
+    duplicateVersion: duplicateVersionExists(input, candidate, candidates)
   })).filter(item => item.confidence >= 0.30).slice(0, 5);
   return { provider: 'similarity' as Provider, items };
 }
