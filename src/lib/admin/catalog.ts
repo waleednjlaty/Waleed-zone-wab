@@ -11,6 +11,7 @@ const columns = ['name','description','version','size','category','platform','de
 const limits = [255,1000,50,50,100,50,255,500];
 export const catalogRevision = (value: unknown) => createHash('sha256').update(String(value)).digest('hex');
 function appId(value?: string) { if (!value || !/^[1-9][0-9]*$/.test(value)) throw invalid(); return id(Number(value)); }
+function releaseIdentity(value: string) { return value.normalize('NFKC').toLocaleLowerCase('en-US').replace(/[^\\p{L}\\p{N}]/gu, ''); }
 function metadata(value: unknown) {
   const input = object(value); fields(input, columns);
   const result: Record<string,string | null> = {};
@@ -80,7 +81,7 @@ export class OwnerCatalogService {
         if (new Set(rows.map(row => releasePlatformKey(typeof row.platform === 'string' ? row.platform : null))).size !== 1) {
           throw invalid();
         }
-        if (!rows.some(row => typeof row.name === 'string' && rootApplicationName(row.name) === canonicalName)) {
+        if (!rows.some(row => typeof row.name === 'string' && releaseIdentity(rootApplicationName(row.name)) === releaseIdentity(canonicalName))) {
           throw invalid();
         }
         // Only normalize metadata after the owner confirms. File and source rows remain untouched.
