@@ -5,6 +5,7 @@ import { telegramReference } from '@/lib/delivery/telegram';
 import { safeExternalUrl } from '@/lib/utils';
 import { AdminError, fields, id, invalid, object, revision, text, choice } from './validation';
 import { suggestApplicationReleases, type ReleaseSuggestionCandidate } from './release-assistant';
+import { extractEmbeddedVersion, releasePlatformKey, rootApplicationName, suggestReleaseGroups, type ReleaseReviewRow } from './release-review';
 
 const columns = ['name','description','version','size','category','platform','developer','image_url'];
 const limits = [255,1000,50,50,100,50,255,500];
@@ -38,7 +39,12 @@ export class OwnerCatalogService {
       return fn(tx);
     }) as T;
   }
-  async read(_operation: string, recordId?: string) {
+  async read(operation: string, recordId?: string) {
+    if (operation === 'release-review') {
+      const rows = await this.tx(async tx => tx<ReleaseReviewRow[]>`SELECT id,name,description,version,category,platform,developer,revision
+        FROM applications ORDER BY id DESC LIMIT 1000`);
+      return suggestReleaseGroups(rows, this.env);
+    }
     const applicationId = appId(recordId);
     return this.tx(async tx => {
       const [row] = await tx`SELECT id,name,description,version,size,category,platform,developer,image_url,active,published,revision
@@ -51,6 +57,48 @@ export class OwnerCatalogService {
     });
   }
   async write(operation: string, body: Record<string,unknown>, _owner: string, recordId?: string) {
+    if (operation === 'release-review') {
+      fields(body, ['action', 'canonical_name', 'items']);
+      choice(body.action, ['approve']);
+      const canonicalName = text(body.canonical_name, 255);
+      if (!Array.isArray(body.items) || body.items.length < 2 || body.items.length > 20) throw invalid();
+      const inputs = body.items.map(value => {
+        const input = object(value);
+        fields(input, ['id', 'revision']);
+        return { id: id(input.id), revision: revision(input.revision) };
+      });
+      if (new Set(inputs.map(input => input.id)).size !== inputs.length) throw invalid();
+      return this.tx(async tx => {
+        const rows: Array<Record<string, unknown>> = [];
+        for (const input of inputs) {
+          const [row] = await tx`SELECT id,name,version,category,platform,description,developer,revision
+            FROM applications WHERE id = ${input.id} FOR UPDATE`;
+          if (!row) throw new AdminError(404, 'RECORD_NOT_FOUND');
+          if (catalogRevision(row.revision) !== input.revision) throw new AdminError(409, 'STALE_REVISION');
+          rows.push(row as Record<string, unknown>);
+        }
+        if (new Set(rows.map(row => releasePlatformKey(typeof row.platform === 'string' ? row.platform : null))).size !== 1) {
+          throw invalid();
+        }
+        if (!rows.some(row => typeof row.name === 'string' && rootApplicationName(row.name) === canonicalName)) {
+          throw invalid();
+        }
+        // Only normalize metadata after the owner confirms. File and source rows remain untouched.
+        const updated: number[] = [];
+        for (const row of rows) {
+          const applicationId = id(row.id);
+          const currentVersion = typeof row.version === 'string' && row.version.trim() ? row.version : null;
+          const embeddedVersion = typeof row.name === 'string' ? extractEmbeddedVersion(row.name) : null;
+          const versionValue = currentVersion || embeddedVersion;
+          const searchText = [canonicalName, row.category, row.platform, row.description]
+            .filter(value => typeof value === 'string' && value).join(' ').toLowerCase();
+          await tx`UPDATE applications SET name = ${canonicalName}, version = ${versionValue}, search_text = ${searchText}
+            WHERE id = ${applicationId}`;
+          updated.push(applicationId);
+        }
+        return { action: 'approved', canonical_name: canonicalName, updated_ids: updated, count: updated.length };
+      });
+    }
     if (operation === 'catalog-suggestions') {
       fields(body,['name','version','platform']);
       const input = { name: text(body.name,255), version: text(body.version,50), platform: text(body.platform,50) };
