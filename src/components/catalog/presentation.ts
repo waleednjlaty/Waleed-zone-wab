@@ -1,6 +1,18 @@
 import type { Application } from '@/lib/queries';
 import type { Locale } from '@/lib/locale';
 
+/** Only treat canonical HTTPS SteamRIP game pages as original-source links. */
+export function steamripPageUrl(value: string | null | undefined): string | null {
+  if (!value || value.length > 2000) return null;
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:' || !['steamrip.com', 'www.steamrip.com'].includes(url.hostname.toLowerCase()) || url.username || url.password) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 // Presentation only: the bot's schema and existing queries remain the source of truth.
 export const GAME_CATEGORY_PATTERN = 'games?|gaming|ألعاب|العاب|لعبة|اكشن|أكشن|مغامرات|سباق|محاكاة|استراتيجية|رياضة|ألغاز|الغاز|arcade|action|adventure|racing|simulation|strategy|puzzle|role.?playing';
 const gameCategory = new RegExp(GAME_CATEGORY_PATTERN,'i');
