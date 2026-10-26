@@ -16,8 +16,9 @@ import DownloadActions from './DownloadActions';
 import { getDownloadAvailability, getFallbackDelivery } from '@/components/download/presentation';
 import Screenshots from './Screenshots';
 import Versions from './Versions';
+import ApplicationReleases from './ApplicationReleases';
 import { appName, isGame } from '@/components/catalog/presentation';
-import { getRelatedApps } from '@/lib/queries';
+import { getApplicationVersions, getRelatedApps } from '@/lib/queries';
 import { authDb, ensureAuthTables, getCurrentUser } from '@/lib/auth';
 import { getCatalogDetails } from '@/lib/catalog/metadata';
 import { appHref } from '@/lib/catalog/routes';
@@ -31,7 +32,7 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
   const locale = await getLocale(), t = (text: string, ...values: unknown[]) => translateUI(locale, text, ...values);
 
   const app=await resolveDetail(slug,kind),details=getCatalogDetails(app.id),name=appName(app,locale);
-  const [related,user,downloadAvailability,fallbackDelivery]=await Promise.all([getRelatedApps(app.id,app.category,4),getCurrentUser(),getDownloadAvailability(app.id),getFallbackDelivery(app.id)]);
+  const [related,user,downloadAvailability,fallbackDelivery,releases]=await Promise.all([getRelatedApps(app.id,app.category,4),getCurrentUser(),getDownloadAvailability(app.id),getFallbackDelivery(app.id),getApplicationVersions(app.id)]);
   const adConfig=manualAdConfig();
   const adEligible=Boolean(adConfig && app.description && app.description.trim().length >= 200 && await applicationAdEligible(app.id));
   const nonce=adEligible ? (await headers()).get('x-nonce') || undefined : undefined;
@@ -62,7 +63,7 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
         <section className="detail-section" aria-labelledby="description-title"><h2 id="description-title">{kind==='games'?t("عن اللعبة"):t("عن التطبيق")}</h2>{app.description?<ExpandableDescription text={app.description}/>:<p className="detail-subtitle">{t("لم يُضف وصف لهذا المحتوى بعد.")}</p>}</section>
         {details.changelog&&<section className="detail-section" aria-labelledby="changelog-title"><h2 id="changelog-title">{t("ما الجديد؟")}</h2><p className="detail-description" dir="auto">{details.changelog}</p></section>}
         {details.modInfo&&<section className="detail-section" aria-labelledby="mod-title"><h2 id="mod-title">{t("معلومات النسخة المعدلة")} <span className="app-badge" lang="en">MOD</span></h2><p className="detail-description" dir="auto">{details.modInfo}</p></section>}
-      </div><aside className="detail-technical detail-section" aria-labelledby="technical-title"><h2 id="technical-title">{t("المعلومات التقنية")}</h2><dl>{technical.map(([label,value])=><div key={label}><dt>{label}</dt><dd dir="auto">{value}</dd></div>)}</dl></aside><div className="detail-version-section"><Versions items={details.versions||[]}/></div></div>
+      </div><aside className="detail-technical detail-section" aria-labelledby="technical-title"><h2 id="technical-title">{t("المعلومات التقنية")}</h2><dl>{technical.map(([label,value])=><div key={label}><dt>{label}</dt><dd dir="auto">{value}</dd></div>)}</dl></aside><div className="detail-version-section"><ApplicationReleases items={releases} currentId={app.id}/><Versions items={details.versions||[]}/></div></div>
     </article>
     {related.length>0&&<section className="catalog-section detail-related" aria-labelledby="related-title"><SectionHeading id="related-title" title={kind==='games'?t("ألعاب ذات صلة"):t("تطبيقات ذات صلة")} subtitle={t("من التصنيف أو المطوّر نفسه")} href={categoryPath||undefined} linkLabel={t("عرض التصنيف")}/><AppGrid apps={related}/></section>}
     {adEligible && adConfig && <ManualAd key={app.id} {...adConfig} nonce={nonce} path={appHref(app)} />}
