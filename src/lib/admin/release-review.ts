@@ -1,4 +1,6 @@
-import { catalogRevision } from './catalog';
+import { createHash } from 'node:crypto';
+
+const catalogRevision = (value: unknown) => createHash('sha256').update(String(value)).digest('hex');
 
 export type ReleaseReviewRow = {
   id: number;
