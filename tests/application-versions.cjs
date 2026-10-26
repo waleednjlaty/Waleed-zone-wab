@@ -24,6 +24,11 @@ test('catalog numbering and embedded version text do not split one application f
   assert.deepEqual(latestPerApplication([oldRelease, newRelease]).map(item => item.version), ['19.8.0']);
 });
 
+test('numeric catalog labels normalize without merging legitimate hyphenated app names', () => {
+  assert.equal(applicationFamilyKey(row(1, '01 CAPCUT PRO 19.7.0', '19.7.0')), applicationFamilyKey(row(2, '02 Cap cut pro 19.8.0', '19.8.0')));
+  assert.notEqual(applicationFamilyKey(row(3, '7-Zip', '24.0')), applicationFamilyKey(row(4, 'Zip', '24.0')));
+});
+
 test('numeric version ordering treats 1.10 as newer than 1.9', () => {
   assert.ok(compareApplicationVersions(row(2, 'CapCut', '1.10'), row(1, 'CapCut', '1.9')) > 0);
   assert.deepEqual(sortApplicationVersions([
