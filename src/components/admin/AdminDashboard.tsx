@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 're
 import CatalogEditor from './CatalogEditor';
 import Analytics from './Analytics';
 import MonetizationReview from './MonetizationReview';
+import ReleaseReview from './ReleaseReview';
 import CoverImage from '@/components/CoverImage';
 import Icon, { type IconName } from '@/components/Icon';
 import { adminApi, AdminApiError, apiErrorMessage } from './api';
@@ -18,6 +19,7 @@ import styles from './admin.module.css';
 const sections: { id: Section; label: string; english: string; icon: IconName }[] = [
   { id: 'overview', label: 'نظرة عامة', english: 'Overview', icon: 'grid' },
   { id: 'applications', label: 'التطبيقات', english: 'Applications', icon: 'apps' },
+  { id: 'release-review', label: 'مراجعة الإصدارات', english: 'AI release review', icon: 'refresh' },
   { id: 'configuration', label: 'إعداد التحميل', english: 'Download configuration', icon: 'menu' },
   { id: 'versions', label: 'الإصدارات', english: 'Versions', icon: 'refresh' },
   { id: 'files', label: 'الملفات', english: 'Files', icon: 'arrow' },
@@ -198,6 +200,7 @@ export default function AdminDashboard() {
         </>}
 
         {section === 'applications' && <CatalogEditor onChange={() => setRevision(v=>v+1)} />}
+        {section === 'release-review' && <ReleaseReview onChange={() => setRevision(v=>v+1)} />}
         {section === 'applications' && <Panel title={t("كتالوج التطبيقات")} description={t("اختر تطبيقًا لإدارة إعدادات التحميل المتقدم.")}>
           {catalogError ? <State title={t("تعذر قراءة الكتالوج")} error>{t(catalogError)}</State> : !catalog ? <Loading label={t("جارٍ قراءة التطبيقات…")} /> : catalog.items.length === 0 ? <State title={t("لا توجد تطبيقات في هذه الصفحة")}>{t("أضف التطبيقات عبر مسار الكتالوج المعتمد.")}</State> : <>
             <div className={styles.appList}>{catalog.items.map(app => <button key={app.id} className={styles.appRow} onClick={() => selectApp(app.id)} disabled={busy} aria-label={t("إدارة {0}", app.name)}>
