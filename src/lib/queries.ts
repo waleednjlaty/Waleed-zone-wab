@@ -1,5 +1,6 @@
 import 'server-only';
-import { and, count, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { applicationFamilyKey, latestPerApplication, sortApplicationVersions } from '@/lib/catalog/versions';
 import { cache } from 'react';
 import { applications } from '@/lib/db/schema';
 import { getDb } from '@/lib/db';
@@ -15,6 +16,8 @@ export interface SitemapApp {
   createdAt: Date | null;
   name: string | null;
   category: string | null;
+  version: string | null;
+  platform: string | null;
 }
 
 export interface CategorySummary {
@@ -59,8 +62,9 @@ export const getApps = cache(
       ));
       const byId=new Map(rows.map(row=>[row.id,row]));
       const ordered=ranked.map(item=>byId.get(item.id)).filter((item):item is Application=>Boolean(item));
-      const total=ordered.length,totalPages=Math.max(1,Math.ceil(total/safeLimit)),currentPage=Math.min(rawPage,totalPages);
-      return {items:ordered.slice((currentPage-1)*safeLimit,currentPage*safeLimit),total,totalPages,currentPage};
+      const unique=latestPerApplication(ordered);
+      const total=unique.length,totalPages=Math.max(1,Math.ceil(total/safeLimit)),currentPage=Math.min(rawPage,totalPages);
+      return {items:unique.slice((currentPage-1)*safeLimit,currentPage*safeLimit),total,totalPages,currentPage};
     }
 
     if (category?.trim()) {
@@ -69,27 +73,13 @@ export const getApps = cache(
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [{ value: total }] = await db
-      .select({ value: count() })
-      .from(applications)
-      .where(where);
-
-    const totalCount = Number(total) || 0;
-    const totalPages = Math.max(1, Math.ceil(totalCount / safeLimit));
+    const rows = await db.select().from(applications).where(where).orderBy(desc(applications.id));
+    const unique = latestPerApplication(rows);
+    const total = unique.length;
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
     const currentPage = Math.min(rawPage, totalPages);
-
-    const items =
-      totalCount > 0
-        ? await db
-            .select()
-            .from(applications)
-            .where(where)
-            .orderBy(desc(applications.id))
-            .limit(safeLimit)
-            .offset((currentPage - 1) * safeLimit)
-        : [];
-
-    return { items, total: totalCount, totalPages, currentPage };
+    const items = unique.slice((currentPage - 1) * safeLimit, currentPage * safeLimit);
+    return { items, total, totalPages, currentPage };
   },
 );
 
@@ -108,6 +98,15 @@ export const getAppById = cache(
   },
 );
 
+export const getApplicationVersions = cache(async (appId: number): Promise<Application[]> => {
+  const db = getDb(), source = await getAppById(appId);
+  if (!db || !source) return [];
+  const rows = await db.select().from(applications).where(and(
+    eq(applications.active, true), eq(applications.published, true),
+  )).orderBy(desc(applications.id));
+  const key = applicationFamilyKey(source);
+  return sortApplicationVersions(rows.filter(app => applicationFamilyKey(app) === key));
+});
 export const getRelatedApps = cache(
   async (appId:number, category?:string|null, limit=4):Promise<Application[]>=>{
     const db=getDb(),source=await getAppById(appId);
@@ -116,9 +115,11 @@ export const getRelatedApps = cache(
     if(category?.trim())conditions.push(eq(applications.category,category));
     if(source.developer?.trim())conditions.push(eq(applications.developer,source.developer));
     if(!conditions.length)return [];
-    const candidates=await db.select().from(applications).where(and(
+    const rows=await db.select().from(applications).where(and(
       eq(applications.active,true),eq(applications.published,true),sql`${applications.id} <> ${appId}`,or(...conditions),
-    )).limit(100);
+    )).orderBy(desc(applications.id)).limit(300);
+    const sourceFamily=applicationFamilyKey(source);
+    const candidates=latestPerApplication(rows).filter(app=>applicationFamilyKey(app)!==sourceFamily);
     const tags=new Set(getCatalogDetails(appId).tags?.map(normalizeSearch)||[]);
     const words=new Set(normalizeSearch(appName(source)).split(' ').filter(word=>word.length>2));
     return candidates.filter(app=>isGame(app)===isGame(source)).map(app=>({app,score:
@@ -149,11 +150,11 @@ export const getAllAppsSitemap = cache(async (): Promise<SitemapApp[]> => {
   const db = getDb();
   if (!db) return [];
 
-  return db
-    .select({ id: applications.id, name: applications.name, category: applications.category, createdAt: applications.createdAt })
-    .from(applications)
-    .where(and(eq(applications.active, true), eq(applications.published, true)))
-    .orderBy(desc(applications.id));
+  const rows = await db.select({
+    id: applications.id, name: applications.name, category: applications.category, createdAt: applications.createdAt,
+    version: applications.version, platform: applications.platform,
+  }).from(applications).where(and(eq(applications.active, true), eq(applications.published, true))).orderBy(desc(applications.id));
+  return latestPerApplication(rows);
 });
 
 /** Same classification as presentation, with only one page hydrated from PostgreSQL. */
@@ -162,10 +163,13 @@ export const getCatalogPage=cache(async (kind:'apps'|'games',page:number) => {
   if(!db)return {items:[] as SitemapApp[],total:0,totalPages:1,currentPage:page};
   const game=sql`coalesce(${applications.category},'') ~* ${GAME_CATEGORY_PATTERN}`;
   const where=and(eq(applications.active,true),eq(applications.published,true),kind==='games'?game:sql`NOT (${game})`);
-  const [{value}]=await db.select({value:count()}).from(applications).where(where);
-  const total=Number(value),totalPages=Math.max(1,Math.ceil(total/24));
-  const items=page>totalPages?[]:await db.select({id:applications.id,name:applications.name,category:applications.category,createdAt:applications.createdAt})
-    .from(applications).where(where).orderBy(desc(applications.id)).limit(24).offset((page-1)*24);
+  const rows=await db.select({
+    id:applications.id,name:applications.name,category:applications.category,createdAt:applications.createdAt,
+    version:applications.version,platform:applications.platform,
+  }).from(applications).where(where).orderBy(desc(applications.id));
+  const unique=latestPerApplication(rows);
+  const total=unique.length,totalPages=Math.max(1,Math.ceil(total/24));
+  const items=page>totalPages?[]:unique.slice((page-1)*24,page*24);
   return {items,total,totalPages,currentPage:page};
 });
 
@@ -173,15 +177,19 @@ export const getCatalogPage=cache(async (kind:'apps'|'games',page:number) => {
 export const getCategorySummaries = cache(async (): Promise<CategorySummary[]> => {
   const db = getDb();
   if (!db) return [];
-
-  const rows = await db
-    .select({ category: applications.category, count: count() })
-    .from(applications)
-    .where(and(eq(applications.active, true), eq(applications.published, true), sql`btrim(${applications.category}) <> ''`))
-    .groupBy(applications.category)
-    .orderBy(applications.category);
-
-  return rows
-    .filter((row): row is typeof row & { category: string } => typeof row.category === 'string')
-    .map((row) => ({ category: row.category, count: Number(row.count) || 0 }));
-});
+  const rows = await db.select({
+    id: applications.id, name: applications.name, version: applications.version, platform: applications.platform,
+    createdAt: applications.createdAt, category: applications.category,
+  }).from(applications).where(and(
+    eq(applications.active, true), eq(applications.published, true), sql`btrim(${applications.category}) <> ''`,
+  )).orderBy(desc(applications.id));
+  const categories = new Map<string, typeof rows>();
+  for (const row of rows) {
+    if (typeof row.category !== 'string') continue;
+    const items = categories.get(row.category) || [];
+    items.push(row);
+    categories.set(row.category, items);
+  }
+  return [...categories.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([category, items]) => ({
+    category, count: latestPerApplication(items).length,
+  }));
