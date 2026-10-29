@@ -4,10 +4,8 @@ import { translateUI } from '@/lib/ui-translations';
 import Link from 'next/link';
 import Brand from '@/components/Brand';
 import Icon from '@/components/Icon';
-import SectionHeading from '@/components/SectionHeading';
 import ReusableCardSkeleton from './loading/CardSkeleton';
 import LoadingRegion from './loading/LoadingRegion';
-import SectionSkeleton from './loading/SectionSkeleton';
 import Skeleton from './loading/Skeleton';
 import styles from './loading/loading.module.css';
 
@@ -19,8 +17,6 @@ export async function SearchSkeleton() {
 }
 
 export async function CardSkeleton({ featured = false, row = false }: { featured?: boolean; row?: boolean }) {
-  const locale = await getLocale(), t = (text: string) => translateUI(locale, text);
-
   return <ReusableCardSkeleton variant={featured ? 'featured' : row ? 'row' : 'compact'} />;
 }
 
