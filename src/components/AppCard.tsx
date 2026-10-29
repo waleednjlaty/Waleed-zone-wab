@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { appHref } from '@/lib/catalog/routes';
 import CoverImage from '@/components/CoverImage';
 import Icon from '@/components/Icon';
-import { appMetadata, appName } from '@/components/catalog/presentation';
+import { appMetadata, appName, localizeCategory } from '@/components/catalog/presentation';
 import type { Application } from '@/lib/queries';
 import { getLocale } from '@/lib/locale-server';
 
@@ -26,7 +26,7 @@ export default async function AppCard({ app, variant = 'compact', rank }: AppCar
         <span className="app-icon"><CoverImage src={app.imageUrl} priority={rank===1} alt="" aspectClassName="aspect-square" /></span>
         <div className="app-card-copy">
           <div className="app-name-line"><h3 dir="auto">{name}</h3>{isMod && <span className="app-badge" lang="en">MOD</span>}</div>
-          <p className="app-category" dir="auto">{app.category || (english ? 'Library' : 'المكتبة')}</p>
+          <p className="app-category" dir="auto">{localizeCategory(app.category, locale)}</p>
           {metadata && <p className="app-metadata" dir="auto">{metadata}</p>}
         </div>
         <Icon name="chevron" className="card-chevron" width={16} height={16} />
