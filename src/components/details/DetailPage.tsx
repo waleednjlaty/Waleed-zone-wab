@@ -17,7 +17,8 @@ import { getDownloadAvailability, getFallbackDelivery } from '@/components/downl
 import Screenshots from './Screenshots';
 import Versions from './Versions';
 import ApplicationReleases from './ApplicationReleases';
-import { appName, isGame, localizeCategory, localizeDescription } from '@/components/catalog/presentation';
+import { appName, isGame, localizeCategory } from '@/components/catalog/presentation';
+import { localizeCatalogDescription } from '@/lib/translation';
 import { getApplicationVersions, getRelatedApps } from '@/lib/queries';
 import { authDb, ensureAuthTables, getCurrentUser } from '@/lib/auth';
 import { getCatalogDetails } from '@/lib/catalog/metadata';
@@ -33,6 +34,11 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
 
   const app=await resolveDetail(slug,kind),details=getCatalogDetails(app.id),name=appName(app,locale);
   const [related,user,downloadAvailability,fallbackDelivery,releases]=await Promise.all([getRelatedApps(app.id,app.category,4),getCurrentUser(),getDownloadAvailability(app.id),getFallbackDelivery(app.id),getApplicationVersions(app.id)]);
+  const [localizedDescription, localizedChangelog, localizedModInfo] = await Promise.all([
+    localizeCatalogDescription(app.description, locale, kind === 'games' ? 'game' : 'app'),
+    details.changelog ? localizeCatalogDescription(details.changelog, locale, kind === 'games' ? 'game' : 'app') : Promise.resolve(null),
+    details.modInfo ? localizeCatalogDescription(details.modInfo, locale, kind === 'games' ? 'game' : 'app') : Promise.resolve(null),
+  ]);
   const adConfig=manualAdConfig();
   const adEligible=Boolean(adConfig && app.description && app.description.trim().length >= 200 && await applicationAdEligible(app.id));
   const nonce=adEligible ? (await headers()).get('x-nonce') || undefined : undefined;
@@ -60,9 +66,9 @@ export default async function DetailPage({slug,kind}:{slug:string;kind:'apps'|'g
       </header>
       <div className="detail-content-grid"><div className="detail-main">
         {Boolean(details.screenshots?.length)&&<Screenshots images={details.screenshots!} name={name}/>}
-        <section className="detail-section" aria-labelledby="description-title"><h2 id="description-title">{kind==='games'?t("عن اللعبة"):t("عن التطبيق")}</h2>{app.description?<ExpandableDescription text={localizeDescription(app.description, locale, kind === 'games' ? 'game' : 'app')}/>:<p className="detail-subtitle">{t("لم يُضف وصف لهذا المحتوى بعد.")}</p>}</section>
-        {details.changelog&&<section className="detail-section" aria-labelledby="changelog-title"><h2 id="changelog-title">{t("ما الجديد؟")}</h2><p className="detail-description" dir="auto">{localizeDescription(details.changelog, locale, kind === 'games' ? 'game' : 'app')}</p></section>}
-        {details.modInfo&&<section className="detail-section" aria-labelledby="mod-title"><h2 id="mod-title">{t("معلومات النسخة المعدلة")} <span className="app-badge" lang="en">MOD</span></h2><p className="detail-description" dir="auto">{localizeDescription(details.modInfo, locale, kind === 'games' ? 'game' : 'app')}</p></section>}
+        <section className="detail-section" aria-labelledby="description-title"><h2 id="description-title">{kind==='games'?t("عن اللعبة"):t("عن التطبيق")}</h2>{app.description?<ExpandableDescription text={localizedDescription}/>:<p className="detail-subtitle">{t("لم يُضف وصف لهذا المحتوى بعد.")}</p>}</section>
+        {details.changelog&&<section className="detail-section" aria-labelledby="changelog-title"><h2 id="changelog-title">{t("ما الجديد؟")}</h2><p className="detail-description" dir="auto">{localizedChangelog}</p></section>}
+        {details.modInfo&&<section className="detail-section" aria-labelledby="mod-title"><h2 id="mod-title">{t("معلومات النسخة المعدلة")} <span className="app-badge" lang="en">MOD</span></h2><p className="detail-description" dir="auto">{localizedModInfo}</p></section>}
       </div><aside className="detail-technical detail-section" aria-labelledby="technical-title"><h2 id="technical-title">{t("المعلومات التقنية")}</h2><dl>{technical.map(([label,value])=><div key={label}><dt>{label}</dt><dd dir="auto">{value}</dd></div>)}</dl></aside><div className="detail-version-section"><ApplicationReleases items={releases} currentId={app.id}/><Versions items={details.versions||[]}/></div></div>
     </article>
     {related.length>0&&<section className="catalog-section detail-related" aria-labelledby="related-title"><SectionHeading id="related-title" title={kind==='games'?t("ألعاب ذات صلة"):t("تطبيقات ذات صلة")} subtitle={t("من التصنيف أو المطوّر نفسه")} href={categoryPath||undefined} linkLabel={t("عرض التصنيف")}/><AppGrid apps={related}/></section>}
