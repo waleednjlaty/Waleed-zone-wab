@@ -14,7 +14,7 @@ import SearchBar from '@/components/SearchBar';
 import SectionHeading from '@/components/SectionHeading';
 import SearchResultsSkeleton from '@/components/loading/SearchResultsSkeleton';
 import CatalogSkeleton, { SearchSkeleton } from '@/components/CatalogSkeleton';
-import { homeCollections } from '@/components/catalog/presentation';
+import { homeCollections, localizeCategory } from '@/components/catalog/presentation';
 import { getApps, getCategories, type Application } from '@/lib/queries';
 import { parsePage, safeExternalUrl, sanitizeSearch } from '@/lib/utils';
 import { HOME_TITLE, SITE_DESCRIPTION } from '@/lib/site';
@@ -140,7 +140,7 @@ async function CatalogContent({ q, category, page, browse, filtered, locale }: {
 
       <section id="categories" className="catalog-section" aria-labelledby="categories-title">
         <SectionHeading id="categories-title" title={english ? 'Browse by category' : 'تصفح حسب التصنيف'} subtitle={english ? 'Jump directly to what interests you' : 'اذهب مباشرة إلى ما يهمك'} icon="grid" />
-        {categories.length ? <nav className="category-directory" aria-label={english ? 'All categories' : 'كل التصنيفات'}>{categories.map(item => <Link key={item} href={`/category/${encodeURIComponent(item)}`}><Icon name="grid" width={18} height={18} /><span>{item}</span><Icon name="chevron" width={15} height={15} /></Link>)}</nav> : <p className="section-empty">{english ? 'No categories are available right now.' : 'لا توجد تصنيفات متاحة حاليًا.'}</p>}
+        {categories.length ? <nav className="category-directory" aria-label={english ? 'All categories' : 'كل التصنيفات'}>{categories.map(item => <Link key={item} href={`/category/${encodeURIComponent(item)}`}><Icon name="grid" width={18} height={18} /><span>{localizeCategory(item, locale)}</span><Icon name="chevron" width={15} height={15} /></Link>)}</nav> : <p className="section-empty">{english ? 'No categories are available right now.' : 'لا توجد تصنيفات متاحة حاليًا.'}</p>}
       </section>
 
       <section id="library" className="catalog-section recent-section" aria-labelledby="recent-title">
