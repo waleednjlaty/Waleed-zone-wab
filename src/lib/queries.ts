@@ -18,6 +18,7 @@ export interface SitemapApp {
   category: string | null;
   version: string | null;
   platform: string | null;
+  imageUrl?: string | null;
 }
 
 export interface CategorySummary {
@@ -173,7 +174,7 @@ export const getCatalogPage=cache(async (kind:'apps'|'games',page:number) => {
   const where=and(eq(applications.active,true),eq(applications.published,true),kind==='games'?game:sql`NOT (${game})`);
   const rows=await db.select({
     id:applications.id,name:applications.name,category:applications.category,createdAt:applications.createdAt,
-    version:applications.version,platform:applications.platform,
+    version:applications.version,platform:applications.platform,imageUrl:applications.imageUrl,
   }).from(applications).where(where).orderBy(desc(applications.id));
   const unique=latestPerApplication(rows);
   const total=unique.length,totalPages=Math.max(1,Math.ceil(total/24));
