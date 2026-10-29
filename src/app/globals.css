@@ -593,17 +593,17 @@ html[dir="ltr"] .spotlight-art::after {
 }
 @media (max-width: 640px) {
   .spotlight-carousel {
-    height: 390px;
+    height: 410px;
     margin-block: 14px 2px;
     border-radius: 16px;
   }
   .spotlight-content {
     align-items: stretch;
-    padding: 18px 17px 68px;
+    padding: 16px 16px 60px;
   }
   .spotlight-copy {
     align-self: stretch;
-    padding-top: 72px;
+    padding-top: 62px;
   }
   .spotlight-app-mark {
     position: absolute;
@@ -617,13 +617,17 @@ html[dir="ltr"] .spotlight-art::after {
     font-size: .65rem;
   }
   .spotlight-copy h2 {
-    font-size: clamp(1.3rem, 6vw, 1.7rem);
+    font-size: clamp(1.2rem, 5.7vw, 1.6rem);
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
   .spotlight-description {
     margin-top: 7px;
     font-size: .84rem;
     line-height: 1.75;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
   }
   .spotlight-meta {
     gap: 6px;
@@ -634,7 +638,7 @@ html[dir="ltr"] .spotlight-art::after {
     padding: 3px 8px;
     font-size: .67rem;
   }
-  .spotlight-meta span:nth-child(n+4) {
+  .spotlight-meta span:nth-child(n+3) {
     display: none;
   }
   .spotlight-cta {
