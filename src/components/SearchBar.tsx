@@ -64,7 +64,7 @@ export default function SearchBar({live=true,autoFocus=false,onNavigate}:SearchB
     }}>
       <Icon name="search" className="search-symbol" width={22} height={22}/>
       <label htmlFor={id} className="sr-only">{english ? 'Search for an app or game' : 'ابحث عن تطبيق أو لعبة'}</label>
-      <input ref={input} id={id} name="q" type="search" value={value} onChange={event=>{setValue(event.target.value);setExpanded(true);}} onFocus={()=>setExpanded(true)} maxLength={100} autoComplete="off" autoFocus={autoFocus} placeholder={english ? 'Search for an app or game…' : 'ابحث عن تطبيق أو لعبة…'} aria-describedby={showSuggestions?`${id}-suggestions`:undefined} aria-controls={showSuggestions?`${id}-suggestions`:undefined} aria-expanded={showSuggestions}/>
+      <input ref={input} id={id} name="q" type="search" value={value} onChange={event=>{setValue(event.target.value);setExpanded(true);}} onFocus={()=>setExpanded(true)} maxLength={100} autoComplete="off" autoFocus={autoFocus} placeholder={english ? 'Search for an app or game…' : 'ابحث عن تطبيق أو لعبة…'} aria-describedby={showSuggestions?`${id}-suggestions`:undefined} aria-controls={showSuggestions?`${id}-suggestions`:undefined}/>
       {value&&<button type="button" className="icon-button search-clear" aria-label={english ? 'Clear search' : 'مسح البحث'} onClick={()=>{
         setValue('');setExpanded(false);if(live && query)window.location.replace(searchHref(''));input.current?.focus();
       }}><Icon name="close" width={17} height={17}/></button>}
