@@ -4,6 +4,7 @@ import type { Sql } from 'postgres';
 import { DownloadError } from '@/lib/downloads/rules';
 import { telegramDestination } from './telegram';
 import { publicUrl } from '@/lib/downloads/providers/public-http';
+import { safeExternalUrl } from '@/lib/utils';
 import { STEAMRIP_HOSTS } from '@/lib/downloads/providers/steamrip';
 import { BZZHR_HOSTS } from '@/lib/downloads/providers/bzzhr';
 
@@ -28,15 +29,34 @@ export async function legacyDelivery(sql: Sql, applicationId: number, env: NodeJ
     return delivery(destination,'telegram');
   }
   const hosts = (env.LEGACY_DOWNLOAD_ALLOWED_HOSTS || 'devuploads.com,shrinkme.io,shrinkme.site').split(',').map(v=>v.trim().toLowerCase()).filter(Boolean);
-  // Explicit custom/manual link has priority. An invalid configured link fails closed.
+  // Prefer tightly allowlisted providers. Older owner-managed direct links may use
+  // other HTTPS hosts, so preserve them only after the same URL safety checks used
+  // by the public UI (HTTPS, no credentials/ports, no local/IP hosts, no Telegram API).
+  // The original destination stays server-side until the signed countdown is redeemed.
+  const safeStoredExternal = (raw: unknown): string | null => {
+    if (typeof raw !== 'string' || raw.length > 2000) return null;
+    const safe = safeExternalUrl(raw);
+    if (!safe) return null;
+    try {
+      const url = new URL(safe);
+      if (url.hash || url.hostname === 'api.telegram.org') return null;
+      return url.href;
+    } catch { return null; }
+  };
   if(app.shrankme_url) {
-    try {return delivery(publicUrl(app.shrankme_url,BZZHR_HOSTS).href,'external');}catch{/* approved manual link */}
-    try { return delivery(publicUrl(app.shrankme_url,hosts).href,'external'); } catch { throw fail(); }
+    try {return delivery(publicUrl(app.shrankme_url,BZZHR_HOSTS).href,'external');}catch{/* try approved legacy or safely validated owner link */}
+    try {return delivery(publicUrl(app.shrankme_url,hosts).href,'external');}catch{/* fall through to generic safe HTTPS validation */}
+    const safe = safeStoredExternal(app.shrankme_url);
+    if (safe) return delivery(safe,'external');
+    throw fail();
   }
   if(typeof app.devupload_url!=='string' || app.devupload_url.length>2000)throw fail();
   try {return delivery(publicUrl(app.devupload_url,BZZHR_HOSTS).href,'external');}catch{/* BZZHR is a normal external source, never a SteamRIP extraction input. */}
   try {return delivery(publicUrl(app.devupload_url,STEAMRIP_HOSTS).href,'steamrip');}catch{/* then approved legacy source */}
-  try {return delivery(publicUrl(app.devupload_url,hosts).href,'external');}catch{throw fail();}
+  try {return delivery(publicUrl(app.devupload_url,hosts).href,'external');}catch{/* safely validate older owner-managed direct links */}
+  const safe = safeStoredExternal(app.devupload_url);
+  if (safe) return delivery(safe,'external');
+  throw fail();
 }
 type Payload = { application_id: number; ready_at: number; expires_at: number; nonce: string; revision: string; client: string };
 export class LegacyCountdown {
