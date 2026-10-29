@@ -33,15 +33,35 @@ export default async function CatalogSkeleton({ contentOnly = false }: { content
       <div className="intro-search"><SearchSkeleton /><p className="search-help">{t("بالاسم أو التصنيف، ستجد ما تبحث عنه.")}</p></div>
     </section>}
     <LoadingRegion label={t("جارٍ تحميل التطبيقات والألعاب")}>
-      <SectionSkeleton layout="rail" heading={<SectionHeading id="loading-trending" title={t("شائع الآن")} subtitle={t("اختيارات من المكتبة")} icon="trend" />} />
-      <SectionSkeleton layout="list" heading={<SectionHeading id="loading-updates" title={t("آخر التحديثات")} subtitle={t("أحدث الإصدارات المضافة إلى المكتبة")} icon="refresh" />} />
-      <SectionSkeleton layout="featured" count={3} heading={<SectionHeading id="loading-games" title={t("ألعاب مختارة")} subtitle={t("اختيارات من أحدث ألعاب المكتبة")} icon="game" />} />
-      <SectionSkeleton layout="list" heading={<SectionHeading id="loading-apps" title={t("تطبيقات مختارة")} subtitle={t("أدوات وتطبيقات تستحق الاستكشاف")} icon="apps" />} />
-      <SectionSkeleton heading={<SectionHeading id="loading-categories" title={t("تصفح حسب التصنيف")} subtitle={t("اذهب مباشرة إلى ما يهمك")} icon="grid" />}>
-        <div className="category-directory">{Array.from({ length: 8 }, (_, index) => <div className={styles.categoryEntry} key={index}><Skeleton className={styles.category} /></div>)}</div>
-      </SectionSkeleton>
-      <SectionSkeleton count={12} heading={<SectionHeading id="loading-recent" title={t("أضيف حديثًا")} subtitle={t("آخر ما وصل إلى Waleed Zone")} icon="spark" />} />
-      <div className={styles.pagination} />
+      {contentOnly ? (
+        <div className={styles.homeLoading} aria-hidden="true">
+          <section className={styles.spotlightPlaceholder}>
+            <Skeleton className={styles.spotlightArtwork} />
+            <div className={styles.spotlightWash} />
+            <div className={styles.spotlightIdentity}><Skeleton className={styles.spotlightIcon} /></div>
+            <div className={styles.spotlightCopy}>
+              <Skeleton className={styles.spotlightPill} />
+              <Skeleton className={styles.spotlightEyebrow} />
+              <Skeleton className={styles.spotlightTitle} />
+              <Skeleton className={styles.spotlightDescription} />
+              <Skeleton className={styles.spotlightDescriptionShort} />
+              <div className={styles.spotlightTags}><Skeleton className={styles.spotlightTag} /><Skeleton className={styles.spotlightTagSmall} /></div>
+              <Skeleton className={styles.spotlightButton} />
+            </div>
+            <div className={styles.spotlightControls}><Skeleton className={styles.control} /><Skeleton className={styles.control} /><Skeleton className={styles.control} /></div>
+            <div className={styles.spotlightDots}><Skeleton className={styles.dot} /><Skeleton className={styles.dot} /><Skeleton className={styles.dotActive} /><Skeleton className={styles.dot} /></div>
+          </section>
+          <div className={styles.loadingCardRail}><ReusableCardSkeleton variant="compact" /><ReusableCardSkeleton variant="compact" /></div>
+          <div className={styles.loadingRows}><ReusableCardSkeleton variant="row" /><ReusableCardSkeleton variant="row" /><ReusableCardSkeleton variant="row" /></div>
+        </div>
+      ) : (
+        <div className={styles.catalogLoadingCards} aria-hidden="true">
+          <div className={styles.loadingRows}>
+            {Array.from({ length: 8 }, (_, index) => <ReusableCardSkeleton key={index} variant="compact" />)}
+          </div>
+          <div className={styles.pagination} />
+        </div>
+      )}
     </LoadingRegion>
   </div>;
 }
