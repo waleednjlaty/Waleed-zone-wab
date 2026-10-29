@@ -1,12 +1,12 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { translateUI } from '@/lib/ui-translations';
 import { useLocale } from '@/components/LocaleProvider';
 export default function AuthForm({mode}:{mode:'login'|'register'}) {
   const locale=useLocale(),english=locale==='en';
-  const router=useRouter(),searchParams=useSearchParams(),register=mode==='register';
+  const router=useRouter(),register=mode==='register';
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
   async function submit(e:React.FormEvent<HTMLFormElement>) {
     e.preventDefault();setBusy(true);setError('');
@@ -17,13 +17,17 @@ export default function AuthForm({mode}:{mode:'login'|'register'}) {
       router.push('/account');router.refresh();
     } catch { setError('تعذّر الاتصال. حاول مرة ثانية.'); } finally {setBusy(false);}
   }
-  const googleStatus=searchParams.get('google');
-  const googleMessage=googleStatus==='cancelled' ? (english?'Google sign-in was cancelled.':'تم إلغاء تسجيل الدخول باستخدام Google.') :
-    googleStatus==='not_configured' ? (english?'Google sign-in is not configured yet.':'تسجيل الدخول عبر Google لم يُفعّل بعد.') :
-    googleStatus==='invalid_state' ? (english?'Security check failed. Please try again.':'فشل التحقق الأمني. حاول مرة أخرى.') :
-    googleStatus==='unverified' ? (english?'Google could not verify this email.':'تعذّر التحقق من البريد الإلكتروني عبر Google.') :
-    googleStatus==='rate_limited' ? (english?'Too many attempts. Please wait and try again.':'محاولات كثيرة، انتظر قليلًا ثم حاول مجددًا.') :
-    googleStatus==='failed' ? (english?'Google sign-in failed. Please try again.':'فشل تسجيل الدخول باستخدام Google. حاول مجددًا.') : '';
+  const [googleMessage,setGoogleMessage]=useState('');
+  useEffect(()=>{
+    const googleStatus=new URLSearchParams(window.location.search).get('google');
+    const message=googleStatus==='cancelled' ? (english?'Google sign-in was cancelled.':'تم إلغاء تسجيل الدخول باستخدام Google.') :
+      googleStatus==='not_configured' ? (english?'Google sign-in is not configured yet.':'تسجيل الدخول عبر Google لم يُفعّل بعد.') :
+      googleStatus==='invalid_state' ? (english?'Security check failed. Please try again.':'فشل التحقق الأمني. حاول مرة أخرى.') :
+      googleStatus==='unverified' ? (english?'Google could not verify this email.':'تعذّر التحقق من البريد الإلكتروني عبر Google.') :
+      googleStatus==='rate_limited' ? (english?'Too many attempts. Please wait and try again.':'محاولات كثيرة، انتظر قليلًا ثم حاول مجددًا.') :
+      googleStatus==='failed' ? (english?'Google sign-in failed. Please try again.':'فشل تسجيل الدخول باستخدام Google. حاول مجددًا.') : '';
+    setGoogleMessage(message);
+  },[english]);
   return <form onSubmit={submit} className="mt-8 space-y-5">
     {googleMessage&&<p role="alert" className="rounded-xl border border-[#e69078]/40 bg-[#e69078]/10 p-3 text-sm text-[#ffbea8]">{googleMessage}</p>}
     {register&&<label className="block text-sm font-bold">{english ? 'Display name' : 'اسم العرض'}<input className="field mt-2" name="name" type="text" minLength={2} maxLength={60} required autoComplete="name" placeholder={english ? 'The name you want to display' : 'الاسم الذي تحب ظهوره'}/></label>}
