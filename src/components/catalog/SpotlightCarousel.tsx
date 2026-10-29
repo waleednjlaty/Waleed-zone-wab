@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useLocale } from '@/components/LocaleProvider';
-import { appName, isGame } from '@/components/catalog/presentation';
+import { appName, isGame, localizeCategory, localizeDescription } from '@/components/catalog/presentation';
 import { appHref } from '@/lib/catalog/routes';
 import { safeExternalUrl } from '@/lib/utils';
 
@@ -53,12 +53,8 @@ export default function SpotlightCarousel({ apps }: { apps: SpotlightItem[] }) {
 
   const active = apps[activeIndex] ?? apps[0];
   const activeName = appName(active, locale);
-  const description = active.description?.replace(/\s+/g, ' ').trim();
-  const shortDescription = description
-    ? (description.length > 150 ? `${description.slice(0, 147).trimEnd()}…` : description)
-    : english
-      ? 'Explore the details, version information and available download options.'
-      : 'اكتشف تفاصيل التطبيق وإصداره وخيارات التحميل المتاحة.';
+  const description = localizeDescription(active.description, locale, isGame(active) ? 'game' : 'app');
+  const shortDescription = description.length > 150 ? `${description.slice(0, 147).trimEnd()}…` : description;
   const imageUrl = safeExternalUrl(active.imageUrl);
   const version = active.version?.trim();
   const size = active.size?.trim();
@@ -130,7 +126,7 @@ export default function SpotlightCarousel({ apps }: { apps: SpotlightItem[] }) {
                 <h2 dir="auto">{name}</h2>
                 <p className="spotlight-description" dir="auto">{shortDescription}</p>
                 <div className="spotlight-meta" aria-label={english ? 'App details' : 'تفاصيل التطبيق'}>
-                  {app.category?.trim() && <span>{app.category}</span>}
+                  {app.category?.trim() && <span>{localizeCategory(app.category, locale)}</span>}
                   {meaningful(version) && <span dir="auto">{/^\d/.test(version!) ? `v${version}` : version}</span>}
                   {meaningful(platform) && <span dir="auto">{platform}</span>}
                   {meaningful(size) && <span dir="auto">{size}</span>}
