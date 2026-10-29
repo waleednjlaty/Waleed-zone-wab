@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { SITE_URL } from '@/lib/site';
 
