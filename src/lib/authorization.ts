@@ -1,12 +1,17 @@
 import 'server-only';
 import { timingSafeEqual } from 'node:crypto';
 import { notFound } from 'next/navigation';
-import { getCurrentUser, type SiteUser } from '@/lib/auth';
+import { getCurrentUser, normalizedEmail, type SiteUser } from '@/lib/auth';
 
-/** A stable server-configured user ID. Registration cannot grant ownership. */
+/** Ownership is granted only by server configuration, never by registration input. */
 export function isOwner(user:SiteUser|null):boolean {
+  if (!user) return false;
   const ownerId=process.env.OWNER_USER_ID?.trim();
-  return Boolean(ownerId && user && user.id===ownerId);
+  const ownerEmail=normalizedEmail(process.env.OWNER_EMAIL);
+  return Boolean(
+    (ownerId && user.id===ownerId) ||
+    (ownerEmail && normalizedEmail(user.email)===ownerEmail)
+  );
 }
 export async function requireOwner():Promise<SiteUser> {
   const user=await getCurrentUser();
