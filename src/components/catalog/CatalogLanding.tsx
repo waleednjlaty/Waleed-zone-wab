@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Icon from '@/components/Icon';
 import CoverImage from '@/components/CoverImage';
 import Pagination from '@/components/Pagination';
-import { appMetadata, appName, localizeCategory } from './presentation';
+import { appName, localizeCategory } from './presentation';
 import { appHref } from '@/lib/catalog/routes';
 import { getLanding, landingName, landingPath, type CatalogKind } from '@/lib/catalog/landing';
 import { breadcrumbStructuredData } from '@/lib/seo';
@@ -31,7 +31,7 @@ export default async function CatalogLanding({ kind, page }: { kind: CatalogKind
     </header>
     {result.items.length ? <ul className="catalog-results-grid">{result.items.map((app, index) => {
       const title = appName(app, locale);
-      const metadata = appMetadata(app);
+      const metadata = [app.version ? (/^\\d/.test(app.version) ? `v${app.version}` : app.version) : null, app.platform].filter(Boolean).join(' · ');
       return <li key={app.id} className="catalog-result-item">
         <Link className="catalog-result-card" href={appHref(app)} aria-label={english ? `View details for ${title}` : `عرض تفاصيل ${title}`}>
           <span className="catalog-result-art">
