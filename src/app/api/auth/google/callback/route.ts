@@ -1,7 +1,7 @@
 import { randomUUID, randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { SITE_URL } from '@/lib/site';
-import { allowAttempt, authDb, createSession, ensureAuthTables, hashPassword, normalizedEmail, validEmail } from '@/lib/auth';
+import { allowAttempt, authDb, createSession, ensureAuthTables, normalizedEmail, validEmail } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 const STATE_COOKIE = process.env.NODE_ENV === 'production' ? '__Host-wz_google_state' : 'wz_google_state';
