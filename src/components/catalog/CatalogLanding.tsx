@@ -1,8 +1,9 @@
 import JsonLd from '@/components/JsonLd';
 import Link from 'next/link';
 import Icon from '@/components/Icon';
+import CoverImage from '@/components/CoverImage';
 import Pagination from '@/components/Pagination';
-import { appName } from './presentation';
+import { appMetadata, appName, localizeCategory } from './presentation';
 import { appHref } from '@/lib/catalog/routes';
 import { getLanding, landingName, landingPath, type CatalogKind } from '@/lib/catalog/landing';
 import { breadcrumbStructuredData } from '@/lib/seo';
@@ -28,12 +29,28 @@ export default async function CatalogLanding({ kind, page }: { kind: CatalogKind
       <p className="mt-4 text-sm text-[#a6b5b8]">{result.total} {english ? 'items' : 'عنصر'}{page > 1 ? (english ? ` · Page ${page}` : ` · صفحة ${page}`) : ''}</p>
       <a className="view-all mt-4 inline-flex" href={kind === 'games' ? '/apps' : '/games'}>{english ? (kind === 'games' ? 'Browse apps →' : 'Browse games →') : (kind === 'games' ? 'تصفح التطبيقات ←' : 'تصفح الألعاب ←')}</a>
     </header>
-    {result.items.length ? <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{result.items.map(app => <li key={app.id}>
-      <Link className="surface flex h-full items-center gap-4 p-6 hover:border-[#d9f578]" href={appHref(app)}>
-        <Icon name={kind === 'games' ? 'game' : 'apps'} width={24} height={24} />
-        <span className="min-w-0"><span className="block break-words font-bold" dir="auto">{appName(app, locale)}</span>{app.category && <span className="mt-2 block text-sm text-[#a6b5b8]">{app.category}</span>}</span>
-      </Link>
-    </li>)}</ul> : <p className="surface p-8 text-[#a6b5b8]">{english ? `No ${kind === 'games' ? 'games' : 'apps'} have been published in the library yet.` : <>لم تُنشر {kind === 'games' ? 'ألعاب' : 'تطبيقات'} في المكتبة بعد.</>}</p>}
+    {result.items.length ? <ul className="catalog-results-grid">{result.items.map((app, index) => {
+      const title = appName(app, locale);
+      const metadata = appMetadata(app);
+      return <li key={app.id} className="catalog-result-item">
+        <Link className="catalog-result-card" href={appHref(app)} aria-label={english ? `View details for ${title}` : `عرض تفاصيل ${title}`}>
+          <span className="catalog-result-art">
+            <CoverImage src={app.imageUrl} alt="" aspectClassName="aspect-square" imgClassName="catalog-result-image" priority={index < 3} />
+            <span className="catalog-result-platform" aria-hidden="true"><Icon name={kind === 'games' ? 'game' : 'apps'} width={15} height={15} /></span>
+          </span>
+          <span className="catalog-result-content">
+            <span className="catalog-result-topline">
+              <span className="catalog-result-kind">{english ? (kind === 'games' ? 'GAME' : 'APP') : (kind === 'games' ? 'لعبة' : 'تطبيق')}</span>
+              {metadata && <span className="catalog-result-version" dir="auto">{metadata.split(' · ')[0]}</span>}
+            </span>
+            <strong className="catalog-result-title" dir="auto">{title}</strong>
+            <span className="catalog-result-category" dir="auto">{localizeCategory(app.category, locale)}</span>
+            {metadata && <span className="catalog-result-meta" dir="auto">{metadata}</span>}
+            <span className="catalog-result-cta">{english ? 'View details' : 'اكتشف التفاصيل'} <Icon name="chevron" width={15} height={15} /></span>
+          </span>
+        </Link>
+      </li>;
+    })}</ul> : <p className="surface p-8 text-[#a6b5b8]">{english ? `No ${kind === 'games' ? 'games' : 'apps'} have been published in the library yet.` : <>لم تُنشر {kind === 'games' ? 'ألعاب' : 'تطبيقات'} في المكتبة بعد.</>}</p>}
     <div className="mt-10"><Pagination currentPage={page} totalPages={result.totalPages} basePath={`/${kind}`} /></div>
   </div>;
 }
