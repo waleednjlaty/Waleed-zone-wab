@@ -13,6 +13,55 @@ export function appName(app: Pick<Application, 'name' | 'id'>, locale: Locale = 
   return app.name?.trim().replace(/\.(apk|xapk|apks|zip|exe)$/i, '').replace(/_/g, ' ') || (locale === 'en' ? `App ${app.id}` : `تطبيق ${app.id}`);
 }
 
+const CATEGORY_TRANSLATIONS: Record<string, string> = {
+  'مونتاج': 'Video editing', 'تحرير الفيديو': 'Video editing', 'تعديل الفيديو': 'Video editing',
+  'تواصل اجتماعي': 'Social networking', 'تواصل اجتماعي': 'Social networking', 'وسائل التواصل الاجتماعي': 'Social networking',
+  'ألعاب كمبيوتر': 'PC games', 'العاب كمبيوتر': 'PC games', 'ألعاب أندرويد': 'Android games',
+  'ألعاب': 'Games', 'العاب': 'Games', 'لعبة': 'Games', 'أدوات': 'Tools', 'أداة': 'Tools',
+  'تصميم': 'Design', 'تصوير': 'Photography', 'فيديو': 'Video', 'موسيقى وصوت': 'Music & audio',
+  'تعليم': 'Education', 'إنتاجية': 'Productivity', 'اتصال': 'Communication', 'ترفيه': 'Entertainment',
+  'أعمال': 'Business', 'كتب ومراجع': 'Books & reference', 'رياضة': 'Sports', 'أخبار': 'News',
+  'طقس': 'Weather', 'صحة ولياقة': 'Health & fitness', 'مال وأعمال': 'Finance',
+  'تخصيص': 'Personalization', 'خرائط وتنقل': 'Maps & navigation', 'مجانية': 'Free apps',
+};
+
+export function localizeCategory(value: string | null | undefined, locale: Locale): string {
+  const category = value?.trim();
+  if (!category) return locale === 'en' ? 'Library' : 'المكتبة';
+  const key = category.toLocaleLowerCase();
+  if (locale === 'en') {
+    const match = Object.entries(CATEGORY_TRANSLATIONS).find(([ar]) => ar.toLocaleLowerCase() === key);
+    if (match) return match[1];
+    if (/[\\u0600-\\u06FF]/.test(category)) return 'Other';
+    return category;
+  }
+  const reverse = Object.entries(CATEGORY_TRANSLATIONS).find(([, en]) => en.toLocaleLowerCase() === key);
+  if (reverse) return reverse[0];
+  if (/[A-Za-z]/.test(category) && !/[\\u0600-\\u06FF]/.test(category)) return 'أخرى';
+  return category;
+}
+
+/**
+ * Catalog descriptions are user-entered database content, not UI strings.
+ * Until a translated description is stored, avoid showing a paragraph in the
+ * wrong language; use a clear localized fallback instead.
+ */
+export function localizeDescription(value: string | null | undefined, locale: Locale, kind: 'app' | 'game' = 'app'): string {
+  const description = value?.replace(/\\s+/g, ' ').trim();
+  if (!description) return locale === 'en'
+    ? 'Explore the details, version information and available download options.'
+    : kind === 'game' ? 'اكتشف تفاصيل اللعبة وإصدارها وخيارات التحميل المتاحة.' : 'اكتشف تفاصيل التطبيق وإصداره وخيارات التحميل المتاحة.';
+  const hasArabic = /[\\u0600-\\u06FF]/.test(description);
+  const hasLatin = /[A-Za-z]/.test(description);
+  if (locale === 'en' && hasArabic) return kind === 'game'
+    ? 'Explore this game, its available version and download details.'
+    : 'Explore this app, its available version and download details.';
+  if (locale === 'ar' && hasLatin && !hasArabic) return kind === 'game'
+    ? 'اكتشف تفاصيل اللعبة وإصدارها وخيارات التحميل المتاحة.'
+    : 'اكتشف تفاصيل التطبيق وإصداره وخيارات التحميل المتاحة.';
+  return description;
+}
+
 export function appMetadata(app: Pick<Application, 'version' | 'size' | 'platform'>) {
   const available = (value: string | null) => {
     const text = value?.trim();
