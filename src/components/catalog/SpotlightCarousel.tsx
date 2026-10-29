@@ -39,6 +39,7 @@ export default function SpotlightCarousel({ apps }: { apps: SpotlightItem[] }) {
 
   const wantsRotation = autoRequested && (!reducedMotion || motionOverride);
   const rotating = apps.length > 1 && wantsRotation && !focusPaused && !hoverPaused;
+  const controlRotationActive = wantsRotation && !focusPaused;
 
   useEffect(() => {
     if (!rotating) return;
@@ -170,7 +171,7 @@ export default function SpotlightCarousel({ apps }: { apps: SpotlightItem[] }) {
               <button
                 className="spotlight-rotation"
                 type="button"
-                aria-label={wantsRotation ? (english ? 'Stop automatic rotation' : 'إيقاف التبديل التلقائي') : (english ? 'Start automatic rotation' : 'تشغيل التبديل التلقائي')}
+                aria-label={controlRotationActive ? (english ? 'Stop automatic rotation' : 'إيقاف التبديل التلقائي') : (english ? 'Start automatic rotation' : 'تشغيل التبديل التلقائي')}
                 onPointerDown={() => { pointerWasRotating.current = wantsRotation && !focusPaused; }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -179,7 +180,7 @@ export default function SpotlightCarousel({ apps }: { apps: SpotlightItem[] }) {
                 }}
                 onClick={toggleRotation}
               >
-                <span aria-hidden="true">{wantsRotation ? 'Ⅱ' : '▶'}</span>
+                <span aria-hidden="true">{controlRotationActive ? 'Ⅱ' : '▶'}</span>
               </button>
             </>
           )}
