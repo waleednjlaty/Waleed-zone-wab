@@ -31,7 +31,7 @@ export default async function CatalogLanding({ kind, page }: { kind: CatalogKind
     </header>
     {result.items.length ? <ul className="catalog-results-grid">{result.items.map((app, index) => {
       const title = appName(app, locale);
-      const metadata = [app.version ? (/^\\d/.test(app.version) ? `v${app.version}` : app.version) : null, app.platform].filter(Boolean).join(' · ');
+      const metadata = [app.version ? (/^\d/.test(app.version) ? `v${app.version}` : app.version) : null, app.platform].filter(Boolean).join(' · ');
       return <li key={app.id} className="catalog-result-item">
         <Link className="catalog-result-card" href={appHref(app)} aria-label={english ? `View details for ${title}` : `عرض تفاصيل ${title}`}>
           <span className="catalog-result-art">
