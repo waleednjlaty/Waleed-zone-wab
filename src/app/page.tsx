@@ -14,7 +14,8 @@ import SearchBar from '@/components/SearchBar';
 import SectionHeading from '@/components/SectionHeading';
 import SearchResultsSkeleton from '@/components/loading/SearchResultsSkeleton';
 import CatalogSkeleton, { SearchSkeleton } from '@/components/CatalogSkeleton';
-import { homeCollections, localizeCategory } from '@/components/catalog/presentation';
+import { homeCollections, isGame, localizeCategory } from '@/components/catalog/presentation';
+import { localizeCatalogDescription } from '@/lib/translation';
 import { getApps, getCategories, type Application } from '@/lib/queries';
 import { parsePage, safeExternalUrl, sanitizeSearch } from '@/lib/utils';
 import { HOME_TITLE, SITE_DESCRIPTION } from '@/lib/site';
@@ -107,7 +108,10 @@ async function CatalogContent({ q, category, page, browse, filtered, locale }: {
     filtered ? Promise.resolve(null) : getApps({ limit: 48 }),
   ]);
   const collections = homeCollections(discovery?.items || [], locale);
-  const spotlight = discovery ? selectDailySpotlight(discovery.items) : [];
+  const spotlight = discovery ? await Promise.all(selectDailySpotlight(discovery.items).map(async (item) => ({
+    ...item,
+    description: await localizeCatalogDescription(item.description, locale, isGame(item) ? 'game' : 'app'),
+  }))) : [];
 
   return <>
     {filtered ? <div className="filtered-catalog">
