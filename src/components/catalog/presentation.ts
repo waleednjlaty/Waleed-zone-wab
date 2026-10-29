@@ -47,19 +47,15 @@ export function localizeCategory(value: string | null | undefined, locale: Local
  * wrong language; use a clear localized fallback instead.
  */
 export function localizeDescription(value: string | null | undefined, locale: Locale, kind: 'app' | 'game' = 'app'): string {
-  const description = value?.replace(/\s+/g, ' ').trim();
-  if (!description) return locale === 'en'
-    ? 'Explore the details, version information and available download options.'
-    : kind === 'game' ? 'اكتشف تفاصيل اللعبة وإصدارها وخيارات التحميل المتاحة.' : 'اكتشف تفاصيل التطبيق وإصداره وخيارات التحميل المتاحة.';
-  const hasArabic = /[\u0600-\u06FF]/.test(description);
-  const hasLatin = /[A-Za-z]/.test(description);
-  if (locale === 'en' && hasArabic) return kind === 'game'
-    ? 'Explore this game, its available version and download details.'
-    : 'Explore this app, its available version and download details.';
-  if (locale === 'ar' && hasLatin && !hasArabic) return kind === 'game'
-    ? 'اكتشف تفاصيل اللعبة وإصدارها وخيارات التحميل المتاحة.'
-    : 'اكتشف تفاصيل التطبيق وإصداره وخيارات التحميل المتاحة.';
-  return description;
+  const description = value?.replace(/\\s+/g, ' ').trim();
+  if (description) return description;
+  return locale === 'en'
+    ? kind === 'game'
+      ? 'Explore this game, its available version and download details.'
+      : 'Explore this app, its available version and download details.'
+    : kind === 'game'
+      ? 'اكتشف تفاصيل اللعبة وإصدارها وخيارات التحميل المتاحة.'
+      : 'اكتشف تفاصيل التطبيق وإصداره وخيارات التحميل المتاحة.';
 }
 
 export function appMetadata(app: Pick<Application, 'version' | 'size' | 'platform'>) {
