@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import AppCard from '@/components/AppCard';
+import SpotlightCarousel, { type SpotlightItem } from '@/components/catalog/SpotlightCarousel';
 import AppGrid from '@/components/AppGrid';
 import CategoryPills from '@/components/CategoryPills';
 import EmptyState from '@/components/EmptyState';
@@ -14,8 +15,8 @@ import SectionHeading from '@/components/SectionHeading';
 import SearchResultsSkeleton from '@/components/loading/SearchResultsSkeleton';
 import CatalogSkeleton, { SearchSkeleton } from '@/components/CatalogSkeleton';
 import { homeCollections } from '@/components/catalog/presentation';
-import { getApps, getCategories } from '@/lib/queries';
-import { parsePage, sanitizeSearch } from '@/lib/utils';
+import { getApps, getCategories, type Application } from '@/lib/queries';
+import { parsePage, safeExternalUrl, sanitizeSearch } from '@/lib/utils';
 import { HOME_TITLE, SITE_DESCRIPTION } from '@/lib/site';
 import { pageMetadata, websiteStructuredData } from '@/lib/seo';
 import { getLocale } from '@/lib/locale-server';
@@ -23,6 +24,40 @@ import { getLocale } from '@/lib/locale-server';
 export const dynamic = 'force-dynamic';
 interface Props { searchParams: Promise<Record<string, string | string[] | undefined>>; }
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
+
+function selectDailySpotlight(apps: Application[], limit = 4): SpotlightItem[] {
+  const eligible = apps.filter((app) => Boolean(app.name?.trim()));
+  const illustrated = eligible.filter((app) => Boolean(safeExternalUrl(app.imageUrl)));
+  const pool = illustrated.length >= 2 ? illustrated : eligible;
+  const day = new Date().toISOString().slice(0, 10);
+
+  // Stable daily shuffle: the featured apps change over time, but don't jump around
+  // on every render or refresh. The active database rows remain the only source.
+  const score = (id: number) => {
+    let hash = 2166136261;
+    for (const character of `${day}:${id}`) {
+      hash ^= character.charCodeAt(0);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  };
+
+  return pool
+    .map((app) => ({ app, score: score(app.id) }))
+    .sort((left, right) => left.score - right.score)
+    .slice(0, Math.max(1, Math.min(limit, 6)))
+    .map(({ app }) => ({
+      id: app.id,
+      name: app.name,
+      category: app.category,
+      description: app.description,
+      version: app.version,
+      size: app.size,
+      platform: app.platform,
+      imageUrl: app.imageUrl,
+    }));
+}
+
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const [params, locale] = await Promise.all([searchParams, getLocale()]);
@@ -82,6 +117,7 @@ async function CatalogContent({ q, category, page, browse, filtered, locale }: {
     filtered ? Promise.resolve(null) : getApps({ limit: 48 }),
   ]);
   const collections = homeCollections(discovery?.items || [], locale);
+  const spotlight = discovery ? selectDailySpotlight(discovery.items) : [];
 
   return <>
     {filtered ? <div className="filtered-catalog">
@@ -91,6 +127,7 @@ async function CatalogContent({ q, category, page, browse, filtered, locale }: {
         {result.items.length ? <><AppGrid apps={result.items} /><div className="catalog-pagination"><Pagination currentPage={result.currentPage} totalPages={result.totalPages} q={q || undefined} category={category || undefined} browse={browse} /></div></> : <EmptyState hasQuery={Boolean(q || category)} />}
       </section>
     </div> : result.total === 0 ? <section id="library"><EmptyState hasQuery={false} /></section> : <>
+      {spotlight.length > 0 && <SpotlightCarousel apps={spotlight} />}
       <section id="trending" className="catalog-section" aria-labelledby="trending-title">
         <SectionHeading id="trending-title" title={english ? 'Trending now' : 'شائع الآن'} subtitle={collections.trendingLabel} href="/?browse=all#library" icon="trend" />
         <div className="horizontal-cards">{collections.trending.map((app, index) => <AppCard key={app.id} app={app} rank={index + 1} />)}</div>
