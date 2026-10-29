@@ -50,8 +50,9 @@ export default async function Home({ searchParams }: Props) {
   return (
     <div className="shell homepage">
       {/* BEGIN AADS AD UNIT 2458212 */}
-      <div id="frame" style={{ width: '100%', margin: 'auto', position: 'relative', zIndex: 99998 }}>
+      <div id="frame" style={{ width: '100%', margin: 'auto' }}>
         <iframe 
+          title={english ? 'Advertisement' : 'إعلان'}
           data-aa='2458212' 
           src='//acceptable.a-ads.com/2458212/?size=Adaptive'
           style={{ border: 0, padding: 0, width: '70%', height: 'auto', overflow: 'hidden', display: 'block', margin: 'auto' }}
