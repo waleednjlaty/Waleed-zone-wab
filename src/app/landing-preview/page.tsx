@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import Brand from '@/components/Brand';
 import { TELEGRAM_BOT_URL, TELEGRAM_CHANNEL_URL } from '@/lib/site';
+
+const LIVE_SITE_URL = 'https://www.waleedzone.xyz';
 
 export const metadata: Metadata = {
   title: 'Waleed Zone — تجربة الصفحة التعريفية',
@@ -40,13 +41,13 @@ export default function LandingPreview() {
       <div className="wzl-topline"><span>مساحة رقمية واحدة، خيارات أكثر</span><span className="wzl-topline-mark">WZ / 2026</span></div>
       <header className="wzl-header">
         <div className="wzl-container wzl-header-inner">
-          <Link href="/landing-preview" aria-label="Waleed Zone"><Brand /></Link>
+          <a href="/landing-preview" aria-label="Waleed Zone"><Brand /></a>
           <nav className="wzl-nav" aria-label="التنقل الرئيسي">
             <a href="#discover">اكتشف</a>
             <a href="#features">المميزات</a>
             <a href="#community">مجتمعنا</a>
           </nav>
-          <Link className="wzl-header-cta" href="/apps">تصفّح المكتبة <ArrowIcon /></Link>
+          <a className="wzl-header-cta" href={`${LIVE_SITE_URL}/apps`} target="_blank" rel="noopener noreferrer">تصفّح المكتبة <ArrowIcon /></a>
         </div>
       </header>
 
@@ -57,7 +58,7 @@ export default function LandingPreview() {
             <h1>اكتشف أكثر.<br /><span>واختر بذكاء.</span></h1>
             <p className="wzl-hero-description">كل ما تحتاجه من تطبيقات وألعاب في مكان واحد. تصفّح، اعرف التفاصيل، وتابع جديد Waleed Zone أولاً بأول.</p>
             <div className="wzl-actions">
-              <Link className="wzl-button wzl-button-primary" href="/apps">استكشف المكتبة <ArrowIcon /></Link>
+              <a className="wzl-button wzl-button-primary" href={`${LIVE_SITE_URL}/apps`} target="_blank" rel="noopener noreferrer">استكشف المكتبة <ArrowIcon /></a>
               <a className="wzl-button wzl-button-secondary" href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noopener noreferrer"><SendIcon /> انضم إلى القناة</a>
             </div>
             <div className="wzl-proof-row">
@@ -82,16 +83,16 @@ export default function LandingPreview() {
                 <button type="submit">بحث</button>
               </form>
               <div className="wzl-shortcuts">
-                <Link href="/apps" className="wzl-shortcut">
+                <a href={`${LIVE_SITE_URL}/apps`} target="_blank" rel="noopener noreferrer" className="wzl-shortcut">
                   <span className="wzl-shortcut-icon wzl-icon-apps"><AppIcon /></span>
                   <span><b>التطبيقات</b><small>اكتشف أدوات جديدة</small></span>
                   <span className="wzl-shortcut-arrow">↗</span>
-                </Link>
-                <Link href="/games" className="wzl-shortcut">
+                </a>
+                <a href={`${LIVE_SITE_URL}/games`} target="_blank" rel="noopener noreferrer" className="wzl-shortcut">
                   <span className="wzl-shortcut-icon wzl-icon-games"><GameIcon /></span>
                   <span><b>الألعاب</b><small>اختر لعبتك القادمة</small></span>
                   <span className="wzl-shortcut-arrow">↗</span>
-                </Link>
+                </a>
               </div>
               <a href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noopener noreferrer" className="wzl-update-strip">
                 <span className="wzl-update-icon"><SendIcon /></span>
@@ -148,9 +149,9 @@ export default function LandingPreview() {
         <div className="wzl-container wzl-footer-inner">
           <div><Brand /><p>اكتشف. اختَر. وابقَ على اطلاع.</p></div>
           <div className="wzl-footer-links">
-            <Link href="/apps">التطبيقات</Link><Link href="/games">الألعاب</Link>
+            <a href={`${LIVE_SITE_URL}/apps`} target="_blank" rel="noopener noreferrer">التطبيقات</a><a href={`${LIVE_SITE_URL}/games`} target="_blank" rel="noopener noreferrer">الألعاب</a>
             <a href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noopener noreferrer">تيليغرام</a>
-            <Link href="/">المتجر الحالي</Link>
+            <a href={LIVE_SITE_URL} target="_blank" rel="noopener noreferrer">المتجر الحالي</a>
           </div>
           <span className="wzl-copyright" dir="ltr">© {new Date().getFullYear()} Waleed Zone</span>
         </div>
