@@ -77,11 +77,11 @@ export default function LandingPreview() {
                 <span className="wzl-live-dot" aria-label="متاح للتصفح" />
               </div>
               <div className="wzl-library-heading"><span>ابدأ من هنا</span><b>شو حابب تكتشف اليوم؟</b></div>
-              <form action={LIVE_SITE_URL} method="get" target="_blank" className="wzl-search">
+              <div className="wzl-search" role="group" aria-label="البحث في مكتبة Waleed Zone">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="m16 16 5 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
-                <input type="search" name="q" placeholder="ابحث عن تطبيق أو لعبة..." aria-label="ابحث عن تطبيق أو لعبة" />
-                <button type="submit">بحث</button>
-              </form>
+                <span>ابحث عن تطبيق أو لعبة...</span>
+                <a href={LIVE_SITE_URL} target="_blank" rel="noopener noreferrer">افتح</a>
+              </div>
               <div className="wzl-shortcuts">
                 <a href={`${LIVE_SITE_URL}/apps`} target="_blank" rel="noopener noreferrer" className="wzl-shortcut">
                   <span className="wzl-shortcut-icon wzl-icon-apps"><AppIcon /></span>
