@@ -1,10 +1,53 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { contentSecurityPolicy } from '@/lib/security/csp';
 
+function unauthorizedPreview() {
+  return new NextResponse('Preview access required', {
+    status: 401,
+    headers: {
+      'WWW-Authenticate': 'Basic realm="Waleed Zone private preview", charset="UTF-8"',
+      'Cache-Control': 'no-store',
+      'X-Robots-Tag': 'noindex, nofollow, noarchive',
+    },
+  });
+}
+
+function safeEqual(left: string, right: string) {
+  if (left.length !== right.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < left.length; index += 1) mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  return mismatch === 0;
+}
+
 /** File exposure defense only. Authorization lives next to server data access. */
 export function middleware(request: NextRequest) {
+  // A separate Railway preview service sets these values. Production does not,
+  // so the live website keeps its existing access behavior.
+  if (process.env.WZ_PREVIEW_AUTH === 'true') {
+    const expectedUser = process.env.WZ_PREVIEW_USER || '';
+    const expectedPassword = process.env.WZ_PREVIEW_PASSWORD || '';
+    if (!expectedUser || !expectedPassword) {
+      return new NextResponse('Preview authentication is not configured', {
+        status: 503,
+        headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' },
+      });
+    }
+    const authorization = request.headers.get('authorization') || '';
+    if (!authorization.startsWith('Basic ')) return unauthorizedPreview();
+    try {
+      const decoded = atob(authorization.slice(6));
+      const separator = decoded.indexOf(':');
+      const user = decoded.slice(0, separator);
+      const password = decoded.slice(separator + 1);
+      if (separator < 0 || !safeEqual(user, expectedUser) || !safeEqual(password, expectedPassword)) {
+        return unauthorizedPreview();
+      }
+    } catch {
+      return unauthorizedPreview();
+    }
+  }
+
   // Keep the Railway-generated URL working, but make the custom domain canonical.
-  // Cloning the URL preserves the original path and query string.
   const host = request.headers.get('host')?.split(':')[0].toLowerCase();
   if (host === 'waleed-zone.up.railway.app') {
     const url = request.nextUrl.clone();
@@ -33,7 +76,6 @@ export function middleware(request: NextRequest) {
   }
 
   const requestHeaders = new Headers(request.headers);
-  // Overwrite incoming values; clients cannot spoof the route guard context.
   requestHeaders.set('x-wz-route', encodeURIComponent(path));
   const nonce = btoa(crypto.randomUUID());
   const csp = contentSecurityPolicy(
